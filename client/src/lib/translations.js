@@ -1907,6 +1907,7 @@ export const translations = {
         // Admin & School Manager
         model3dManagement: "3D Management",
         model3dLibrary: "3D Model Library",
+        virtualLabs: "Virtual Labs", virtualLabsManager: "Virtual Labs Manager",
         landingPageBuilder: "Landing Page Builder",
         expandSidebar: "Expand sidebar",
         collapseSidebar: "Collapse sidebar",
@@ -3664,6 +3665,7 @@ export const translations = {
 
         // Admin & School Manager
         model3dManagement: "إدارة النماذج ثلاثية الأبعاد",
+        virtualLabs: "المختبرات الافتراضية", virtualLabsManager: "إدارة المختبرات الافتراضية",
         landingPageBuilder: "منشئ الصفحة المقصودة",
         expandSidebar: "توسيع الشريط الجانبي",
         collapseSidebar: "طي الشريط الجانبي",
@@ -3980,6 +3982,7 @@ export const translations = {
 
         // Admin & School Manager
         model3dManagement: "إدارة النماذج ثلاثية الأبعاد",
+        virtualLabs: "المختبرات الافتراضية", virtualLabsManager: "إدارة المختبرات الافتراضية",
         landingPageBuilder: "منشئ الصفحة المقصودة",
         expandSidebar: "توسيع الشريط الجانبي",
         collapseSidebar: "طي الشريط الجانبي",
@@ -4783,7 +4786,7 @@ export const translations = {
         equipment: "Équipement", catalog: "Catalogue", ads: "Publicités", landing: "Landing Page",
         reports: "Rapports", finance: "Finance", log: "Journal", badges: "Badges",
         analytics: "Analyses", schools: "Écoles", school: "École", games: "Jeux", templates: "Modèles de Jeux",
-        model3dManagement: "Gestion 3D", model3dLibrary: "Bibliothèque 3D",
+        model3dManagement: "Gestion 3D", model3dLibrary: "Bibliothèque 3D", virtualLabs: "Laboratoires Virtuels", virtualLabsManager: "Gestion des Laboratoires Virtuels",
         templateGuide: "Guide des Modèles", templateGames: "Jeux par Modèle", myGames: "Mes Jeux",
         createGame: "Créer un Jeu", liveSessions: "Sessions en Direct", assignments: "Devoirs",
         resources: "Ressources", calendar: "Calendrier", myClasses: "Mes Classes",

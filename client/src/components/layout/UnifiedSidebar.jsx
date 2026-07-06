@@ -29,7 +29,8 @@ import {
   Box,
   Tag,
   FolderOpen,
-  Globe
+  Globe,
+  FlaskConical
 } from 'lucide-react';
 
 const UnifiedSidebar = ({
@@ -63,7 +64,8 @@ const UnifiedSidebar = ({
             { id: 'template-games', name: t.templateGames, icon: Gamepad2 },
             { id: 'templates', name: t.templates, icon: Plus },
             { id: 'template-guide', name: t.templateGuide, icon: BookOpen },
-            { id: '3d-management', name: t.model3dManagement, icon: Box, isExternal: true }
+            { id: '3d-management', name: t.model3dManagement, icon: Box, isExternal: true },
+            { id: 'virtual-labs', name: t.virtualLabsManager, icon: FlaskConical }
           ])
         ];
       case 'manager':
@@ -123,7 +125,8 @@ const UnifiedSidebar = ({
             { id: 'my-games', name: t.myGames, icon: BookOpen },
             { id: 'create-game', name: t.createGame, icon: Plus },
             { id: 'resources', name: t.resources, icon: FileText },
-            { id: '3d-library', name: t.model3dLibrary, icon: Box, isExternal: true }
+            { id: '3d-library', name: t.model3dLibrary, icon: Box, isExternal: true },
+            { id: 'virtual-labs', name: t.virtualLabs, icon: FlaskConical }
           ])
         ];
       default:

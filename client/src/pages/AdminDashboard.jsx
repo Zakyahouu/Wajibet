@@ -19,6 +19,7 @@ import Overview from '../components/admin/Overview';
 
 // Import 3D Model components
 import Model3dManagement from '../components/admin/Model3dManagement';
+import VirtualLabsManager from '../components/admin/VirtualLabsManager';
 
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -64,7 +65,8 @@ const AdminDashboard = () => {
     { id: 'templates', name: t.templates },
     { id: 'template-guide', name: t.templateGuide },
     { id: 'badges', name: t.badges },
-    { id: 'analytics', name: t.analytics }
+    { id: 'analytics', name: t.analytics },
+    { id: 'virtual-labs', name: t.virtualLabsManager }
   ];
 
   const renderContent = () => {
@@ -87,6 +89,8 @@ const AdminDashboard = () => {
         return <Analytics />;
       case '3d-management':
         return <Model3dManagement />;
+      case 'virtual-labs':
+        return <VirtualLabsManager />;
       default:
         return <Overview stats={stats} loading={loading} />;
     }

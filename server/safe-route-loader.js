@@ -76,6 +76,7 @@ function loadAllRoutes(app) {
     { path: '/api/logs', file: './routes/logRoutes' },
     { path: '/api/live-sessions', file: './routes/liveSessionRoutes' },
     { path: '/api/auth', file: './routes/federatedAuthRoutes' },
+    { path: '/api/virtual-labs', file: './routes/virtualLabRoutes' },
   ];
 
   console.log('🚀 Starting safe route loading...\n');

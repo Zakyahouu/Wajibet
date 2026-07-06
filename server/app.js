@@ -109,6 +109,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/badge-icons', express.static(path.join(__dirname, 'public', 'badge-icons')));
 // Serve general assets
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
+// Serve virtual lab HTML files
+app.use('/virtual-labs', express.static(path.join(__dirname, 'public', 'virtual-labs')));
 
 // Safe route loading with error handling to prevent path-to-regexp errors
 try {

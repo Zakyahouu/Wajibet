@@ -23,6 +23,7 @@ const TeacherAnnouncementsLazy = React.lazy(() => import('../components/teacher/
 
 // Import 3D Model Library component
 import Model3dLibrary from '../components/teacher/Model3dLibrary';
+import VirtualLabsCatalog from '../components/teacher/VirtualLabsCatalog';
 
 const TeacherDashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -65,6 +66,7 @@ const TeacherDashboard = () => {
     { id: 'live-sessions', name: t.liveSessions },
     { id: 'assignments', name: t.assignments },
     { id: 'resources', name: t.resources },
+    { id: 'virtual-labs', name: t.virtualLabs },
     { id: 'timetable', name: t.timetable },
     { id: 'students', name: t.myClasses },
     { id: 'calendar', name: t.calendar }
@@ -96,6 +98,8 @@ const TeacherDashboard = () => {
         return <TeacherAssignments />;
       case 'resources':
         return <TeacherResources />;
+      case 'virtual-labs':
+        return <VirtualLabsCatalog />;
       case 'timetable':
         return <Timetable />;
       case 'students':
