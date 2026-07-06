@@ -67,7 +67,7 @@ const VirtualLabViewer = ({ lab, onBack }) => {
         
         <iframe
           id="virtual-lab-iframe"
-          src={`${BACKEND_URL}/virtual-labs/${lab.fileName}`}
+          src={`/api/virtual-labs/file/${lab.fileName}`}
           className="w-full h-full border-none"
           sandbox="allow-scripts allow-same-origin allow-popups"
           onLoad={() => setLoading(false)}

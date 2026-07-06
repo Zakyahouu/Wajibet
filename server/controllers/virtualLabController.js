@@ -109,10 +109,25 @@ const deleteVirtualLab = asyncHandler(async (req, res) => {
   res.json({ message: 'Virtual lab removed' });
 });
 
+// @desc    Serve a virtual lab HTML file
+// @route   GET /api/virtual-labs/file/:filename
+// @access  Private
+const getVirtualLabFile = asyncHandler(async (req, res) => {
+  const filePath = path.join(__dirname, '../public/virtual-labs/', req.params.filename);
+  
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404);
+    throw new Error('File not found');
+  }
+});
+
 module.exports = {
   getAllVirtualLabs,
   getVirtualLabById,
   createVirtualLab,
   updateVirtualLab,
   deleteVirtualLab,
+  getVirtualLabFile,
 };

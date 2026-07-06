@@ -10,6 +10,7 @@ const {
   createVirtualLab,
   updateVirtualLab,
   deleteVirtualLab,
+  getVirtualLabFile,
 } = require('../controllers/virtualLabController');
 
 const { protect, admin } = require('../middleware/authMiddleware');
@@ -47,6 +48,9 @@ const upload = multer({
 router.route('/')
   .get(protect, getAllVirtualLabs)
   .post(protect, admin, upload.single('labFile'), createVirtualLab);
+
+router.route('/file/:filename')
+  .get(protect, getVirtualLabFile);
 
 router.route('/:id')
   .get(protect, getVirtualLabById)
