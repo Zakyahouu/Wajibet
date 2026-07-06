@@ -50,7 +50,7 @@ router.route('/')
   .post(protect, admin, upload.single('labFile'), createVirtualLab);
 
 router.route('/file/:filename')
-  .get(protect, getVirtualLabFile);
+  .get(getVirtualLabFile);
 
 router.route('/:id')
   .get(protect, getVirtualLabById)
