@@ -318,7 +318,7 @@ const SupportLessonForm = ({ isOpen, onClose, onSubmit, data, catalog }) => {
         const submitData = {
           level: formData.level,
           grade,
-          subject: subjects.join(', '),
+          subject: subjects[0] || '',
         };
         if (formData.level === 'high_school' && formData.stream) {
           submitData.stream = formData.stream;
@@ -671,33 +671,51 @@ const SupportLessonForm = ({ isOpen, onClose, onSubmit, data, catalog }) => {
                             {gradeOption?.label}
                           </label>
                           <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectAllSubjects(grade)}
-                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                            >
-                              {t.selectAll || 'Select All'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeselectAllSubjects(grade)}
-                              className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                            >
-                              {t.clearAll || 'Clear All'}
-                            </button>
+                            {!data && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectAllSubjects(grade)}
+                                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                >
+                                  {t.selectAll || 'Select All'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeselectAllSubjects(grade)}
+                                  className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                                >
+                                  {t.clearAll || 'Clear All'}
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {subjectOptions.map((subject) => {
-                            const disabled = !data && isSubjectAlreadyExists(grade, subject);
+                            const disabled = isSubjectAlreadyExists(grade, subject);
                             return (
                               <div key={subject} className={`flex items-center gap-2 ${disabled ? 'opacity-50' : ''}`}>
                                 <input
-                                  type="checkbox"
+                                  type={data ? "radio" : "checkbox"}
+                                  name={`subject-${grade}`}
                                   checked={selectedSubjects.includes(subject)}
-                                  onChange={() => !disabled && handleSubjectToggle(grade, subject)}
+                                  onChange={() => {
+                                    if (disabled) return;
+                                    if (data) {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        gradeSubjects: {
+                                          ...prev.gradeSubjects,
+                                          [grade]: [subject]
+                                        }
+                                      }));
+                                    } else {
+                                      handleSubjectToggle(grade, subject);
+                                    }
+                                  }}
                                   disabled={disabled}
-                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 ${data ? 'rounded-full' : 'rounded'}`}
                                 />
                                 <span className="text-sm text-gray-700">{subject}</span>
                               </div>

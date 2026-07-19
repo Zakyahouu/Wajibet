@@ -278,7 +278,7 @@ const CatalogTab = ({ catalog, onUpdate }) => {
                             {streamItems.map(item => (
                               <div key={item._id} className="group flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
                                 <span className="text-sm text-gray-700 font-medium">{item.subject}</span>
-                                <div className="hidden group-hover:flex items-center gap-1 ml-1 pl-2 border-l border-gray-300">
+                                <div className="flex items-center gap-1 ml-1 pl-2 border-l border-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
                                   <button
                                     onClick={() => {
                                       setEditingItem(item);
