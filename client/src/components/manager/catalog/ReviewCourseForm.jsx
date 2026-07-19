@@ -419,11 +419,13 @@ const ReviewCourseForm = ({ isOpen, onClose, onSubmit, data, catalog }) => {
   // Handle select all subjects for a grade
   const handleSelectAllSubjects = (grade) => {
     const subjectOptions = getSubjectOptions(formData.level, grade, formData.stream);
+    const availableSubjects = subjectOptions.filter(subject => !isSubjectAlreadyExists(grade, subject));
+    
     setFormData(prev => ({
       ...prev,
       gradeSubjects: {
         ...prev.gradeSubjects,
-        [grade]: subjectOptions
+        [grade]: availableSubjects
       }
     }));
 
