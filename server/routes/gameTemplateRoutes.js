@@ -29,6 +29,7 @@ const {
   updateTemplateStatus,
   deleteTemplate, // 1. Import the new function
   updateTemplateMeta,
+  downloadTemplateBundle,
 } = require('../controllers/gameTemplateController');
 
 // Import middleware for protection
@@ -56,6 +57,9 @@ router.get('/count', protect, admin, async (req, res) => {
 router.route('/:id')
   .get(protect, getGameTemplateById)
   .delete(protect, admin, deleteTemplate); // 2. Add the DELETE method
+
+// Download template as ZIP bundle (admin only)
+router.get('/:id/download', protect, admin, downloadTemplateBundle);
 
 // Metadata patch
 router.route('/:id/meta')

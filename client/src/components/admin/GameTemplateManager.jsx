@@ -10,7 +10,8 @@ import {
   Gamepad2,
   FileCheck,
   FileX,
-  Loader2
+  Loader2,
+  Download
 } from 'lucide-react';
 import TemplateUploader from './TemplateUploader';
 import TemplateMetaEditor from './TemplateMetaEditor';
@@ -60,6 +61,29 @@ const GameTemplateManager = () => {
     } catch (err) {
       const msg = err.response?.data?.message || t.failedToDeleteTemplate;
       setError(msg);
+    }
+  };
+
+  const [downloadingId, setDownloadingId] = useState(null);
+  const handleDownload = async (template) => {
+    setDownloadingId(template._id);
+    try {
+      const response = await axios.get(`/api/templates/${template._id}/download`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const safeName = (template.name || 'template').replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.setAttribute('download', `${safeName}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Failed to download template bundle');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -132,6 +156,15 @@ const GameTemplateManager = () => {
                     title="Edit"
                   >
                     <Edit className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDownload(template)}
+                    disabled={downloadingId === template._id}
+                    aria-label={`Download template ${template.name}`}
+                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50"
+                    title="Download ZIP"
+                  >
+                    {downloadingId === template._id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                   </button>
                   <button
                     onClick={() => handleDelete(template._id)}

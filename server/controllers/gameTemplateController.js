@@ -254,6 +254,51 @@ const updateTemplateMeta = asyncHandler(async (req, res) => {
   res.json(updated);
 });
 
+const downloadTemplateBundle = asyncHandler(async (req, res) => {
+  const template = await GameTemplate.findById(req.params.id);
+  if (!template) {
+    res.status(404);
+    throw new Error('Game template not found');
+  }
+
+  const zip = new AdmZip();
+
+  // Add manifest.json from DB
+  zip.addFile('manifest.json', Buffer.from(JSON.stringify(template.manifest, null, 2), 'utf8'));
+
+  // Add form-schema.json from DB
+  zip.addFile('form-schema.json', Buffer.from(JSON.stringify(template.formSchema, null, 2), 'utf8'));
+
+  // Add engine/ folder from disk
+  if (template.enginePath) {
+    const fullEnginePath = path.join(__dirname, '..', 'public', template.enginePath);
+    if (fs.existsSync(fullEnginePath)) {
+      const addDirToZip = (dirPath, zipPath) => {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+          const entryPath = path.join(dirPath, entry.name);
+          const entryZipPath = zipPath ? `${zipPath}/${entry.name}` : entry.name;
+          if (entry.isDirectory()) {
+            addDirToZip(entryPath, entryZipPath);
+          } else {
+            zip.addFile(`engine/${entryZipPath}`, fs.readFileSync(entryPath));
+          }
+        }
+      };
+      addDirToZip(fullEnginePath, '');
+    }
+  }
+
+  const zipBuffer = zip.toBuffer();
+  const safeName = (template.name || 'template').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  res.set({
+    'Content-Type': 'application/zip',
+    'Content-Disposition': `attachment; filename="${safeName}.zip"`,
+    'Content-Length': zipBuffer.length,
+  });
+  res.send(zipBuffer);
+});
 
 module.exports = {
   uploadGameTemplate,
@@ -262,4 +307,5 @@ module.exports = {
   updateTemplateStatus,
   deleteTemplate,
   updateTemplateMeta,
+  downloadTemplateBundle,
 };
