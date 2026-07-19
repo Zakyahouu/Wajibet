@@ -1,6 +1,7 @@
 // server/middleware/schoolValidation.js
 
 const School = require('../models/School');
+const { escapeRegex } = require('../utils/regexUtils');
 const User = require('../models/User');
 
 // Phone number validation (basic international format)
@@ -41,8 +42,9 @@ const validateSchoolData = async (req, res, next) => {
     }
 
     // Check school name uniqueness (case-insensitive)
+    const safeName = escapeRegex(name);
     const existingSchoolByName = await School.findOne({
-      name: { $regex: new RegExp(`^${name}$`, 'i') }
+      name: { $regex: new RegExp(`^${safeName}$`, 'i') }
     });
 
     if (existingSchoolByName && existingSchoolByName._id.toString() !== req.params.id) {

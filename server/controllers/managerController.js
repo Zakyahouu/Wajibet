@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const LoggingService = require('../services/loggingService');
+const { escapeRegex } = require('../utils/regexUtils');
 
 // @desc    List users scoped to manager's school (or global for admin)
 // @route   GET /api/manager/users
@@ -20,11 +21,12 @@ const listUsersForManager = asyncHandler(async (req, res) => {
 
   if (q) {
     // basic search by name or email
+    const safeQ = escapeRegex(q);
     filter.$or = [
-      { firstName: new RegExp(q, 'i') },
-      { lastName: new RegExp(q, 'i') },
-      { name: new RegExp(q, 'i') },
-      { email: new RegExp(q, 'i') },
+      { firstName: new RegExp(safeQ, 'i') },
+      { lastName: new RegExp(safeQ, 'i') },
+      { name: new RegExp(safeQ, 'i') },
+      { email: new RegExp(safeQ, 'i') },
     ];
   }
 

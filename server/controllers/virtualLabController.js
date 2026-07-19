@@ -113,8 +113,15 @@ const deleteVirtualLab = asyncHandler(async (req, res) => {
 // @route   GET /api/virtual-labs/file/:filename
 // @access  Private
 const getVirtualLabFile = asyncHandler(async (req, res) => {
-  const filePath = path.join(__dirname, '../public/virtual-labs/', req.params.filename);
-  
+  const safeFilename = path.basename(req.params.filename);
+  const baseDir = path.resolve(__dirname, '../public/virtual-labs');
+  const filePath = path.resolve(baseDir, safeFilename);
+
+  if (!filePath.startsWith(baseDir)) {
+    res.status(400);
+    throw new Error('Invalid file path');
+  }
+
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
   } else {

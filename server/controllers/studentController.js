@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const { escapeRegex } = require('../utils/regexUtils');
 const ClassModel = require('../models/Class');
 const asyncHandler = require('express-async-handler');
 const Enrollment = require('../models/Enrollment');
@@ -1403,7 +1404,8 @@ const searchStudents = asyncHandler(async (req, res) => {
     throw new Error('Search query is required');
   }
 
-  const searchRegex = new RegExp(q, 'i');
+  const safeQ = escapeRegex(q);
+  const searchRegex = new RegExp(safeQ, 'i');
 
   // Check if the query looks like a MongoDB ObjectId (24 hex characters)
   const isObjectId = /^[0-9a-fA-F]{24}$/.test(q.trim());
