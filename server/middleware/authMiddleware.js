@@ -19,6 +19,23 @@ const protect = async (req, res, next) => {
       // and attach it to the request object so our controllers can access it
       req.user = await User.findById(decoded.id).select('-password').populate('school');
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Not authorized, user not found' });
+      }
+
+      // Block access if school trial has expired
+      if (req.user.role !== 'admin' && req.user.school) {
+        const school = req.user.school;
+        if (school.status === 'trial' && school.trialExpiresAt) {
+          if (new Date() > new Date(school.trialExpiresAt)) {
+            return res.status(403).json({ 
+              message: 'Your school\'s trial period has expired. Please contact support to upgrade.',
+              code: 'TRIAL_EXPIRED'
+            });
+          }
+        }
+      }
+
       next(); // Move on to the next piece of middleware or the controller
     } catch (error) {
       console.error(error);

@@ -32,6 +32,26 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
     }
     setLoading(false); // We're done checking, so we can stop loading.
+
+    // Global interceptor for API errors
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 403 && error.response.data?.code === 'TRIAL_EXPIRED') {
+          alert(error.response.data.message || 'Trial expired. Please contact support.');
+          // Force logout
+          localStorage.removeItem('user');
+          setUser(null);
+          delete axios.defaults.headers.common['Authorization'];
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor);
+    };
   }, []);
 
   // --- Login Function ---
