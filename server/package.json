@@ -1,10 +1,11 @@
 {
   "name": "skill-snap-server",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "prestart": "node scripts/verify-no-legacy-badges.js",
     "start": "nodemon server.js",
+    "start:prod": "node server.js",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "verify:badges": "node scripts/verify-no-legacy-badges.js"
