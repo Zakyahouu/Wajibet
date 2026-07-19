@@ -9,6 +9,10 @@ const { resolveSchoolId } = require('../utils/permissionUtils');
 const checkPermission = (section) => {
   return async (req, res, next) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ success: false, message: 'Not authorized' });
+      }
+
       // Only check permissions for staff users
       if (req.user.role !== 'staff') {
         return next();
@@ -16,15 +20,19 @@ const checkPermission = (section) => {
 
       // Find the employee record for this staff user
       const schoolId = resolveSchoolId(req.user?.school);
-      console.log('Looking for employee with userId:', req.user._id, 'schoolId:', schoolId);
+      if (process.env.DEBUG_PERMISSIONS === 'true') {
+        console.log('Looking for employee with userId:', req.user._id, 'schoolId:', schoolId);
+      }
       const employee = await Employee.findOne({
         userId: req.user._id,
         schoolId: schoolId ? new mongoose.Types.ObjectId(schoolId) : undefined
       });
 
-      console.log('Found employee:', employee ? 'Yes' : 'No');
-      if (employee) {
-        console.log('Employee permissions:', employee.permissions);
+      if (process.env.DEBUG_PERMISSIONS === 'true') {
+        console.log('Found employee:', employee ? 'Yes' : 'No');
+        if (employee) {
+          console.log('Employee permissions:', employee.permissions);
+        }
       }
 
       if (!employee) {
@@ -35,21 +43,27 @@ const checkPermission = (section) => {
       }
 
       // Check if the employee has permission for the requested section
-      console.log(`Checking ${section} permission for employee:`, employee.permissions);
-      console.log(`Permission for ${section}:`, employee.permissions?.[section]);
-      console.log(`Permission type:`, typeof employee.permissions?.[section]);
-      console.log(`Permission value:`, employee.permissions?.[section]);
-      console.log(`Is truthy:`, !!employee.permissions?.[section]);
+      if (process.env.DEBUG_PERMISSIONS === 'true') {
+        console.log(`Checking ${section} permission for employee:`, employee.permissions);
+        console.log(`Permission for ${section}:`, employee.permissions?.[section]);
+        console.log(`Permission type:`, typeof employee.permissions?.[section]);
+        console.log(`Permission value:`, employee.permissions?.[section]);
+        console.log(`Is truthy:`, !!employee.permissions?.[section]);
+      }
 
       if (!employee.permissions || employee.permissions[section] !== true) {
-        console.log(`Access denied for ${section} - permissions:`, employee.permissions);
+        if (process.env.DEBUG_PERMISSIONS === 'true') {
+          console.log(`Access denied for ${section} - permissions:`, employee.permissions);
+        }
         return res.status(403).json({
           success: false,
           message: `Access denied. You don't have permission to access the ${section} section.`
         });
       }
 
-      console.log(`Access granted for ${section}`);
+      if (process.env.DEBUG_PERMISSIONS === 'true') {
+        console.log(`Access granted for ${section}`);
+      }
 
       // Add employee info to request for use in controllers
       req.employee = employee;
