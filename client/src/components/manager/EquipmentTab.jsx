@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import {
   Plus, Edit, Trash2, X, Search, Loader, AlertTriangle,
-  Package, Filter, Eye, Users, Wrench, CheckCircle, XCircle, Clock
+  Package, Filter, Eye, Users, Wrench, CheckCircle, XCircle, Clock, Settings
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -677,61 +677,163 @@ const UnitBadge = ({ itemId, unit, onUpdated }) => {
 
 const UnitAdjuster = ({ item, onUpdated }) => {
   const { t } = useLanguage();
-  const [deltaAmount, setDeltaAmount] = useState(1);
-  const [pendingDelta, setPendingDelta] = useState(0);
+  const [open, setOpen] = useState(false);
+  
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="
+          p-2 text-gray-400 hover:text-blue-600 
+          hover:bg-blue-50 rounded-lg transition-all duration-200
+          group-hover:bg-blue-50
+        "
+        title={t.adjustUnits || 'Adjust Units'}
+      >
+        <Settings className="w-4 h-4" />
+      </button>
+      {open && <UnitAdjustModal item={item} onUpdated={onUpdated} onClose={() => setOpen(false)} />}
+    </>
+  );
+};
 
-  const apply = async () => {
-    if (pendingDelta === 0) return;
+const UnitAdjustModal = ({ item, onUpdated, onClose }) => {
+  const { t } = useLanguage();
+  const [mode, setMode] = useState('add');
+  const [addAmount, setAddAmount] = useState(1);
+  const [selectedToRemove, setSelectedToRemove] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleAdd = async () => {
+    if (addAmount <= 0) return;
+    setLoading(true);
     try {
-      const { data } = await axios.post(`/api/equipment/${item._id}/units`, { delta: pendingDelta }, authConfig());
+      const { data } = await axios.post(`/api/equipment/${item._id}/units`, { delta: addAmount }, authConfig());
       onUpdated(data);
-      setPendingDelta(0);
+      onClose();
     } catch (err) {
-      alert(err.response?.data?.message || t.failAdjustUnits);
+      alert(err.response?.data?.message || t.failAdjustUnits || 'Failed to add units');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleRemove = async () => {
+    if (selectedToRemove.length === 0) return;
+    setLoading(true);
+    try {
+      const { data } = await axios.post(`/api/equipment/${item._id}/units`, { removeSerials: selectedToRemove }, authConfig());
+      onUpdated(data);
+      onClose();
+    } catch (err) {
+      alert(err.response?.data?.message || t.failAdjustUnits || 'Failed to remove units');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleRemoveSelection = (serial) => {
+    setSelectedToRemove(prev => 
+      prev.includes(serial) ? prev.filter(s => s !== serial) : [...prev, serial]
+    );
+  };
+
   return (
-    <span className="inline-flex items-center gap-2">
-      <button
-        className="px-2 py-1 border rounded text-xs hover:bg-gray-50 transition-colors duration-200"
-        onClick={() => setPendingDelta(prev => prev - Math.abs(deltaAmount))}
-      >
-        - {deltaAmount}
-      </button>
-      <input
-        type="number"
-        min={1}
-        value={deltaAmount}
-        onChange={(e) => setDeltaAmount(Math.max(1, Number(e.target.value)))}
-        className="w-16 p-1 border rounded text-xs"
-      />
-      <button
-        className="px-2 py-1 border rounded text-xs hover:bg-gray-50 transition-colors duration-200"
-        onClick={() => setPendingDelta(prev => prev + Math.abs(deltaAmount))}
-      >
-        + {deltaAmount}
-      </button>
-      {pendingDelta !== 0 && (
-        <>
-          <span className={`text-xs font-bold ${pendingDelta > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            ({pendingDelta > 0 ? '+' : ''}{pendingDelta})
-          </span>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-2xl relative" onClick={e => e.stopPropagation()}>
+        <button
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+          onClick={onClose}
+        >
+          <X className="w-5 h-5" />
+        </button>
+        
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+            <Settings className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h4 className="text-xl font-semibold text-gray-900">{t.adjustUnits || 'Adjust Units'}</h4>
+            <p className="text-sm text-gray-500">{item.itemName}</p>
+          </div>
+        </div>
+
+        <div className="flex border-b border-gray-200 mb-6">
           <button
-            onClick={apply}
-            className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors duration-200"
+            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'add' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            onClick={() => setMode('add')}
           >
-            {t.apply || 'Apply'}
+            {t.addUnits || 'Add Units'}
           </button>
           <button
-            onClick={() => setPendingDelta(0)}
-            className="px-2 py-1 border border-gray-300 text-gray-700 rounded text-xs hover:bg-gray-50 transition-colors duration-200"
+            className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'remove' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            onClick={() => setMode('remove')}
           >
-            {t.cancel || 'Cancel'}
+            {t.removeUnits || 'Remove Units'}
           </button>
-        </>
-      )}
-    </span>
+        </div>
+
+        {mode === 'add' ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t.quantityToAdd || 'Quantity to Add'}</label>
+              <input
+                type="number"
+                min={1}
+                value={addAmount}
+                onChange={(e) => setAddAmount(Math.max(1, Number(e.target.value)))}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <button onClick={onClose} className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">{t.cancel || 'Cancel'}</button>
+              <button onClick={handleAdd} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                {t.confirmAdd || 'Confirm Add'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t.selectUnitsToRemove || 'Select Units to Remove'}</label>
+            <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+              {(item.units || []).length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">{t.noUnitsAvailable || 'No units available'}</div>
+              ) : (
+                (item.units || []).map(unit => (
+                  <label key={unit.serial} className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedToRemove.includes(unit.serial)}
+                      onChange={() => toggleRemoveSelection(unit.serial)}
+                      className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">{unit.name || `#${unit.serial}`}</div>
+                      <div className="text-xs text-gray-500">{unit.state}</div>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+            <div className="flex justify-between items-center pt-4">
+              <span className="text-sm text-gray-600">
+                {selectedToRemove.length} {t.selected || 'selected'}
+              </span>
+              <div className="flex gap-3">
+                <button onClick={onClose} className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50">{t.cancel || 'Cancel'}</button>
+                <button 
+                  onClick={handleRemove} 
+                  disabled={loading || selectedToRemove.length === 0} 
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {t.confirmRemove || 'Confirm Remove'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

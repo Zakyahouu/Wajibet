@@ -105,22 +105,27 @@ exports.deleteEquipment = async (req, res) => {
 // POST /api/equipment/:id/units -> increase by N or decrease by N
 exports.adjustUnits = async (req, res) => {
   try {
-    const { delta = 0 } = req.body; // positive to add, negative to remove
+    const { delta = 0, removeSerials } = req.body; // positive to add, negative to remove
     const item = await Equipment.findById(req.params.id);
     if (!item) return res.status(404).json({ message: 'Equipment not found' });
     if (!assertManagerAccess(req, item.schoolId)) return res.status(403).json({ message: 'Not authorized' });
 
-    const current = item.units?.length || 0;
-    const target = current + Number(delta);
-    if (target < 0) return res.status(400).json({ message: 'Resulting quantity cannot be negative' });
+    if (removeSerials && Array.isArray(removeSerials)) {
+      item.units = (item.units || []).filter(u => !removeSerials.includes(u.serial));
+    } else {
+      const current = item.units?.length || 0;
+      const target = current + Number(delta);
+      if (target < 0) return res.status(400).json({ message: 'Resulting quantity cannot be negative' });
 
-    if (delta > 0) {
-      const start = current + 1;
-      const newUnits = Array.from({ length: delta }, (_, i) => ({ serial: start + i, name: `#${start + i}`, state: 'Working Fine' }));
-      item.units = [...(item.units || []), ...newUnits];
-    } else if (delta < 0) {
-      // Remove units from the end (highest serials first)
-      item.units = (item.units || []).slice(0, target);
+      if (delta > 0) {
+        const maxSerial = item.units?.length > 0 ? Math.max(...item.units.map(u => u.serial)) : 0;
+        const start = maxSerial + 1;
+        const newUnits = Array.from({ length: delta }, (_, i) => ({ serial: start + i, name: `#${start + i}`, state: 'Working Fine' }));
+        item.units = [...(item.units || []), ...newUnits];
+      } else if (delta < 0) {
+        // Remove units from the end (highest serials first)
+        item.units = (item.units || []).slice(0, target);
+      }
     }
 
     await item.save();
