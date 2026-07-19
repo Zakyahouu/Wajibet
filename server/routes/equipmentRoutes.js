@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 const { checkEquipmentAccess } = require('../middleware/permissionMiddleware');
 const ctrl = require('../controllers/equipmentController');
 
@@ -17,8 +17,8 @@ router.route('/:id')
   .delete(ctrl.deleteEquipment);
 
 // Units management
-router.post('/:id/units', ctrl.adjustUnits); // body: { delta: +N | -N }
-router.patch('/:id/units/:serial/state', ctrl.updateUnitState); // body: { state }
-router.patch('/:id/units/:serial', ctrl.updateUnit); // body: { name?, state?, notes? }
+router.post('/:id/units', authorize('manager', 'staff'), ctrl.adjustUnits); // body: { delta: +N | -N }
+router.patch('/:id/units/:serial/state', authorize('manager', 'staff'), ctrl.updateUnitState); // body: { state }
+router.patch('/:id/units/:serial', authorize('manager', 'staff'), ctrl.updateUnit); // body: { name?, state?, notes? }
 
 module.exports = router;

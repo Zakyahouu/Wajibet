@@ -677,36 +677,60 @@ const UnitBadge = ({ itemId, unit, onUpdated }) => {
 
 const UnitAdjuster = ({ item, onUpdated }) => {
   const { t } = useLanguage();
-  const [delta, setDelta] = useState(1);
-  const adjust = async (d) => {
+  const [deltaAmount, setDeltaAmount] = useState(1);
+  const [pendingDelta, setPendingDelta] = useState(0);
+
+  const apply = async () => {
+    if (pendingDelta === 0) return;
     try {
-      const { data } = await axios.post(`/api/equipment/${item._id}/units`, { delta: d }, authConfig());
+      const { data } = await axios.post(`/api/equipment/${item._id}/units`, { delta: pendingDelta }, authConfig());
       onUpdated(data);
+      setPendingDelta(0);
     } catch (err) {
       alert(err.response?.data?.message || t.failAdjustUnits);
     }
   };
+
   return (
     <span className="inline-flex items-center gap-2">
       <button
         className="px-2 py-1 border rounded text-xs hover:bg-gray-50 transition-colors duration-200"
-        onClick={() => adjust(-Math.abs(delta))}
+        onClick={() => setPendingDelta(prev => prev - Math.abs(deltaAmount))}
       >
-        - {delta}
+        - {deltaAmount}
       </button>
       <input
         type="number"
         min={1}
-        value={delta}
-        onChange={(e) => setDelta(Math.max(1, Number(e.target.value)))}
+        value={deltaAmount}
+        onChange={(e) => setDeltaAmount(Math.max(1, Number(e.target.value)))}
         className="w-16 p-1 border rounded text-xs"
       />
       <button
         className="px-2 py-1 border rounded text-xs hover:bg-gray-50 transition-colors duration-200"
-        onClick={() => adjust(Math.abs(delta))}
+        onClick={() => setPendingDelta(prev => prev + Math.abs(deltaAmount))}
       >
-        + {delta}
+        + {deltaAmount}
       </button>
+      {pendingDelta !== 0 && (
+        <>
+          <span className={`text-xs font-bold ${pendingDelta > 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ({pendingDelta > 0 ? '+' : ''}{pendingDelta})
+          </span>
+          <button
+            onClick={apply}
+            className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors duration-200"
+          >
+            {t.apply || 'Apply'}
+          </button>
+          <button
+            onClick={() => setPendingDelta(0)}
+            className="px-2 py-1 border border-gray-300 text-gray-700 rounded text-xs hover:bg-gray-50 transition-colors duration-200"
+          >
+            {t.cancel || 'Cancel'}
+          </button>
+        </>
+      )}
     </span>
   );
 };
