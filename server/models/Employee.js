@@ -133,6 +133,7 @@ employeeSchema.methods.isActive = function () {
 // Static method to get employees by school
 employeeSchema.statics.getBySchool = function (schoolId) {
   return this.find({ schoolId: new mongoose.Types.ObjectId(schoolId) })
+    .select('-password')
     .sort({ name: 1 })
     .lean(); // Use lean() for better performance
 };

@@ -120,6 +120,11 @@ const checkReportsAccess = checkPermission('reports');
 const checkAdsAccess = checkPermission('ads');
 
 /**
+ * Middleware to check employees access
+ */
+const checkEmployeesAccess = checkPermission('employees');
+
+/**
  * Middleware to check landing page access
  */
 const checkLandingPageAccess = checkPermission('landingPage');
@@ -137,5 +142,6 @@ module.exports = {
   checkCatalogAccess,
   checkReportsAccess,
   checkAdsAccess,
+  checkEmployeesAccess,
   checkLandingPageAccess
 };

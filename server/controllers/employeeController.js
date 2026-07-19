@@ -79,7 +79,9 @@ const createEmployee = asyncHandler(async (req, res) => {
     // Add platform access fields for staff
     if (employeeType === 'staff') {
       employeeData.username = username;
-      employeeData.password = password; // Note: In production, this should be hashed
+      // Hash the password before storing in Employee record
+      const empSalt = await bcrypt.genSalt(10);
+      employeeData.password = await bcrypt.hash(password, empSalt);
 
       // Add permissions for staff
       employeeData.permissions = {
@@ -163,7 +165,7 @@ const createEmployee = asyncHandler(async (req, res) => {
 
     res.status(201).json({
       success: true,
-      data: employee
+      data: employee.toObject({ virtuals: true, transform: (doc, ret) => { delete ret.password; return ret; } })
     });
 
   } catch (error) {
@@ -229,10 +231,16 @@ const getEmployee = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findById(id).select('-password');
 
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Verify employee belongs to the requesting user's school
+    const userSchoolId = req.user.school?._id?.toString() || req.user.school?.toString();
+    if (!userSchoolId || employee.schoolId.toString() !== userSchoolId) {
+      return res.status(403).json({ message: 'Not authorized to access this employee record' });
     }
 
     res.json({
@@ -256,10 +264,16 @@ const updateEmployee = asyncHandler(async (req, res) => {
   const { name, role, salaryType, salaryValue, hireDate, phone, email, address, notes, status } = req.body;
 
   try {
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findById(id).select('-password');
 
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Verify employee belongs to the requesting user's school
+    const userSchoolId = req.user.school?._id?.toString() || req.user.school?.toString();
+    if (!userSchoolId || employee.schoolId.toString() !== userSchoolId) {
+      return res.status(403).json({ message: 'Not authorized to access this employee record' });
     }
 
     // Update fields
@@ -287,9 +301,12 @@ const updateEmployee = asyncHandler(async (req, res) => {
 
     await employee.save();
 
+    const safeEmployee = employee.toObject({ virtuals: true });
+    delete safeEmployee.password;
+
     res.json({
       success: true,
-      data: employee
+      data: safeEmployee
     });
 
   } catch (error) {
@@ -307,10 +324,16 @@ const deleteEmployee = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findById(id).select('-password');
 
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Verify employee belongs to the requesting user's school
+    const userSchoolId = req.user.school?._id?.toString() || req.user.school?.toString();
+    if (!userSchoolId || employee.schoolId.toString() !== userSchoolId) {
+      return res.status(403).json({ message: 'Not authorized to access this employee record' });
     }
 
     // Archive instead of hard delete
@@ -369,24 +392,14 @@ const payEmployeeSalary = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { year, month, paidAmount, paymentMethod, notes } = req.body;
 
-  // Check if user has access to this school - TEMPORARILY DISABLED FOR TESTING
+  // Check if user has access to this school
   const userSchoolId = req.user.school?._id?.toString() || req.user.school?.toString();
 
-  // if (!userSchoolId) {
-  //   return res.status(403).json({ message: 'Access denied to this school' });
-  // }
-
-  // Get school ID (fallback for testing)
-  let schoolId = userSchoolId;
-  if (!schoolId) {
-    const School = require('../models/School');
-    const firstSchool = await School.findOne();
-    schoolId = firstSchool?._id;
+  if (!userSchoolId) {
+    return res.status(403).json({ message: 'Access denied to this school' });
   }
 
-  if (!schoolId) {
-    return res.status(400).json({ message: 'No school found' });
-  }
+  const schoolId = userSchoolId;
 
   // Validate required fields
   if (!year || !month || !paidAmount || !paymentMethod) {
