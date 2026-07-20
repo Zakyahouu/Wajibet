@@ -215,12 +215,23 @@ const PlayGame = () => {
     };
   }, [socket, liveInfo?.roomCode, user?.role, navigate, gameCreation?.liveSessionId, gameCreation?.sessionId, liveInfo?.sessionId, liveInfo?.id]);
 
+  const [resumeState, setResumeState] = useState(null);
+  const [joinConfirmed, setJoinConfirmed] = useState(!liveInfo?.roomCode || user?.role !== 'student');
+  const initSent = useRef(false);
+
   useEffect(() => {
     if (!socket || !liveInfo?.roomCode || user?.role !== 'student') return;
     const rejoinRoom = () => {
       const playerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'Player';
       if (user?._id) {
-        try { socket.emit('join-game', { roomCode: liveInfo.roomCode, playerName, userId: user._id }); } catch {}
+        try { 
+          socket.emit('join-game', { roomCode: liveInfo.roomCode, playerName, userId: user._id }, (response) => {
+            if (response && response.resumeState) {
+              setResumeState(response.resumeState);
+            }
+            setJoinConfirmed(true);
+          }); 
+        } catch {}
       }
     };
 
@@ -233,10 +244,15 @@ const PlayGame = () => {
   }, [socket, liveInfo?.roomCode, user?.role, user?._id, user?.firstName, user?.lastName, user?.name]);
 
   const handleIframeLoad = () => {
-    if (iframeRef.current && gameCreation) {
+    if (iframeRef.current && gameCreation && joinConfirmed && !initSent.current) {
+      initSent.current = true;
+      let questionsToSend = gameCreation.content || [];
+      if (resumeState && resumeState.currentItemIndex > 0) {
+        questionsToSend = questionsToSend.slice(resumeState.currentItemIndex);
+      }
       const payload = {
         ...gameCreation,
-        questions: gameCreation.content,
+        questions: questionsToSend,
         assignmentId,
         mode: (user?.role === 'student') ? 'student' : (user?.role === 'teacher' ? 'teacher' : 'admin'),
         isTest: user?.role !== 'student',
@@ -244,13 +260,19 @@ const PlayGame = () => {
         direction: isRTL ? 'rtl' : 'ltr',
         locale: language || 'en'
       };
-      // Send INIT_GAME for backward compatibility with old engines
       iframeRef.current.contentWindow.postMessage(
         { type: 'INIT_GAME', payload },
         '*'
       );
     }
   };
+
+  // If joinConfirmed changes after iframe loaded, we might need to send INIT_GAME here
+  useEffect(() => {
+    if (joinConfirmed && iframeRef.current) {
+      handleIframeLoad();
+    }
+  }, [joinConfirmed, resumeState, gameCreation]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {

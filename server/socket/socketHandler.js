@@ -56,7 +56,7 @@ module.exports = function (io) {
       } catch (e) { console.error('host-game handler failed', e); }
     });
 
-    socket.on('join-game', async ({ roomCode, playerName, userId } = {}) => {
+    socket.on('join-game', async ({ roomCode, playerName, userId } = {}, cb) => {
       try {
         const room = liveGames[roomCode];
         if (!room) { socket.emit('join-error', 'Room not found'); return; }
@@ -96,6 +96,8 @@ module.exports = function (io) {
 
         // add or update player in memory
         const existing = room.players.find(p => String(p.userId) === String(verifiedUserId));
+        let isRejoining = false;
+        
         if (!existing) {
           const player = { 
             id: socket.id, 
@@ -112,14 +114,44 @@ module.exports = function (io) {
         } else {
           existing.id = socket.id;
           existing.name = playerName;
-          existing.stats = existing.stats || {
-            score: 0, correct: 0, wrong: 0, effectiveTimeMs: 0,
-            currentItemIndex: 0, currentItemStartedAt: new Date(),
-            status: 'active', pausedRemainingMs: 0, accumulatedPauseMs: 0,
-            dirty: false
-          };
+          
+          if (existing.stats && existing.stats.status === 'disconnected') {
+            isRejoining = true;
+            // Calculate pause abuse guard
+            const disconnectDurationMs = Date.now() - new Date(existing.stats.disconnectedAt).getTime();
+            existing.stats.accumulatedPauseMs = (existing.stats.accumulatedPauseMs || 0) + disconnectDurationMs;
+            
+            if (existing.stats.accumulatedPauseMs > 120000) {
+              existing.stats.currentItemIndex = (existing.stats.currentItemIndex || 0) + 1;
+              existing.stats.currentItemStartedAt = new Date();
+              existing.stats.pausedRemainingMs = 0;
+              existing.stats.accumulatedPauseMs = 0;
+              console.log('[socket] Player exceeded pause cap on rejoin. Auto-skipped item.');
+            } else {
+               existing.stats.currentItemStartedAt = new Date(Date.now() - (existing.stats.pausedRemainingMs || 0));
+            }
+            existing.stats.status = 'active';
+            existing.stats.dirty = true;
+          } else if (!existing.stats) {
+            existing.stats = {
+              score: 0, correct: 0, wrong: 0, effectiveTimeMs: 0,
+              currentItemIndex: 0, currentItemStartedAt: new Date(),
+              status: 'active', pausedRemainingMs: 0, accumulatedPauseMs: 0,
+              dirty: false
+            };
+          }
         }
         socket.join(roomCode);
+
+        let resumeState = null;
+        if (isRejoining && existing) {
+          resumeState = {
+            currentItemIndex: existing.stats.currentItemIndex,
+            currentScore: existing.stats.score,
+            elapsedMs: existing.stats.pausedRemainingMs
+          };
+          socket.emit('live:resume-state', resumeState);
+        }
 
         // ✅ Create or update LiveParticipant in database
         if (room.sessionId && verifiedUserId) {
@@ -158,6 +190,10 @@ module.exports = function (io) {
         io.to(roomCode).emit('player-joined', room.players.slice());
         io.to(roomCode).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
         console.log('[socket] player joined', playerName, '->', roomCode);
+
+        if (typeof cb === 'function') {
+           cb({ success: true, resumeState });
+        }
       } catch (e) { console.error('join-game handler failed', e); }
     });
 
