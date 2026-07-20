@@ -52,7 +52,7 @@ enforce a minimum item count.
 | Method | Purpose |
 |---|---|
 | `init(onReady)` | Handshake. Calls `onReady(resumeState)` once the host sends config. |
-| `getGameCreation()` | `{ settings, content, ... }` — the teacher's saved game. |
+| `getGameCreation()` | The saved game: teacher settings under `config`, items under `content`. |
 | `getDirection()` | `'rtl'` or `'ltr'`. |
 | `getLocale()` | e.g. `'en'`, `'ar'`. |
 | `isPreviewMode()` | `true` inside the wizard's sandboxed preview. |
@@ -70,7 +70,9 @@ enforce a minimum item count.
 window.onload = () => {
   WajibetSDK.init((resumeState) => {
     document.documentElement.dir = WajibetSDK.getDirection();
-    const { settings, content } = WajibetSDK.getGameCreation();
+    const creation = WajibetSDK.getGameCreation();
+    const settings = creation.config;   // teacher settings live under `config`
+    const content  = creation.content;
 
     // Reconnect support (live sessions). resumeState may be null.
     // { currentItemIndex, currentScore, elapsedMs }.

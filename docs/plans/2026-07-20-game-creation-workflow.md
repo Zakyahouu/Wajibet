@@ -69,8 +69,9 @@ Supported field `type`s: `text`, `textarea`, `number`, `boolean`, `enum` (alias
 window.onload = () => {
   WajibetSDK.init((resumeState) => {
     document.documentElement.dir = WajibetSDK.getDirection();
-    const creation = WajibetSDK.getGameCreation();   // { settings, content, ... }
-    const items = creation.content;                  // each item has a permanent itemId
+    const creation = WajibetSDK.getGameCreation();
+    const settings = creation.config;   // teacher settings are stored under `config`
+    const items = creation.content;     // each item has a permanent itemId
 
     if (resumeState) { /* jump to resumeState.currentItemIndex, restore currentScore;
                           remaining = itemBudgetMs - resumeState.elapsedMs */ }

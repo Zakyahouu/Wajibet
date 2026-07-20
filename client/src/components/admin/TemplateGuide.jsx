@@ -60,7 +60,9 @@ const TemplateGuide = () => {
 
 WajibetSDK.init((resumeState) => {
   document.documentElement.dir = WajibetSDK.getDirection();  // 'rtl' | 'ltr'
-  const { settings, content } = WajibetSDK.getGameCreation();
+  const creation = WajibetSDK.getGameCreation();
+  const settings = creation.config;    // teacher settings are stored under \`config\`
+  const content  = creation.content;   // each item has a permanent itemId
   // resumeState (if not null): { currentItemIndex, currentScore, elapsedMs }
   // remaining = itemBudgetMs - resumeState.elapsedMs
   startGame(content, settings, resumeState);

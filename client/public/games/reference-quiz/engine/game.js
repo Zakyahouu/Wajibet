@@ -144,7 +144,9 @@
       document.documentElement.dir = WajibetSDK.getDirection();
 
       var creation = WajibetSDK.getGameCreation() || {};
-      settings = creation.settings || {};
+      // The teacher's settings are stored under `config` on the GameCreation
+      // (with `settings` kept as a fallback for forward-compatibility).
+      settings = creation.config || creation.settings || {};
       items = Array.isArray(creation.content) ? creation.content : [];
       pointsPerQuestion = Number(settings.pointsPerQuestion) || 10;
 

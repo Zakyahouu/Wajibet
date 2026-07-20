@@ -1,5 +1,11 @@
 {
   "settings": {
+    "title": {
+      "label": "Game Title",
+      "type": "text",
+      "required": true,
+      "default": "Reference Quiz"
+    },
     "shuffle": {
       "label": "Shuffle Questions",
       "type": "boolean",
