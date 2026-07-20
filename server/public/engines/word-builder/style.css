@@ -1,4 +1,4 @@
-﻿/* --- GENERAL STYLES --- */
+/* --- GENERAL STYLES --- */
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto Mono', monospace; font-weight: 700; }
 
 body {
@@ -12,16 +12,13 @@ body {
 .container {
     width: 100%;
     max-width: 480px;
-    /* --- CORRECTED HEIGHT --- */
-    height: 90vh; /* Use 90% of the screen height */
-    max-height: 800px; /* But never get taller than 800px */
+    height: 90vh;
+    max-height: 800px;
     
-    background-image: url('assets/image.png');
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(135deg, #130a3e 0%, #2c254d 100%);
     border-radius: 20px;
     position: relative;
-    transition: background-image 0.5s ease-in-out;
+    transition: background 0.5s ease-in-out;
 }
 
 .screen { width: 100%; height: 100%; padding: 20px; display: flex; flex-direction: column; align-items: center; color: white; }
@@ -90,8 +87,8 @@ body {
 
 /* States */
 .build-area.wrong-state { background-color: #e53935; border: 3px solid #e53935; }
-.container.correct-state { background-image: url('assets/image_correct.png'); }
-.container.game-ended { background-image: url('assets/background_end.png'); }
+.container.correct-state { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.container.game-ended { background: linear-gradient(135deg, #475569 0%, #1e293b 100%); }
 
 /* LETTER BANK */
 .letter-bank { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px 0; }
