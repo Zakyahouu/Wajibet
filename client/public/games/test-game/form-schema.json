@@ -1,20 +1,26 @@
-[
-  {
-    "id": "settings",
-    "title": "Game Settings",
-    "fields": [
-      {
-        "name": "difficulty",
-        "label": "Starting Difficulty",
-        "type": "select",
-        "options": [
-          { "label": "Easy", "value": "easy" },
-          { "label": "Normal", "value": "normal" },
-          { "label": "Hard", "value": "hard" }
-        ],
-        "default": "normal",
+{
+  "settings": {
+    "difficulty": {
+      "label": "Starting Difficulty",
+      "type": "select",
+      "options": ["easy", "normal", "hard"],
+      "default": "normal",
+      "required": true
+    }
+  },
+  "content": {
+    "label": "Memory Cards",
+    "itemSchema": {
+      "term": {
+        "label": "Front of Card",
+        "type": "text",
+        "required": true
+      },
+      "definition": {
+        "label": "Back of Card",
+        "type": "text",
         "required": true
       }
-    ]
+    }
   }
-]
+}
