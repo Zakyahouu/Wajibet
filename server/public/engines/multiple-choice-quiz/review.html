@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Quiz Review</title>
+	<link rel="stylesheet" href="style.css">
+	<script src="/sdk/wajibet-sdk.js"></script>
+	<style>
+		body, html {
+			margin: 0; padding: 0;
+			background: transparent;
+			height: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			overflow: hidden;
+		}
+		.review-container {
+			background: white;
+			border-radius: 12px;
+			padding: 16px;
+			width: 100%;
+			max-width: 400px;
+			box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+		}
+		.options-grid {
+			pointer-events: none; /* read only */
+		}
+	</style>
+</head>
+<body>
+	<div class="review-container">
+		<div id="options-grid" class="options-grid"></div>
+	</div>
+
+	<script>
+		WajibetSDK.onReviewData((payload) => {
+			const meta = payload.meta || {};
+			const item = payload.item || {};
+			
+			const optsGrid = document.getElementById('options-grid');
+			optsGrid.innerHTML = '';
+			
+			const rawOptions = payload.options || {};
+			const optionsList = [
+				['A', rawOptions.A || rawOptions.optionA || 'Option A'],
+				['B', rawOptions.B || rawOptions.optionB || 'Option B'],
+				['C', rawOptions.C || rawOptions.optionC || 'Option C'],
+				['D', rawOptions.D || rawOptions.optionD || 'Option D']
+			].filter(([_, val]) => val && typeof val === 'string' && val.trim() !== '');
+
+			optsGrid.className = `options-grid ${optionsList.length === 3 ? 'three-options' : ''}`;
+			
+			const optionsMap = { A: 'triangle', B: 'diamond', C: 'square', D: 'circle' };
+			const selectedKey = String(payload.userAnswer || meta.selectedOptionId || '').toUpperCase();
+			const correctKey = String(payload.correctAnswer || '').toUpperCase();
+
+			optionsList.forEach(([key, label]) => {
+				const btn = document.createElement('button');
+				btn.className = 'opt';
+				btn.textContent = label;
+				btn.setAttribute('data-key', key);
+				btn.setAttribute('data-shape', optionsMap[key] || 'circle');
+				
+				if (key === correctKey) {
+					btn.classList.add('correct');
+				} else if (key === selectedKey) {
+					btn.classList.add('wrong');
+				}
+				
+				optsGrid.appendChild(btn);
+			});
+		});
+	</script>
+</body>
+</html>
