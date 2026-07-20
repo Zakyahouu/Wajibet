@@ -28,7 +28,8 @@ const PlayGame = () => {
 
   const [resumeState, setResumeState] = useState(null);
   const [joinConfirmed, setJoinConfirmed] = useState(!liveInfo?.roomCode || user?.role !== 'student');
-  const initSent = useRef(false);
+  // True once the engine has announced GAME_INIT via the SDK handshake.
+  const engineReady = useRef(false);
 
   const [ranks, setRanks] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -81,46 +82,70 @@ const PlayGame = () => {
 
   useEffect(() => {
     const handleGameMessage = async (event) => {
-      // Handle the new WajibetSDK GAME_INIT event
+      // WajibetSDK handshake: the engine announces GAME_INIT; reply with its config.
       if (event.data?.type === 'GAME_INIT') {
-        const payload = {
-          gameCreation: gameCreation || null,
-          direction: isRTL ? 'rtl' : 'ltr',
-          locale: language || 'en',
-          resumeState: resumeState || null
-        };
-        // Reply back to the engine with its configuration
-        if (iframeRef.current && iframeRef.current.contentWindow) {
-          iframeRef.current.contentWindow.postMessage({ type: 'GAME_INIT_ACK', payload }, '*');
+        engineReady.current = true;
+        // For live student sessions, wait until the room join/resume handshake finishes
+        // so the ACK carries the correct resumeState (see the joinConfirmed effect below).
+        if (liveInfo?.roomCode && user?.role === 'student' && !joinConfirmed) return;
+        if (iframeRef.current && iframeRef.current.contentWindow && gameCreation) {
+          iframeRef.current.contentWindow.postMessage({
+            type: 'GAME_INIT_ACK',
+            payload: {
+              gameCreation,
+              direction: isRTL ? 'rtl' : 'ltr',
+              locale: language || 'en',
+              resumeState: resumeState || null,
+              mode: 'live',
+            },
+          }, '*');
         }
+        return;
       }
 
-      // Live progress from engine (optional but recommended for real-time leaderboard)
+      // Live progress: map the Tier 0 interaction to the leaderboard's live:answer event.
       if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_ANSWER') {
         try {
-          const payload = event.data.payload || {};
-          const correct = !!payload.correct;
-          const deltaMs = Number.isFinite(Number(payload.deltaMs)) ? Number(payload.deltaMs) : 0;
-          const scoreDelta = Number.isFinite(Number(payload.scoreDelta)) ? Number(payload.scoreDelta) : undefined;
-          const currentScore = Number.isFinite(Number(payload.currentScore)) ? Number(payload.currentScore) : undefined;
-          try { socket.emit('live:answer', { roomCode: liveInfo.roomCode, userId: user?._id, correct, deltaMs, scoreDelta, currentScore }); } catch {}
-        } catch {}
-      }
-      if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_FINISH') {
-        try {
-          const payload = event.data.payload || {};
-          const totalTimeMs = Number.isFinite(Number(payload.totalTimeMs)) ? Number(payload.totalTimeMs) : undefined;
-          try { socket.emit('live:finish', { roomCode: liveInfo.roomCode, userId: user?._id, totalTimeMs }); } catch {}
+          const p = event.data.payload || {};
+          const correct = !!p.isCorrect;
+          const deltaMs = Number.isFinite(Number(p.timeMs)) ? Number(p.timeMs) : 0;
+          const scoreDelta = Number.isFinite(Number(p.score)) ? Number(p.score) : undefined;
+          try { socket.emit('live:answer', { roomCode: liveInfo.roomCode, userId: user?._id, correct, deltaMs, scoreDelta }); } catch {}
         } catch {}
       }
       if (event.data?.type === 'GAME_COMPLETE') {
         try {
-      const payload = { ...event.data.payload };
-  // Normalize identifiers expected by backend
-  if (!payload.gameCreationId && gameCreation?._id) payload.gameCreationId = gameCreation._id;
-      if (assignmentId && !payload.assignmentId) payload.assignmentId = assignmentId;
-  const headers = liveInfo?.roomCode ? { 'X-Live-Room': liveInfo.roomCode } : undefined;
-  const resp = await axios.post('/api/results', payload, headers ? { headers } : undefined);
+          const raw = event.data.payload || {};
+          // SDK v2 payload: { finalScore, totalTimeMs, answers[], statsSchemaVersion }.
+          const answers = Array.isArray(raw.answers) ? raw.answers : [];
+          const finalScore = Number.isFinite(Number(raw.finalScore))
+            ? Number(raw.finalScore)
+            : (Number(raw.score) || 0);
+          const totalTimeMs = Number.isFinite(Number(raw.totalTimeMs)) ? Number(raw.totalTimeMs) : undefined;
+          // Derive max possible score from the answers' maxScore; fall back to the item
+          // count so the backend's required totalPossibleScore is always satisfied.
+          const derivedMax = answers.reduce((sum, a) => sum + (Number(a?.maxScore) || 0), 0);
+          const totalPossibleScore = derivedMax > 0
+            ? derivedMax
+            : (Array.isArray(gameCreation?.content) ? gameCreation.content.length : finalScore);
+          const body = {
+            gameCreationId: gameCreation?._id,
+            assignmentId: assignmentId || undefined,
+            score: finalScore,
+            totalPossibleScore,
+            finalScore,
+            totalTimeMs,
+            statsSchemaVersion: raw.statsSchemaVersion || 1,
+            answers,
+          };
+          // In a live session, lock in this player's final leaderboard row.
+          if (liveInfo?.roomCode && socket) {
+            const correct = answers.filter(a => a?.isCorrect).length;
+            const wrong = answers.filter(a => a && a.isCorrect === false).length;
+            try { socket.emit('live:finish', { roomCode: liveInfo.roomCode, userId: user?._id, totalTimeMs, score: finalScore, correct, wrong }); } catch {}
+          }
+          const headers = liveInfo?.roomCode ? { 'X-Live-Room': liveInfo.roomCode } : undefined;
+          const resp = await axios.post('/api/results', body, headers ? { headers } : undefined);
           console.log('Result saved successfully');
           // Dispatch events so dashboards/components can refresh without polling
           window.dispatchEvent(new Event('assignmentProgressRefresh'));
@@ -189,7 +214,7 @@ const PlayGame = () => {
 
     window.addEventListener('message', handleGameMessage);
     return () => window.removeEventListener('message', handleGameMessage);
-  }, [socket, liveInfo?.roomCode, user?._id, gameCreation?._id, assignmentId, resumeState]);
+  }, [socket, liveInfo?.roomCode, user?._id, user?.role, gameCreation, assignmentId, resumeState, joinConfirmed, isRTL, language]);
 
   // Listen for live leaderboard updates during a live session
   useEffect(() => {
@@ -247,35 +272,27 @@ const PlayGame = () => {
     };
   }, [socket, liveInfo?.roomCode, user?.role, user?._id, user?.firstName, user?.lastName, user?.name]);
 
-  const handleIframeLoad = () => {
-    if (iframeRef.current && gameCreation && joinConfirmed && !initSent.current) {
-      initSent.current = true;
-      let questionsToSend = gameCreation.content || [];
-      if (resumeState && resumeState.currentItemIndex > 0) {
-        questionsToSend = questionsToSend.slice(resumeState.currentItemIndex);
-      }
-      const payload = {
-        ...gameCreation,
-        questions: questionsToSend,
-        assignmentId,
-        mode: (user?.role === 'student') ? 'student' : (user?.role === 'teacher' ? 'teacher' : 'admin'),
-        isTest: user?.role !== 'student',
-        live: liveInfo || undefined,
+  // (Re)send the SDK handshake ACK once the engine is ready and we have the config.
+  // Covers the case where GAME_INIT arrived before gameCreation / join / resume were ready.
+  const sendInitAck = () => {
+    if (!engineReady.current) return;
+    if (!iframeRef.current?.contentWindow || !gameCreation) return;
+    if (liveInfo?.roomCode && user?.role === 'student' && !joinConfirmed) return;
+    iframeRef.current.contentWindow.postMessage({
+      type: 'GAME_INIT_ACK',
+      payload: {
+        gameCreation,
         direction: isRTL ? 'rtl' : 'ltr',
-        locale: language || 'en'
-      };
-      iframeRef.current.contentWindow.postMessage(
-        { type: 'INIT_GAME', payload },
-        '*'
-      );
-    }
+        locale: language || 'en',
+        resumeState: resumeState || null,
+        mode: 'live',
+      },
+    }, '*');
   };
 
-  // If joinConfirmed changes after iframe loaded, we might need to send INIT_GAME here
   useEffect(() => {
-    if (joinConfirmed && iframeRef.current) {
-      handleIframeLoad();
-    }
+    sendInitAck();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinConfirmed, resumeState, gameCreation]);
 
   const toggleFullscreen = () => {
@@ -434,7 +451,7 @@ const PlayGame = () => {
             src={resolveEngineSrc(gameCreation.enginePath || gameCreation.template.enginePath)}
               title="Game Engine"
               className="w-full h-full border-0"
-              onLoad={handleIframeLoad}
+              onLoad={sendInitAck}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-white bg-gray-900">
