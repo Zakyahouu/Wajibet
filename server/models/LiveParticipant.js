@@ -15,6 +15,11 @@ const liveParticipantSchema = new mongoose.Schema({
   wrong: { type: Number, default: 0 },
   rawTimeMs: { type: Number, default: 0 },
   effectiveTimeMs: { type: Number, default: 0 },
+  currentItemIndex: { type: Number, default: 0 },
+  currentItemStartedAt: { type: Date },
+  status: { type: String, enum: ['active', 'disconnected', 'finished'], default: 'active' },
+  pausedRemainingMs: { type: Number, default: 0 },
+  accumulatedPauseMs: { type: Number, default: 0 },
 }, { timestamps: true });
 
 liveParticipantSchema.index({ sessionId: 1, studentId: 1 }, { unique: true });

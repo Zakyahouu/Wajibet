@@ -97,11 +97,27 @@ module.exports = function (io) {
         // add or update player in memory
         const existing = room.players.find(p => String(p.userId) === String(verifiedUserId));
         if (!existing) {
-          const player = { id: socket.id, userId: verifiedUserId, name: playerName };
+          const player = { 
+            id: socket.id, 
+            userId: verifiedUserId, 
+            name: playerName,
+            stats: {
+              score: 0, correct: 0, wrong: 0, effectiveTimeMs: 0,
+              currentItemIndex: 0, currentItemStartedAt: new Date(),
+              status: 'active', pausedRemainingMs: 0, accumulatedPauseMs: 0,
+              dirty: false
+            }
+          };
           room.players.push(player);
         } else {
           existing.id = socket.id;
           existing.name = playerName;
+          existing.stats = existing.stats || {
+            score: 0, correct: 0, wrong: 0, effectiveTimeMs: 0,
+            currentItemIndex: 0, currentItemStartedAt: new Date(),
+            status: 'active', pausedRemainingMs: 0, accumulatedPauseMs: 0,
+            dirty: false
+          };
         }
         socket.join(roomCode);
 
@@ -239,54 +255,44 @@ module.exports = function (io) {
 
         console.log('[socket] live:answer ->', { roomCode, userId, correct, deltaMs, scoreDelta, currentScore });
 
-        // Update participant record
+        // Update participant record in memory
         try {
-          const participant = await LiveParticipant.findOne({
-            sessionId: room.sessionId,
-            studentId: userId
-          });
-
-          if (participant) {
+          const player = room.players.find(p => String(p.userId) === String(userId));
+          if (player && player.stats) {
             // Update stats
             if (correct) {
-              participant.correct = (participant.correct || 0) + 1;
+              player.stats.correct = (player.stats.correct || 0) + 1;
             } else {
-              participant.wrong = (participant.wrong || 0) + 1;
+              player.stats.wrong = (player.stats.wrong || 0) + 1;
             }
 
             if (typeof currentScore === 'number') {
-              participant.score = currentScore;
+              player.stats.score = currentScore;
             } else if (typeof scoreDelta === 'number') {
-              participant.score = (participant.score || 0) + scoreDelta;
+              player.stats.score = (player.stats.score || 0) + scoreDelta;
             }
 
             // Add time penalty for wrong answers (3 seconds per wrong)
             const timePenaltyMs = correct ? 0 : 3000;
-            participant.effectiveTimeMs = (participant.effectiveTimeMs || 0) + deltaMs + timePenaltyMs;
+            player.stats.effectiveTimeMs = (player.stats.effectiveTimeMs || 0) + deltaMs + timePenaltyMs;
+            
+            // Advance pacing
+            player.stats.currentItemIndex = (player.stats.currentItemIndex || 0) + 1;
+            player.stats.currentItemStartedAt = new Date();
+            player.stats.dirty = true; // Mark for background save
 
-            await participant.save();
-
-            // Fetch all participants and calculate ranks
-            const allParticipants = await LiveParticipant.find({
-              sessionId: room.sessionId
-            }).populate('studentId', 'firstName lastName name').lean();
-
-            const ranks = allParticipants
-              .map(p => {
-                const stu = p.studentId;
-                const pName = (stu && typeof stu === 'object')
-                  ? (stu.name || [stu.firstName, stu.lastName].filter(Boolean).join(' ') || 'Unknown')
-                  : (p.firstName ? [p.firstName, p.lastName].filter(Boolean).join(' ') : 'Unknown');
-                return {
-                  userId: String(stu?._id || p.studentId),
-                  name: pName,
-                  score: p.score || 0,
-                  correct: p.correct || 0,
-                  wrong: p.wrong || 0,
-                  effectiveTimeMs: p.effectiveTimeMs || 0,
-                  finishedAt: p.finishedAt
-                };
-              })
+            // Calculate ranks entirely in-memory
+            const ranks = room.players
+              .filter(p => p.stats)
+              .map(p => ({
+                userId: String(p.userId),
+                name: p.name || 'Unknown',
+                score: p.stats.score || 0,
+                correct: p.stats.correct || 0,
+                wrong: p.stats.wrong || 0,
+                effectiveTimeMs: p.stats.effectiveTimeMs || 0,
+                finishedAt: p.stats.finishedAt
+              }))
               .sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
@@ -295,12 +301,11 @@ module.exports = function (io) {
 
             // Emit updated scoreboard to everyone in the room
             io.to(roomCode).emit('live:scoreboard', { ranks });
-            console.log('[socket] live:scoreboard emitted ->', ranks.length, 'participants');
           } else {
-            console.warn('[socket] live:answer - participant not found:', { sessionId: room.sessionId, userId });
+            console.warn('[socket] live:answer - participant not found in memory:', { roomCode, userId });
           }
         } catch (e) {
-          console.error('[socket] Failed to update participant:', e);
+          console.error('[socket] Failed to update participant in memory:', e);
         }
       } catch (e) {
         console.error('[socket] live:answer handler failed', e);
@@ -399,17 +404,134 @@ module.exports = function (io) {
     socket.on('disconnect', () => {
       try {
         console.log('[socket] disconnected', socket.id);
-        // remove from any rooms' player lists
         for (const code of Object.keys(liveGames)) {
           const room = liveGames[code];
-          const before = room.players.length;
-          room.players = room.players.filter(p => p.id !== socket.id);
-          if (room.players.length !== before) {
-            io.to(code).emit('player-joined', room.players.slice());
+          
+          if (room.hostUserId && socket.user && String(room.hostUserId) === String(socket.user._id)) {
+             // Host disconnected. Do NOT kill the room.
+             console.log('[socket] Host disconnected, keeping room alive:', code);
+             continue;
+          }
+
+          const player = room.players.find(p => p.id === socket.id);
+          if (player) {
+            if (player.stats && player.stats.status === 'active') {
+              player.stats.status = 'disconnected';
+              // Calculate elapsed time on current item
+              const startedAt = player.stats.currentItemStartedAt ? new Date(player.stats.currentItemStartedAt).getTime() : Date.now();
+              const elapsed = Date.now() - startedAt;
+              // We'll store this elapsed time as pausedRemainingMs since we don't know the budget here.
+              // When they rejoin, we'll calculate how much pause time accumulated.
+              player.stats.pausedRemainingMs = elapsed; 
+              player.stats.disconnectedAt = new Date();
+              player.stats.dirty = true;
+            }
+            // Notify others
             io.to(code).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
           }
         }
       } catch (e) { console.error('disconnect cleanup failed', e); }
     });
+    
+    // ✅ Rejoin Game handler
+    socket.on('rejoin-game', async ({ roomCode, userId }) => {
+      try {
+        const room = liveGames[roomCode];
+        if (!room) { socket.emit('join-error', 'Room not found'); return; }
+        if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) return;
+
+        const player = room.players.find(p => String(p.userId) === String(userId));
+        if (player && player.stats && player.stats.status === 'disconnected') {
+          player.id = socket.id;
+          socket.join(roomCode);
+          
+          // Calculate pause abuse guard
+          const disconnectDurationMs = Date.now() - new Date(player.stats.disconnectedAt).getTime();
+          player.stats.accumulatedPauseMs = (player.stats.accumulatedPauseMs || 0) + disconnectDurationMs;
+          
+          if (player.stats.accumulatedPauseMs > 120000) {
+            // Exceeded 2-minute cap, skip item
+            player.stats.currentItemIndex = (player.stats.currentItemIndex || 0) + 1;
+            player.stats.currentItemStartedAt = new Date(); // Reset timer
+            player.stats.pausedRemainingMs = 0;
+            player.stats.accumulatedPauseMs = 0; // Reset for next item
+            console.log('[socket] Player exceeded pause cap. Auto-skipped item.');
+          } else {
+             // Resume item
+             // Shift the startedAt forward so elapsed time matches
+             player.stats.currentItemStartedAt = new Date(Date.now() - player.stats.pausedRemainingMs);
+          }
+          
+          player.stats.status = 'active';
+          player.stats.dirty = true;
+          
+          // Send RESUME_STATE
+          socket.emit('live:resume-state', {
+            currentItemIndex: player.stats.currentItemIndex,
+            currentScore: player.stats.score,
+            elapsedMs: player.stats.pausedRemainingMs
+          });
+          
+          io.to(roomCode).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
+          console.log('[socket] player rejoined', player.name, '->', roomCode);
+        } else {
+          socket.emit('join-error', 'Cannot rejoin. You are not disconnected in this room.');
+        }
+      } catch (e) { console.error('rejoin-game handler failed', e); }
+    });
+
   });
+
+  // Background Finalizer / Flusher loop (Runs every 4 seconds)
+  setInterval(async () => {
+    try {
+      for (const code of Object.keys(liveGames)) {
+        const room = liveGames[code];
+        if (!room || !room.sessionId) continue;
+        
+        for (const player of room.players) {
+          if (player.stats && player.stats.dirty) {
+            player.stats.dirty = false; // clear flag before save to prevent race conditions
+            await LiveParticipant.findOneAndUpdate(
+              { sessionId: room.sessionId, studentId: player.userId },
+              { $set: {
+                score: player.stats.score,
+                correct: player.stats.correct,
+                wrong: player.stats.wrong,
+                effectiveTimeMs: player.stats.effectiveTimeMs,
+                currentItemIndex: player.stats.currentItemIndex,
+                currentItemStartedAt: player.stats.currentItemStartedAt,
+                status: player.stats.status,
+                pausedRemainingMs: player.stats.pausedRemainingMs,
+                accumulatedPauseMs: player.stats.accumulatedPauseMs
+              } }
+            ).catch(err => {
+              console.error('[socket] Background save failed for', player.userId, err);
+              player.stats.dirty = true; // retry next tick
+            });
+          }
+          
+          // Task 4: Session-level auto-finalizer job (Rejoin window: 10 mins disconnected)
+          if (player.stats && player.stats.status === 'disconnected') {
+             const disconnectMs = Date.now() - new Date(player.stats.disconnectedAt).getTime();
+             const sessionRejoinWindowMs = 10 * 60 * 1000; // 10 minutes buffer
+             
+             if (disconnectMs > sessionRejoinWindowMs) {
+                console.log(`[socket] Player ${player.userId} absent past rejoin window. Auto-finalizing.`);
+                player.stats.status = 'finished';
+                player.stats.dirty = true;
+                
+                await LiveParticipant.findOneAndUpdate(
+                  { sessionId: room.sessionId, studentId: player.userId },
+                  { $set: { status: 'finished', finishedAt: new Date() } }
+                );
+             }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[socket] background flusher error:', e);
+    }
+  }, 4000);
+
 };
