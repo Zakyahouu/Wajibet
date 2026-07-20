@@ -90,7 +90,7 @@ body{
 	padding: 8px 16px;
 	border-radius: 12px;
 }
-.hud-item .icon { margin-inline-end: 8px; }
+.hud-item .icon { margin-right: 8px; }
 .hud-item.right .text.pop { animation: pop 0.4s ease-out; color: var(--primary-color); }
 
 /* --- QUESTION CARD --- */
@@ -112,7 +112,7 @@ body{
 .question{ font-size:24px; font-weight: 500; }
 .timer-border{
 	position: absolute;
-	bottom: 0; inset-inline-start: 0;
+	bottom: 0; left: 0;
 	height: 6px;
 	width: 100%;
 	background: var(--primary-color);
@@ -137,8 +137,8 @@ body{
 	border:2px solid var(--medium-grey);
 	border-radius:12px;
 	padding: 20px;
-	padding-inline-start: 50px;
-	text-align: start;
+	padding-left: 50px;
+	text-align:left;
 	cursor:pointer;
 	width: 100%;
 	font-size: 18px;
@@ -149,7 +149,7 @@ body{
 .opt::before {
 	content: '';
 	position: absolute;
-	inset-inline-start: 18px;
+	left: 18px;
 	top: 50%;
 	transform: translateY(-50%);
 	width: 24px;
@@ -176,7 +176,7 @@ body{
 }
 .action-bar {
 	margin-top: 20px;
-	text-align: end;
+	text-align: right;
 }
 #countdown-screen{ text-align: center; }
 .count{ font-size:96px; font-weight: 700; color: var(--primary-color); }

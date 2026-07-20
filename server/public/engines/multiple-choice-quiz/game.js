@@ -150,8 +150,14 @@
 		{ bg: 13, color: '#f97316' }  // Fiery Orange
 	];
 
-	// Preload all background images (Removed: using CSS gradients instead)
-	const preloadBackgrounds = () => {};
+	// Preload all background images
+	const preloadBackgrounds = () => {
+		for (let i = 1; i <= 13; i++) {
+			const img = new Image();
+			img.src = `assets/${i}.jpeg`;
+			preloadedBackgrounds.push(img);
+		}
+	};
 
 	// --- Element References ---
 	const screens = { ready: byId('ready-screen'), countdown: byId('countdown-screen'), play: byId('play-screen'), done: byId('done-screen') };
@@ -190,14 +196,14 @@
 		
 		// --- DYNAMIC THEME LOGIC ---
 		const defaultColor = '#3b82f6'; // Default blue
-		
-		const bgIndex = (idx % 13) + 1;
-		const theme = themes.find(t => t.bg === bgIndex);
-		const themeColor = theme ? theme.color : defaultColor;
-		
-		// Apply a nice CSS gradient instead of a heavy image
-		document.body.style.backgroundImage = `radial-gradient(circle at center, ${themeColor} 0%, #ffffff 100%)`;
-		document.documentElement.style.setProperty('--primary-color', themeColor);
+		if (!settings.backgroundUrl) {
+			const bgIndex = (idx % 13) + 1;
+			document.body.style.backgroundImage = `url(assets/${bgIndex}.jpeg)`;
+			const theme = themes.find(t => t.bg === bgIndex);
+			document.documentElement.style.setProperty('--primary-color', theme ? theme.color : defaultColor);
+		} else {
+			document.documentElement.style.setProperty('--primary-color', defaultColor);
+		}
 
 		// Reset UI state for the new question
 		qIdxEl.textContent = `${idx + 1} / ${items.length}`;
