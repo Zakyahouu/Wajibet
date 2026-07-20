@@ -106,16 +106,74 @@ const EditGame = () => {
         setContentItems(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    // Wizard State
+    const [currentStep, setCurrentStep] = useState(1);
+    const [previewIndex, setPreviewIndex] = useState(null);
+
+    const validateSettings = () => {
+        let isValid = true;
+        if (template?.formSchema?.settings) {
+            Object.entries(template.formSchema.settings).forEach(([key, schema]) => {
+                if (schema.required && !settingsData[key] && settingsData[key] !== 0) {
+                    isValid = false;
+                }
+            });
+        }
+        return isValid;
+    };
+
+    const handleNextStep = () => {
+        if (validateSettings()) {
+            if (autoMode) {
+                submitGame();
+            } else {
+                setCurrentStep(2);
+                setError('');
+            }
+        } else {
+            setError('Please fill all required settings before proceeding.');
+        }
+    };
+
+    const handleBackStep = () => {
+        setCurrentStep(1);
+        setError('');
+        setPreviewIndex(null);
+    };
+
+    const isContentValid = () => {
+        if (autoMode) return true;
+        
+        if (template?.directory === 'multiple-choice-quiz') {
+            for (let i = 0; i < contentItems.length; i++) {
+                const item = contentItems[i];
+                let correctCount = 0;
+                if (item.correctAnswer1) correctCount++;
+                if (item.correctAnswer2) correctCount++;
+                if (item.correctAnswer3) correctCount++;
+                if (item.correctAnswer4) correctCount++;
+                if (correctCount !== 1) {
+                    setError(`Question ${i + 1} must have exactly ONE correct answer flagged.`);
+                    return false;
+                }
+                if (!item.question || item.question.trim() === '') {
+                    setError(`Question ${i + 1} is missing the question text.`);
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    };
+
+    const submitGame = async () => {
         setSaving(true);
         setError('');
-        // Filter empty content items if manual mode
+        
         let filteredContent = contentItems;
         if (!autoMode) {
             filteredContent = contentItems.filter(item => Object.values(item).some(v => v !== '' && v !== undefined));
         } else {
-            // In auto mode, we can send empty array
             filteredContent = [];
         }
 
@@ -137,6 +195,17 @@ const EditGame = () => {
             setError(err.response?.data?.message || 'Failed to update game');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (currentStep === 1) {
+            handleNextStep();
+        } else {
+            if (isContentValid()) {
+                submitGame();
+            }
         }
     };
 
@@ -200,7 +269,15 @@ const EditGame = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Game Settings Section */}
+                    {/* Wizard Progress */}
+                    <div className="flex items-center justify-center mb-8">
+                        <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${currentStep === 1 ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'}`}>1</div>
+                        <div className={`w-24 h-1 ${currentStep === 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+                        <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${currentStep === 2 ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
+                    </div>
+
+                    {/* Game Settings Section (Step 1) */}
+                    {currentStep === 1 && (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         <div className="p-6 border-b border-gray-100">
                             <div className="flex items-center gap-3">
@@ -542,10 +619,12 @@ const EditGame = () => {
                                 </div>
                             )}
                         </div>
+                        </div>
                     </div>
+                    )}
 
-                    {/* Content Section */}
-                    {template.formSchema.content && (!Object.prototype.hasOwnProperty.call(template.formSchema.settings, 'autoGenerate') || !autoMode) && (
+                    {/* Content Section (Step 2) */}
+                    {currentStep === 2 && template.formSchema.content && (!Object.prototype.hasOwnProperty.call(template.formSchema.settings, 'autoGenerate') || !autoMode) && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <div className="p-6 border-b border-gray-100">
                                 <div className="flex items-center justify-between">
@@ -591,8 +670,9 @@ const EditGame = () => {
                                             )}
                                         </div>
 
+                                        <div className="flex flex-col lg:flex-row gap-6">
                                         {/* Item Fields */}
-                                        <div className="grid gap-4 md:grid-cols-2 p-4 bg-gray-50 rounded-lg">
+                                        <div className="grid gap-4 md:grid-cols-2 p-4 bg-gray-50 rounded-lg flex-1">
                                             {Object.entries(template.formSchema.content.itemSchema).map(([key, field]) => (
                                                 <div key={key}>
                                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -975,6 +1055,46 @@ const EditGame = () => {
                                                 </div>
                                             ))}
                                         </div>
+
+                                        {/* Live Preview Area */}
+                                        <div className="lg:w-1/3 bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col items-center justify-start">
+                                            <div className="w-full flex justify-between items-center mb-2">
+                                                <h4 className="text-sm font-bold text-gray-600">Live Preview</h4>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setPreviewIndex(previewIndex === index ? null : index)}
+                                                    className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 font-medium"
+                                                >
+                                                    {previewIndex === index ? 'Hide Preview' : 'Show Preview'}
+                                                </button>
+                                            </div>
+                                            {previewIndex === index ? (
+                                                <div className="w-full aspect-[9/16] max-h-[500px] bg-black rounded-lg overflow-hidden relative shadow-inner">
+                                                    <iframe
+                                                        src={`/engines/${template.directory}/index.html`}
+                                                        title="Live Preview"
+                                                        className="w-full h-full border-0"
+                                                        onLoad={(e) => {
+                                                            e.target.contentWindow.postMessage({
+                                                                type: 'INIT_GAME',
+                                                                payload: {
+                                                                    gameCreation: {
+                                                                        settings: settingsData,
+                                                                        content: [item]
+                                                                    },
+                                                                    direction: settingsData.textDirection || 'ltr'
+                                                                }
+                                                            }, '*');
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="w-full h-40 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-sm">
+                                                    Click 'Show Preview' to render item
+                                                </div>
+                                            )}
+                                        </div>
+                                        </div> {/* Close flex container */}
                                     </div>
                                 ))}
 
@@ -986,6 +1106,39 @@ const EditGame = () => {
                                 >
                                     <Plus className="w-5 h-5" />
                                     <span className="font-medium">Add Content Item</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Form Actions */}
+                    <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
+                        {currentStep === 1 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(-1)}
+                                    className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleNextStep}
+                                    className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {autoMode ? (saving ? 'Updating...' : 'Update Game') : 'Next: Content Builder'}
+                                </button>
+                            </>
+                        )}
+                        {currentStep === 2 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleBackStep}
+                                    className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
+                                >
+                                    Back
                                 </button>
                                 <button
                                     type="submit"
@@ -1004,36 +1157,8 @@ const EditGame = () => {
                                         </>
                                     )}
                                 </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Submit Section */}
-                    <div className="flex justify-end gap-4">
-                        <button
-                            type="button"
-                            onClick={() => navigate(-1)}
-                            className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>Updating...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="w-4 h-4" />
-                                    <span>Update Game</span>
-                                </>
-                            )}
-                        </button>
+                            </>
+                        )}
                     </div>
                 </form>
             </div>
