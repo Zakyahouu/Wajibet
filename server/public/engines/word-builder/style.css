@@ -41,7 +41,7 @@ body {
 .hud { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; }
 .hud-item { display: flex; gap: 10px; align-items: center; background: rgba(0, 0, 0, 0.2); padding: 8px 15px; border-radius: 20px; }
 .hud-item img { width: 24px; height: 24px; }
-.hint-bubble { position: relative; text-align: right; }
+.hint-bubble { position: relative; text-align: end; }
 .hud-icon-btn {
     background: #f5c500;
     border: none;
@@ -58,7 +58,7 @@ body {
     height: 28px;
     filter: brightness(0) saturate(100%) invert(5%) sepia(21%) saturate(5411%) hue-rotate(224deg) brightness(97%) contrast(97%);
 }
-.hint-box { display: none; position: absolute; top: 55px; right: 0; width: 200px; background: #2c254d; border-radius: 10px; padding: 15px; font-size: 0.9em; z-index: 10; }
+.hint-box { display: none; position: absolute; top: 55px; inset-inline-end: 0; width: 200px; background: #2c254d; border-radius: 10px; padding: 15px; font-size: 0.9em; z-index: 10; }
 
 /* LAYOUT & GAME AREA */
 .game-area { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; width: 100%; gap: 10px; padding: 20px 0; }

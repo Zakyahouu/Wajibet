@@ -158,8 +158,8 @@ body.background-transition {
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15), 0 0 25px rgba(255, 255, 255, 0.4);
   transition: transform 0.2s ease;
   max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline-start: auto;
+  margin-inline-end: auto;
 }
 .question-card:hover { transform: translateY(-2px); }
 .question-text{ 
@@ -270,7 +270,7 @@ body.background-transition {
 .count{ font-size: 96px; font-weight: 800; color: var(--primary-color); }
 .bonus-pop { 
   position: absolute; 
-  left: 50%; 
+  inset-inline-start: 50%; 
   transform: translateX(-50%); 
   font-size: 22px; 
   font-weight: 800; 
