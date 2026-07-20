@@ -2,7 +2,6 @@
   let creation, settings, pool=[], idx=0, score=0, streak=0, timerIv, timeLeft=0;
   const answers = [];
   let qStartMs = 0;
-  let shuffledBackgrounds = [];
   const byId=(id)=>document.getElementById(id);
 
   const themes = [ 
@@ -15,19 +14,7 @@
   // --- Asset Preloading ---
   let assetsLoaded = false;
   const preloadAssets = () => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        assetsLoaded = true;
-        resolve();
-      };
-      img.onerror = () => {
-        // Continue even if image fails to load
-        assetsLoaded = true;
-        resolve();
-      };
-      img.src = 'assets/background.jpeg';
-    });
+    return Promise.resolve();
   };
 
   // --- Element References ---
