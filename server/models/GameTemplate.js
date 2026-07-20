@@ -37,6 +37,17 @@ const gameTemplateSchema = new mongoose.Schema({
   iconUrl: { type: String },
   isFeatured: { type: Boolean, default: false },
   deprecated: { type: Boolean, default: false },
+  // Declarative metadata stats schema — defines which engine-specific meta fields
+  // should be aggregated in global reports, and how.
+  metaStatsSchema: [{
+    key:         { type: String, required: true },   // must match a key in answers[].meta
+    label:       { type: String, required: true },   // human-readable label for reports
+    aggregation: {
+      type: String,
+      required: true,
+      enum: ['average', 'sum', 'frequency', 'top_n', 'min_max', 'boolean_rate']
+    }
+  }],
 }, {
   timestamps: true,
 });

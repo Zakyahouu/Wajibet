@@ -8,6 +8,8 @@ const {
   submitGameResult,
   getResultsForGame, // existing
   getAttemptHistory, // newly wired attempt history endpoint
+  getGameGlobalStats,
+  getStudentStats,
   getMyResultsSummary,
   getMyRecentResults,
   getMyRecentLiveResults,
@@ -19,6 +21,10 @@ const { protect } = require('../middleware/authMiddleware');
 
 // Define the route for submitting a result
 router.post('/', protect, submitGameResult);
+
+// Aggregated Stats
+router.get('/:gameCreationId/stats/global', protect, getGameGlobalStats);
+router.get('/:gameCreationId/stats/student/:studentId', protect, getStudentStats);
 
 // Attempt history for a specific assignment/game pair for the logged-in student
 router.get('/history/:assignmentId/:gameCreationId', protect, getAttemptHistory);

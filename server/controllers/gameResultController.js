@@ -9,6 +9,66 @@ const Enrollment = require('../models/Enrollment');
 // Legacy global badge system removed
 const { evaluateTemplateBadgeForResult } = require('./templateBadgeController');
 const { checkCanAttempt } = require('../services/attemptGate');
+const { computeStudentStats, computeGameGlobalStats } = require('../services/gameStatsService');
+
+// In-memory TTL cache for global stats aggregations
+const globalStatsCache = new Map();
+const STATS_CACHE_TTL_MS = 30000; // 30 seconds
+
+// Tier 0 contract validation — validates each answer in the answers array
+const TIER_0_FIELDS = [
+  { key: 'itemId',        type: 'string' },
+  { key: 'itemIndex',     type: 'number' },
+  { key: 'type',          type: 'string' },
+  { key: 'isCorrect',     type: 'boolean' },
+  { key: 'userAnswer',    required: true }, // Mixed — just check presence
+  { key: 'correctAnswer', required: true }, // Mixed — just check presence
+  { key: 'score',         type: 'number' },
+  { key: 'maxScore',      type: 'number' },
+  { key: 'timeMs',        type: 'number' },
+  { key: 'attempts',      type: 'number' },
+  { key: 'skipped',       type: 'boolean' },
+];
+
+/**
+ * Validate an answers array against the Tier 0 contract.
+ * Returns { valid: true } or { valid: false, violations: [...] }
+ */
+const validateAnswersContract = (answers) => {
+  if (!Array.isArray(answers)) return { valid: true }; // no answers to validate
+
+  const violations = [];
+
+  answers.forEach((answer, idx) => {
+    if (!answer || typeof answer !== 'object') {
+      violations.push({ index: idx, field: '(entire item)', reason: 'Not an object' });
+      return;
+    }
+
+    TIER_0_FIELDS.forEach(field => {
+      const val = answer[field.key];
+
+      // Check presence
+      if (val === undefined || val === null) {
+        violations.push({ index: idx, field: field.key, reason: 'Missing required field' });
+        return;
+      }
+
+      // Check type (if specified)
+      if (field.type && typeof val !== field.type) {
+        violations.push({
+          index: idx,
+          field: field.key,
+          reason: `Expected ${field.type}, got ${typeof val}`,
+        });
+      }
+    });
+  });
+
+  return violations.length === 0
+    ? { valid: true }
+    : { valid: false, violations };
+};
 
 // @desc    Submit a result for a game
 // @route   POST /api/results
@@ -131,6 +191,27 @@ const submitGameResult = async (req, res) => {
       if (xpConf.enabled) xpAwarded = Number(xpConf.amount || 0);
     }
 
+  // --- Tier 0 Contract Validation ---
+  let statsIncomplete = false;
+  if (Array.isArray(answers) && answers.length > 0) {
+    const validation = validateAnswersContract(answers);
+    if (!validation.valid) {
+      if (process.env.NODE_ENV !== 'production') {
+        // FAIL-LOUD: reject the payload in dev/staging
+        const firstViolation = validation.violations[0];
+        return res.status(400).json({
+          message: `Contract violation at answers[${firstViolation.index}].${firstViolation.field}: ${firstViolation.reason}`,
+          violations: validation.violations,
+        });
+      } else {
+        // FAIL-SOFT: log and flag, but let the save proceed
+        console.warn(`[gameResult] Contract violation for gameCreation=${gameCreationId} student=${studentId}:`,
+          JSON.stringify(validation.violations.slice(0, 5)));
+        statsIncomplete = true;
+      }
+    }
+  }
+
   const gameResult = await GameResult.create({
       student: studentId,
       gameCreation: gameCreationId,
@@ -142,8 +223,15 @@ const submitGameResult = async (req, res) => {
       counted,
       isTest,
       xpAwarded,
-  answers: Array.isArray(answers) ? answers.slice(0, 1000) : undefined,
+      answers: Array.isArray(answers) ? answers.slice(0, 1000) : undefined,
+      totalTimeMs: req.body.totalTimeMs || undefined,
+      finalScore: req.body.finalScore || undefined,
+      statsSchemaVersion: req.body.statsSchemaVersion || 1,
+      statsIncomplete,
     });
+
+  // Invalidate the cache entry for this game creation
+  globalStatsCache.delete(gameCreationId.toString());
 
     // --- Update student's XP and points ---
   const percentage = totalPossibleScore > 0 ? Math.round((score / totalPossibleScore) * 100) : 0;
@@ -292,11 +380,103 @@ const getResultsForGame = async (req, res) => {
   }
 };
 
+// @desc    Get aggregated global stats for a game creation
+// @route   GET /api/results/:gameCreationId/stats/global
+// @access  Private (Teacher/Admin/Manager)
+const getGameGlobalStats = async (req, res) => {
+  try {
+    const { gameCreationId } = req.params;
+
+    // Authorization: teacher must own the game; admins/managers allowed
+    const creation = await GameCreation.findById(gameCreationId).select('owner');
+    if (!creation) return res.status(404).json({ message: 'Game creation not found' });
+
+    const isTeacher = req.user?.role === 'teacher';
+    const isOwner = creation.owner?.toString() === req.user?._id?.toString();
+    const isElevated = req.user && (req.user.role === 'admin' || req.user.role === 'manager');
+    
+    if (!((isTeacher && isOwner) || isElevated)) {
+      return res.status(403).json({ message: 'Not authorized to view stats for this game.' });
+    }
+
+    // Check TTL Cache
+    const cacheKey = gameCreationId.toString();
+    const cached = globalStatsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < STATS_CACHE_TTL_MS)) {
+      return res.status(200).json(cached.data);
+    }
+
+    // Options from query
+    const options = {
+      assignmentId: req.query.assignmentId,
+      classId: req.query.classId,
+      dateRange: (req.query.startDate || req.query.endDate) ? {
+        start: req.query.startDate,
+        end: req.query.endDate
+      } : undefined
+    };
+
+    const stats = await computeGameGlobalStats(gameCreationId, options);
+
+    // Save to cache
+    globalStatsCache.set(cacheKey, { data: stats, timestamp: Date.now() });
+
+    res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Get student-specific stats for a game creation
+// @route   GET /api/results/:gameCreationId/stats/student/:studentId
+// @access  Private (Teacher/Admin/Manager or self)
+const getStudentStats = async (req, res) => {
+  try {
+    const { gameCreationId, studentId } = req.params;
+
+    // Authorization: self, teacher who owns the game, or admin/manager
+    const isSelf = req.user?._id?.toString() === studentId;
+    let allowed = isSelf;
+
+    if (!isSelf) {
+      const creation = await GameCreation.findById(gameCreationId).select('owner');
+      if (!creation) return res.status(404).json({ message: 'Game creation not found' });
+
+      const isTeacher = req.user?.role === 'teacher';
+      const isOwner = creation.owner?.toString() === req.user?._id?.toString();
+      const isElevated = req.user && (req.user.role === 'admin' || req.user.role === 'manager');
+
+      allowed = (isTeacher && isOwner) || isElevated;
+    }
+
+    if (!allowed) {
+      return res.status(403).json({ message: 'Not authorized to view stats for this student.' });
+    }
+
+    // Find the latest counted GameResult for this student and game
+    const result = await GameResult.findOne({
+      student: studentId,
+      gameCreation: gameCreationId,
+    }).sort({ createdAt: -1 }).select('_id');
+
+    if (!result) {
+      return res.status(404).json({ message: 'No game result found for this student.' });
+    }
+
+    const stats = await computeStudentStats(result._id);
+    res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
 
 module.exports = {
   submitGameResult,
   getResultsForGame, // NEW: Export the new function
   getAttemptHistory,
+  getGameGlobalStats,
+  getStudentStats,
 };
 
 // @desc    Get single result with full details (teacher/admin only)

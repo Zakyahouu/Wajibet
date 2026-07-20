@@ -42,12 +42,42 @@ const gameResultSchema = new mongoose.Schema(
   xpAwarded: { type: Number, default: 0 },
   // Optional live session id if this result comes from a real-time session
   liveSessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'LiveSession' },
-  // Optional per-question answers for full teacher report (engine-specific shape)
-  // Use Mixed to preserve engine-provided fields like { index, correct, selectedIndex, guess, target, deltaMs, ... }
-  answers: {
-    type: [mongoose.Schema.Types.Mixed],
-    default: undefined,
-  },
+   // ========================================================================
+   // Per-question answers array — Unified Telemetry Contract
+   // ========================================================================
+   // Each element in this array MUST conform to the Tier 0 contract:
+   //
+   //   itemId        (String, required)  — Permanent atomic ID from GameCreation.content[].itemId
+   //   itemIndex     (Number, required)  — Zero-based position in the item list
+   //   type          (String, required)  — Descriptor for grouping/rendering (e.g. "multiple-choice")
+   //   isCorrect     (Boolean, required) — Whether the student answered correctly
+   //   userAnswer    (Mixed, required)   — The student's actual response
+   //   correctAnswer (Mixed, required)   — The expected correct response
+   //   score         (Number, required)  — Points earned for this item
+   //   maxScore      (Number, required)  — Maximum possible points for this item
+   //   timeMs        (Number, required)  — Milliseconds spent on this item
+   //   attempts      (Number, required)  — Number of attempts on this item
+   //   skipped       (Boolean, required) — Whether the student skipped this item
+   //
+   // Optional Tier 1 — engine-specific metadata:
+   //   meta          (Object, optional)  — Declared via GameTemplate.metaStatsSchema
+   //                                       for declarative aggregation
+   //
+   // Kept as [Mixed] intentionally — the meta object must remain flexible per engine.
+   // ========================================================================
+   answers: {
+     type: [mongoose.Schema.Types.Mixed],
+     default: undefined,
+   },
+
+   // Total time in milliseconds for the entire game session
+   totalTimeMs: { type: Number },
+   // Final composite score for the session
+   finalScore: { type: Number },
+   // Schema version — drives the backend validator. Currently only version 1.
+   statsSchemaVersion: { type: Number, default: 1 },
+   // Set to true when a production payload failed contract validation but was saved anyway
+   statsIncomplete: { type: Boolean, default: false },
   },
   {
     timestamps: true,

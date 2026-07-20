@@ -1,9 +1,18 @@
 // server/controllers/gameCreationController.js
 const asyncHandler = require('express-async-handler');
+const crypto = require('crypto');
 const GameCreation = require('../models/GameCreation');
 const GameTemplate = require('../models/GameTemplate');
 const Assignment = require('../models/Assignment');
 const Class = require('../models/Class');
+
+/**
+ * Generate a permanent, unique item ID for a game content item.
+ * Format: q_ + 6 random alphanumeric characters (e.g. "q_a3f8b2")
+ */
+const generateItemId = () => {
+  return 'q_' + crypto.randomUUID().replace(/-/g, '').slice(0, 6);
+};
 
 const normalizeAttemptPolicy = (value) => {
   if (value === 'all' || value === 'unlimited' || value === 'best_only') return 'all';
@@ -74,6 +83,10 @@ const createGameCreation = asyncHandler(async (req, res) => {
   if (Array.isArray(content) && content.length > 0) {
     processedContent = content.map(item => {
       const processedItem = { ...item };
+      // Assign a permanent, unique itemId to each content item on creation
+      if (!processedItem.itemId) {
+        processedItem.itemId = generateItemId();
+      }
       if (template.formSchema.content && template.formSchema.content.itemSchema) {
         Object.entries(template.formSchema.content.itemSchema).forEach(([key, schema]) => {
           if (schema.type === 'number' && processedItem[key] !== undefined) {
@@ -333,11 +346,15 @@ const updateGameCreation = asyncHandler(async (req, res) => {
     }
   });
 
-  // Process content (same as create)
+  // Process content (same as create) + preserve/generate itemIds
   let processedContent = content || [];
   if (Array.isArray(processedContent)) {
     processedContent = processedContent.map(item => {
       const processed = { ...item };
+      // Existing items keep their itemId; new items get a fresh one
+      if (!processed.itemId) {
+        processed.itemId = generateItemId();
+      }
       Object.entries(template.formSchema.content?.itemSchema || {}).forEach(([key, schema]) => {
         if (schema.type === 'number' && processed[key] !== undefined) {
           processed[key] = Number(processed[key]);
