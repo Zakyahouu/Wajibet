@@ -1,0 +1,176 @@
+/* 
+  Memory Matrix V2 Prototype Game Styles
+  Strictly uses CSS logical properties for seamless RTL/LTR layout.
+*/
+
+:root {
+  --bg-color: #0f172a;
+  --panel-bg: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary: #3b82f6;
+  --accent: #8b5cf6;
+  --success: #10b981;
+  --error: #ef4444;
+  --tile-bg: #334155;
+  --tile-hover: #475569;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.game-container {
+  width: 100%;
+  max-width: 600px;
+  background: var(--panel-bg);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  position: relative;
+  text-align: center;
+}
+
+.hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-block-end: 24px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding-inline: 16px;
+}
+
+.level-indicator {
+  color: var(--text-muted);
+}
+
+#level-display {
+  color: var(--text-main);
+}
+
+.score-indicator {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 1.5rem;
+}
+
+.instruction-text {
+  font-size: 1.125rem;
+  margin-block-end: 32px;
+  min-height: 28px;
+  color: var(--text-main);
+  transition: opacity 0.3s ease;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1 / 1;
+}
+
+.tile {
+  background-color: var(--tile-bg);
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.tile:hover:not(:disabled) {
+  background-color: var(--tile-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.tile:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+/* Gameplay States */
+.tile.highlight {
+  background-color: var(--primary);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  transform: scale(1.05);
+}
+
+.tile.correct {
+  background-color: var(--success);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+  animation: popIn 0.3s ease;
+}
+
+.tile.wrong {
+  background-color: var(--error);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  animation: shake 0.4s ease;
+}
+
+/* Animations */
+@keyframes popIn {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* End Game Overlay */
+.overlay {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+#end-title {
+  font-size: 3rem;
+  margin-block-end: 16px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-block-start: 0;
+}
+
+#end-score {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+}

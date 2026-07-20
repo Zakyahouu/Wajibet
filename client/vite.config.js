@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => {
           target: backendUrl,
           changeOrigin: true,
         },
+        '/sdk': {
+          target: backendUrl,
+          changeOrigin: true,
+        },
         '/socket.io': {
           target: backendUrl,
           changeOrigin: true,
