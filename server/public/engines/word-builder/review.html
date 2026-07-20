@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Builder Review</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <style>
+    body, html {
+      margin: 0; padding: 0;
+      background: transparent;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: 'Roboto Mono', monospace;
+    }
+    .review-container {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 450px;
+      text-align: center;
+      color: #f8fafc;
+      border: 4px solid #334155;
+    }
+    .result-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    .result-badge.correct { background: #10b981; color: white; }
+    .result-badge.wrong { background: #ef4444; color: white; }
+    .word-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .word-label {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .word-value {
+      display: flex;
+      gap: 6px;
+    }
+    .letter-block {
+      background: #334155;
+      border: 2px solid #475569;
+      border-radius: 6px;
+      width: 36px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+    .correct-word .letter-block {
+      background: #064e3b;
+      border-color: #10b981;
+      color: #34d399;
+    }
+    .wrong-word .letter-block {
+      background: #7f1d1d;
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <div class="review-container">
+    <div id="badge" class="result-badge"></div>
+    
+    <div class="word-row">
+      <div class="word-label">Your Word</div>
+      <div id="user-word" class="word-value"></div>
+    </div>
+    
+    <div id="correct-row" class="word-row">
+      <div class="word-label">Target Word</div>
+      <div id="correct-word" class="word-value correct-word"></div>
+    </div>
+  </div>
+
+  <script>
+    function renderLetters(container, word) {
+      container.innerHTML = '';
+      if (!word) {
+        container.innerHTML = '<span style="color:#94a3b8;">(none)</span>';
+        return;
+      }
+      for (const char of word) {
+        const block = document.createElement('div');
+        block.className = 'letter-block';
+        block.textContent = char.toUpperCase();
+        container.appendChild(block);
+      }
+    }
+
+    WajibetSDK.onReviewData((payload) => {
+      const isCorrect = payload.isCorrect === true;
+      const userAnswer = payload.userAnswer || '';
+      const correctAnswer = payload.correctAnswer || '';
+      
+      const badge = document.getElementById('badge');
+      const userContainer = document.getElementById('user-word');
+      const correctContainer = document.getElementById('correct-word');
+      const correctRow = document.getElementById('correct-row');
+      
+      renderLetters(userContainer, userAnswer);
+      
+      if (isCorrect) {
+        badge.textContent = 'Awesome!';
+        badge.className = 'result-badge correct';
+        userContainer.className = 'word-value correct-word';
+        correctRow.style.display = 'none';
+      } else {
+        badge.textContent = payload.skipped ? 'Skipped / Timeout' : 'Incorrect';
+        badge.className = 'result-badge wrong';
+        userContainer.className = 'word-value wrong-word';
+        correctRow.style.display = 'flex';
+        renderLetters(correctContainer, correctAnswer);
+      }
+    });
+  </script>
+</body>
+</html>
