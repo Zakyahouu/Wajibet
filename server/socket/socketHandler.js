@@ -145,6 +145,9 @@ module.exports = function (io) {
 
         let resumeState = null;
         if (isRejoining && existing) {
+          // Resume contract: { currentItemIndex, currentScore, elapsedMs }.
+          // elapsedMs = time already spent on the current item before the drop;
+          // the engine subtracts it from its own per-item budget to resume the timer.
           resumeState = {
             currentItemIndex: existing.stats.currentItemIndex,
             currentScore: existing.stats.score,
@@ -501,7 +504,8 @@ module.exports = function (io) {
           player.stats.status = 'active';
           player.stats.dirty = true;
           
-          // Send RESUME_STATE
+          // Send RESUME_STATE — same contract as the join-game rejoin path above:
+          // { currentItemIndex, currentScore, elapsedMs } (elapsedMs = spent on item).
           socket.emit('live:resume-state', {
             currentItemIndex: player.stats.currentItemIndex,
             currentScore: player.stats.score,

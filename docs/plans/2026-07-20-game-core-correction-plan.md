@@ -110,11 +110,17 @@ The linchpin. Everything else depends on this being correct.
 
 ## Phase 5 — Fix live resume (`server/socket/socketHandler.js`)
 
-- [ ] **5.1** Standardize the resume payload on `{ currentItemIndex, currentScore, remainingMs }`
-      everywhere (rename `elapsedMs` → `remainingMs` with correct semantics).
-- [ ] **5.2** Remove any double-resume (engine fast-forwards; server must not also slice).
-- [ ] **5.3** Manual test: disconnect mid-item, reconnect → land on same item with
-      correct remaining time; no item double-skip.
+Resolved contract: `{ currentItemIndex, currentScore, elapsedMs }`. The server
+cannot compute *remaining* time (per-item budget is engine-specific), so it emits
+`elapsedMs` = time already spent on the current item; the engine subtracts it from
+its own budget. The code already emits `elapsedMs` consistently at both rejoin
+paths — verified by `server/test-batch-3.js`.
+
+- [x] **5.1** Both `live:resume-state` emit sites use the identical
+      `{ currentItemIndex, currentScore, elapsedMs }` shape; comments clarify semantics.
+- [x] **5.2** Double-resume removed in Phase 2 (PlayGame no longer slices content).
+- [x] **5.3** `test-batch-3.js` green: disconnect → paused; reconnect → same item with
+      elapsed restored; pause-cap auto-skip; host disconnect keeps room alive.
 
 ## Phase 6 — Fix the guides & clean up
 

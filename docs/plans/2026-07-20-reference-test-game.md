@@ -45,7 +45,8 @@ reference-quiz/
 `correct` (enum A–D). `minItems: 3`.
 
 ### engine/game.js (behaviour)
-- `WajibetSDK.init` → apply direction, read `getGameCreation()`, honor `resumeState`.
+- `WajibetSDK.init` → apply direction, read `getGameCreation()`, honor `resumeState`
+  (`currentItemIndex`, `currentScore`, `elapsedMs`; remaining = budget − elapsedMs).
 - Per question: on answer or timeout, call `recordInteraction` with **all 11 Tier 0
   fields** + `meta: { selectedOptionId }`. `score` = `pointsPerQuestion` if correct
   else 0; `maxScore` = `pointsPerQuestion`.
@@ -85,7 +86,7 @@ Proves the generic meta-aggregation path end-to-end.
 8. **Fallback**: sabotage `review.html` (throw before `REVIEW_READY`) → after 5s the
    Tier 0 fallback table renders.
 9. **Live**: 3 students; disconnect one mid-item → reconnect lands on the same item
-   with correct `remainingMs`; others unaffected; no double-skip.
+   with correct restored time (from `elapsedMs`); others unaffected; no double-skip.
 10. **i18n**: renders correctly in Arabic (RTL) and French (LTR).
 11. **Preview** (after Phase 7): play through the wizard preview → ZERO `GameResult`
     rows created; `console.debug` logs present.

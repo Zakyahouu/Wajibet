@@ -72,7 +72,8 @@ window.onload = () => {
     const creation = WajibetSDK.getGameCreation();   // { settings, content, ... }
     const items = creation.content;                  // each item has a permanent itemId
 
-    if (resumeState) { /* jump to resumeState.currentItemIndex, restore score, use remainingMs */ }
+    if (resumeState) { /* jump to resumeState.currentItemIndex, restore currentScore;
+                          remaining = itemBudgetMs - resumeState.elapsedMs */ }
 
     // On each answer, emit the FULL Tier 0 object:
     WajibetSDK.recordInteraction({
