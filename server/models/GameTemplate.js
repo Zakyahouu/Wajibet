@@ -19,7 +19,7 @@ const gameTemplateSchema = new mongoose.Schema({
   },
   formSchema: {
     type: Object,
-    required: true,
+    required: false, // false for backward compatibility with old templates
   },
   status: {
     type: String,

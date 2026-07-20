@@ -58,7 +58,7 @@ const EditGame = () => {
                 } else {
                     // Initialize with empty item if no content
                     const initialItem = {};
-                    if (templateData.formSchema.content?.itemSchema) {
+                    if (templateData?.formSchema?.content?.itemSchema) {
                         Object.keys(templateData.formSchema.content.itemSchema).forEach(key => {
                             initialItem[key] = '';
                         });
@@ -94,7 +94,7 @@ const EditGame = () => {
 
     const addContentItem = () => {
         const newItem = {};
-        if (template.formSchema.content?.itemSchema) {
+        if (template?.formSchema?.content?.itemSchema) {
             Object.keys(template.formSchema.content.itemSchema).forEach(key => {
                 newItem[key] = '';
             });
@@ -290,8 +290,8 @@ const EditGame = () => {
 
                         <div className="p-6">
                             <div className="grid gap-6 md:grid-cols-2">
-                                {Object.entries(template.formSchema.settings).map(([key, field]) => {
-                                    const hasAuto = Object.prototype.hasOwnProperty.call(template.formSchema.settings, 'autoGenerate');
+                                {Object.entries(template.formSchema?.settings || {}).map(([key, field]) => {
+                                    const hasAuto = template.formSchema?.settings?.autoGenerate !== undefined;
                                     if (key === 'questionCount' && !autoMode) return null;
                                     if (key === 'autoGenerate') {
                                         return (
@@ -612,7 +612,7 @@ const EditGame = () => {
                                     );
                                 })}
                             </div>
-                            {Object.prototype.hasOwnProperty.call(template.formSchema.settings, 'autoGenerate') && (
+                            {template.formSchema?.settings?.autoGenerate !== undefined && (
                                 <div className="mt-4 text-xs text-gray-500 space-y-1">
                                     <p><strong>Auto Mode:</strong> System generates math questions based on operations, max operand and question count.</p>
                                     <p><strong>Manual Mode:</strong> Uncheck Auto Generate to enter your own questions below.</p>
@@ -623,7 +623,7 @@ const EditGame = () => {
                     )}
 
                     {/* Content Section (Step 2) */}
-                    {currentStep === 2 && template.formSchema.content && (!Object.prototype.hasOwnProperty.call(template.formSchema.settings, 'autoGenerate') || !autoMode) && (
+                    {currentStep === 2 && template.formSchema?.content && (template.formSchema?.settings?.autoGenerate === undefined || !autoMode) && (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                             <div className="p-6 border-b border-gray-100">
                                 <div className="flex items-center justify-between">
@@ -631,7 +631,7 @@ const EditGame = () => {
                                         <div className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
                                             <FileText className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-xl font-bold text-gray-800">{template.formSchema.content.label}</h2>
+                                        <h2 className="text-xl font-bold text-gray-800">{template.formSchema?.content?.label || 'Content Items'}</h2>
                                         <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
                                             {contentItems.length}
                                         </span>

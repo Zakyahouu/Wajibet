@@ -31,12 +31,23 @@ const uploadGameTemplate = asyncHandler(async (req, res) => {
   const zip = new AdmZip(req.file.buffer);
   const zipEntries = zip.getEntries();
 
-  const manifestEntry = zip.getEntry('manifest.json');
-  const schemaEntry = zip.getEntry('form-schema.json');
-  const engineDirEntry = zipEntries.find(entry => entry.entryName.startsWith('engine/'));
+  // Find manifest.json anywhere in the zip to handle nested folders (e.g. if user zipped the folder itself)
+  const manifestEntryRaw = zipEntries.find(entry => entry.entryName.endsWith('manifest.json') && !entry.entryName.includes('__MACOSX'));
+  
+  if (!manifestEntryRaw) {
+    res.status(400).json({ message: 'Template bundle is missing manifest.json.' });
+    return;
+  }
+
+  // Determine the base path inside the zip
+  const basePath = manifestEntryRaw.entryName.substring(0, manifestEntryRaw.entryName.length - 'manifest.json'.length);
+
+  const manifestEntry = zip.getEntry(basePath + 'manifest.json');
+  const schemaEntry = zip.getEntry(basePath + 'form-schema.json');
+  const engineDirEntry = zipEntries.find(entry => entry.entryName.startsWith(basePath + 'engine/'));
 
   if (!manifestEntry || !schemaEntry || !engineDirEntry) {
-    res.status(400).json({ message: 'Template bundle is missing one or more required files (manifest.json, form-schema.json, or engine/ folder).' });
+    res.status(400).json({ message: 'Template bundle is missing one or more required files (manifest.json, form-schema.json, or engine/ folder) next to each other.' });
     return;
   }
 
@@ -86,8 +97,8 @@ const uploadGameTemplate = asyncHandler(async (req, res) => {
   }
 
   zipEntries.forEach((zipEntry) => {
-    if (zipEntry.entryName.startsWith('engine/') && !zipEntry.isDirectory) {
-      const relativePath = zipEntry.entryName.substring('engine/'.length);
+    if (zipEntry.entryName.startsWith(basePath + 'engine/') && !zipEntry.isDirectory) {
+      const relativePath = zipEntry.entryName.substring((basePath + 'engine/').length);
       const targetPath = path.join(fullEnginePath, relativePath);
       const dir = path.dirname(targetPath);
       if (!fs.existsSync(dir)) {
