@@ -1,0 +1,15 @@
+{
+  "name": "Memory Matrix",
+  "description": "A modern memory and pattern recognition game.",
+  "attemptPolicy": "multiple",
+  "xp": {
+    "assignment": { "enabled": true, "amount": 100, "firstAttemptOnly": true },
+    "online": { "enabled": true, "amount": 50 }
+  },
+  "limits": {
+    "maxCreationsPerTeacher": 100
+  },
+  "assets": {
+    "maxImagesPerCreation": 0
+  }
+}
