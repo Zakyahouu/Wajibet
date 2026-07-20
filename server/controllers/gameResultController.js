@@ -78,7 +78,15 @@ const submitGameResult = async (req, res) => {
   const { gameCreationId, score, totalPossibleScore, assignmentId, answers, liveSessionId: liveSessionIdFromBody } = req.body;
   const studentId = req.user._id;
 
-    if (!gameCreationId || score === undefined || totalPossibleScore === undefined) {
+  // v2 SDK payloads may omit totalPossibleScore; derive it from the Tier 0 answers'
+  // maxScore so a valid submission is never rejected for a missing legacy field.
+  let resolvedTotalPossibleScore = totalPossibleScore;
+  if (resolvedTotalPossibleScore === undefined && Array.isArray(answers)) {
+    const derived = answers.reduce((sum, a) => sum + (Number(a && a.maxScore) || 0), 0);
+    if (derived > 0) resolvedTotalPossibleScore = derived;
+  }
+
+    if (!gameCreationId || score === undefined || resolvedTotalPossibleScore === undefined) {
       return res.status(400).json({ message: 'Missing required result data.' });
     }
 
@@ -218,7 +226,7 @@ const submitGameResult = async (req, res) => {
       assignment: assignment ? assignment._id : undefined,
       liveSessionId: liveSessionId || undefined,
       score,
-      totalPossibleScore,
+      totalPossibleScore: resolvedTotalPossibleScore,
       attemptNumber,
       counted,
       isTest,
@@ -234,7 +242,7 @@ const submitGameResult = async (req, res) => {
   globalStatsCache.delete(gameCreationId.toString());
 
     // --- Update student's XP and points ---
-  const percentage = totalPossibleScore > 0 ? Math.round((score / totalPossibleScore) * 100) : 0;
+  const percentage = resolvedTotalPossibleScore > 0 ? Math.round((score / resolvedTotalPossibleScore) * 100) : 0;
   const pointsEarned = score; // raw score as points
 
     const user = await User.findById(studentId);
