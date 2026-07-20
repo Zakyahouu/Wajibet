@@ -619,7 +619,6 @@ const EditGame = () => {
                                 </div>
                             )}
                         </div>
-                        </div>
                     </div>
                     )}
 

@@ -629,7 +629,6 @@ const CreateGame = () => {
                                 </div>
                             )}
                         </div>
-                        </div>
                     </div>
                     )}
 
