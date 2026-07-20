@@ -108,7 +108,6 @@ const EditGame = () => {
 
     // Wizard State
     const [currentStep, setCurrentStep] = useState(1);
-    const [previewIndex, setPreviewIndex] = useState(null);
 
     const validateSettings = () => {
         let isValid = true;
@@ -669,9 +668,9 @@ const EditGame = () => {
                                             )}
                                         </div>
 
-                                        <div className="flex flex-col lg:flex-row gap-6">
+                                        <div className="flex flex-col gap-6">
                                         {/* Item Fields */}
-                                        <div className="grid gap-4 md:grid-cols-2 p-4 bg-gray-50 rounded-lg flex-1">
+                                        <div className="grid gap-4 md:grid-cols-2 p-4 bg-gray-50 rounded-lg">
                                             {Object.entries(template.formSchema.content.itemSchema).map(([key, field]) => (
                                                 <div key={key}>
                                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1053,45 +1052,6 @@ const EditGame = () => {
                                                     )}
                                                 </div>
                                             ))}
-                                        </div>
-
-                                        {/* Live Preview Area */}
-                                        <div className="lg:w-1/3 bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col items-center justify-start">
-                                            <div className="w-full flex justify-between items-center mb-2">
-                                                <h4 className="text-sm font-bold text-gray-600">Live Preview</h4>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setPreviewIndex(previewIndex === index ? null : index)}
-                                                    className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 font-medium"
-                                                >
-                                                    {previewIndex === index ? 'Hide Preview' : 'Show Preview'}
-                                                </button>
-                                            </div>
-                                            {previewIndex === index ? (
-                                                <div className="w-full aspect-[9/16] max-h-[500px] bg-black rounded-lg overflow-hidden relative shadow-inner">
-                                                    <iframe
-                                                        src={`/engines/${template.directory}/index.html`}
-                                                        title="Live Preview"
-                                                        className="w-full h-full border-0"
-                                                        onLoad={(e) => {
-                                                            e.target.contentWindow.postMessage({
-                                                                type: 'INIT_GAME',
-                                                                payload: {
-                                                                    gameCreation: {
-                                                                        settings: settingsData,
-                                                                        content: [item]
-                                                                    },
-                                                                    direction: settingsData.textDirection || 'ltr'
-                                                                }
-                                                            }, '*');
-                                                        }}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="w-full h-40 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-sm">
-                                                    Click 'Show Preview' to render item
-                                                </div>
-                                            )}
                                         </div>
                                         </div> {/* Close flex container */}
                                     </div>
