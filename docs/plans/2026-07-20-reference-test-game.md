@@ -4,10 +4,16 @@
 > ENTIRE corrected pipeline. It is both the validation harness for the correction
 > plan and the canonical example the guides point to.
 
-**Build location:** `client/public/games/reference-quiz/` (source), zipped for upload.
+**Build location:** `client/public/games/reference-quiz/` (source),
+`client/public/games/reference-quiz.zip` (ready to upload via the admin template flow).
 
-**Prerequisite:** Phases 1–4 of `2026-07-20-game-core-correction-plan.md` must be done
-first — on the current broken code this game fails at save (400).
+**Status:** BUILT. Verified in a headless play-through — 3 answers bundled into
+`GAME_COMPLETE`, all 11 Tier 0 fields present, scoring correct (20/30),
+`meta.selectedOptionId` populated, `statsSchemaVersion: 1`. The zip passes the
+upload handler's structure check (`manifest.json` + `form-schema.json` + `engine/`).
+
+**Prerequisite (met):** Phases 1–4 of `2026-07-20-game-core-correction-plan.md` are done.
+On the pre-fix code this game would have failed at save (400).
 
 ---
 

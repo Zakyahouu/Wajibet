@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reference Quiz — Review</title>
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <style>
+    :root { --ok: #16a34a; --bad: #dc2626; --line: #e2e8f0; --ink: #0f172a; --muted: #64748b; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--ink);
+    }
+    .head { font-size: 15px; font-weight: 700; margin-block-end: 14px; }
+    .row {
+      display: flex; align-items: center; gap: 10px;
+      padding-block: 10px; padding-inline: 14px;
+      border: 2px solid var(--line); border-radius: 12px; margin-block-end: 8px;
+    }
+    .row .tag {
+      font-size: 12px; font-weight: 700; padding-block: 2px; padding-inline: 8px;
+      border-radius: 999px; color: #fff; background: var(--muted);
+    }
+    .row.correct { border-color: var(--ok); background: #f0fdf4; }
+    .row.correct .tag { background: var(--ok); }
+    .row.chosen-wrong { border-color: var(--bad); background: #fef2f2; }
+    .row.chosen-wrong .tag { background: var(--bad); }
+    .meta { color: var(--muted); font-size: 13px; margin-block-start: 12px; }
+  </style>
+</head>
+<body>
+  <div class="head" id="head">Loading review…</div>
+  <div id="rows"></div>
+  <div class="meta" id="meta"></div>
+
+  <script>
+    (function () {
+      if (typeof WajibetSDK === 'undefined') {
+        document.getElementById('head').textContent = 'SDK missing.';
+        return;
+      }
+      // onReviewData emits REVIEW_READY for us, then delivers the FULL Tier 0
+      // interaction object (top-level fields, not nested in meta).
+      WajibetSDK.onReviewData(function (a) {
+        document.documentElement.dir = WajibetSDK.getDirection();
+        var head = document.getElementById('head');
+        var rows = document.getElementById('rows');
+        var meta = document.getElementById('meta');
+
+        if (!a || a.userAnswer === undefined) {
+          head.textContent = 'No replay data available.';
+          return;
+        }
+
+        head.textContent = a.isCorrect ? 'Answered correctly' : 'Answered incorrectly';
+        head.style.color = a.isCorrect ? 'var(--ok)' : 'var(--bad)';
+
+        var chosen = String(a.userAnswer);
+        var correct = String(a.correctAnswer);
+
+        function makeRow(key, role) {
+          var div = document.createElement('div');
+          div.className = 'row' + (role === 'correct' ? ' correct' : role === 'wrong' ? ' chosen-wrong' : '');
+          var tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = key;
+          var label = document.createElement('span');
+          label.textContent = role === 'correct' ? 'Correct answer'
+            : role === 'wrong' ? 'Student chose this (wrong)'
+            : 'Student answer';
+          div.appendChild(tag);
+          div.appendChild(label);
+          return div;
+        }
+
+        rows.appendChild(makeRow(correct, 'correct'));
+        if (!a.isCorrect) rows.appendChild(makeRow(chosen, 'wrong'));
+
+        var secs = (Number(a.timeMs) / 1000).toFixed(1);
+        meta.textContent = 'Time: ' + secs + 's · Score: ' + a.score + ' / ' + a.maxScore;
+      });
+    })();
+  </script>
+</body>
+</html>

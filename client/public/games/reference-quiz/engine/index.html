@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wajibet Reference Quiz</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- The platform serves the SDK at /sdk/wajibet-sdk.js -->
+  <script src="/sdk/wajibet-sdk.js"></script>
+</head>
+<body>
+  <main class="stage">
+    <!-- Loading -->
+    <section id="screen-loading" class="screen is-active">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="muted">Loading…</p>
+    </section>
+
+    <!-- Play -->
+    <section id="screen-play" class="screen">
+      <header class="hud">
+        <span class="pill" id="progress">1 / 1</span>
+        <span class="pill pill--score">Score: <b id="score">0</b></span>
+      </header>
+      <div class="card">
+        <h1 class="prompt" id="prompt">…</h1>
+        <div class="options" id="options"></div>
+        <p class="feedback" id="feedback"></p>
+        <button class="next-btn" id="next-btn" hidden>Next →</button>
+      </div>
+    </section>
+
+    <!-- Done -->
+    <section id="screen-done" class="screen">
+      <div class="card card--center">
+        <h1 id="done-title">Well done!</h1>
+        <p class="final">You scored <b id="final-score">0</b> / <b id="final-max">0</b></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+/* Wajibet Reference Quiz — RTL-safe styles (CSS logical properties only). */
+:root {
+  --bg-1: #4f46e5;
+  --bg-2: #06b6d4;
+  --card: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --ok: #16a34a;
+  --bad: #dc2626;
+  --line: #e2e8f0;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: var(--ink);
+}
+
+body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+}
+
+.stage { width: 100%; max-width: 640px; }
+
+.screen { display: none; }
+.screen.is-active { display: block; }
+
+.spinner {
+  width: 40px; height: 40px;
+  margin: 40px auto 12px;
+  border: 4px solid rgba(255, 255, 255, 0.4);
+  border-block-start-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.muted { color: #e2e8f0; text-align: center; }
+
+.hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-block-end: 12px;
+}
+
+.pill {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  padding-block: 6px;
+  padding-inline: 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.pill--score b { color: var(--bg-1); }
+
+.card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.25);
+}
+.card--center { text-align: center; }
+
+.prompt {
+  font-size: 22px;
+  line-height: 1.4;
+  margin-block: 0 22px;
+}
+
+.options { display: grid; gap: 12px; }
+
+.option {
+  text-align: start;
+  padding-block: 14px;
+  padding-inline: 18px;
+  font-size: 16px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+.option:hover:not(:disabled) { border-color: var(--bg-1); }
+.option:active:not(:disabled) { transform: scale(0.99); }
+.option:disabled { cursor: default; }
+.option.is-correct { border-color: var(--ok); background: #dcfce7; }
+.option.is-wrong { border-color: var(--bad); background: #fee2e2; }
+
+.feedback {
+  min-height: 22px;
+  margin-block: 16px 0;
+  font-weight: 600;
+}
+.feedback--ok { color: var(--ok); }
+.feedback--bad { color: var(--bad); }
+
+.next-btn {
+  margin-block-start: 18px;
+  padding-block: 12px;
+  padding-inline: 24px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bg-1);
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.final { font-size: 20px; }
+.final b { color: var(--bg-1); }

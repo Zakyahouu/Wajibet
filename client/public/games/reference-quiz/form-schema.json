@@ -1,0 +1,40 @@
+{
+  "settings": {
+    "shuffle": {
+      "label": "Shuffle Questions",
+      "type": "boolean",
+      "default": true
+    },
+    "pointsPerQuestion": {
+      "label": "Points per Question",
+      "type": "number",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "required": true
+    }
+  },
+  "content": {
+    "label": "Questions",
+    "minItems": 3,
+    "itemSchema": {
+      "prompt": {
+        "label": "Question",
+        "type": "textarea",
+        "required": true,
+        "rows": 2
+      },
+      "optionA": { "label": "Option A", "type": "text", "required": true },
+      "optionB": { "label": "Option B", "type": "text", "required": true },
+      "optionC": { "label": "Option C", "type": "text", "required": false },
+      "optionD": { "label": "Option D", "type": "text", "required": false },
+      "correct": {
+        "label": "Correct Option",
+        "type": "enum",
+        "options": ["A", "B", "C", "D"],
+        "default": "A",
+        "required": true
+      }
+    }
+  }
+}

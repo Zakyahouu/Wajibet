@@ -1,0 +1,11 @@
+{
+  "name": "Wajibet Reference Quiz",
+  "description": "Canonical reference multiple-choice game for the v2 SDK contract. Use it to validate the full pipeline (create, play, save, stats, review) and as the template for building new engines.",
+  "attemptPolicy": "multiple",
+  "xp": {
+    "assignment": { "enabled": true, "amount": 50, "firstAttemptOnly": true },
+    "online": { "enabled": true, "amount": 25 }
+  },
+  "limits": { "maxCreationsPerTeacher": 100 },
+  "assets": { "maxImagesPerCreation": 0 }
+}
