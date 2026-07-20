@@ -137,7 +137,6 @@ const EditGame = () => {
     const handleBackStep = () => {
         setCurrentStep(1);
         setError('');
-        setPreviewIndex(null);
     };
 
     const isContentValid = () => {

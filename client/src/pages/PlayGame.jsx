@@ -84,6 +84,7 @@ const PlayGame = () => {
       // Handle the new WajibetSDK GAME_INIT event
       if (event.data?.type === 'GAME_INIT') {
         const payload = {
+          gameCreation: gameCreation || null,
           direction: isRTL ? 'rtl' : 'ltr',
           locale: language || 'en',
           resumeState: resumeState || null

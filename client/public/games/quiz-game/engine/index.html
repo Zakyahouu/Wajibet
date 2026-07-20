@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Master</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- The host platform injects WajibetSDK on the parent, but for decoupling, we load the mock or rely on the injected one -->
+  <!-- Wajibet SDK is injected by the host -->
+</head>
+<body>
+
+  <div id="loading" class="screen active">
+    <div class="loader">Loading Quiz...</div>
+  </div>
+
+  <div id="game-screen" class="screen">
+    <div class="header">
+      <div class="score-board">Score: <span id="score-display">0</span></div>
+      <div class="progress">Question <span id="current-q">1</span> / <span id="total-q">?</span></div>
+    </div>
+    
+    <div class="question-container">
+      <h2 id="question-text">Question Text</h2>
+    </div>
+
+    <div class="options-grid" id="options-grid">
+      <!-- Buttons will be injected here -->
+    </div>
+  </div>
+
+  <div id="result-screen" class="screen">
+    <div class="result-box">
+      <h2>Quiz Complete!</h2>
+      <p>Final Score: <span id="final-score">0</span></p>
+      <p id="result-message"></p>
+    </div>
+  </div>
+
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

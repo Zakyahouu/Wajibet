@@ -1,0 +1,85 @@
+{
+  "settings": {
+    "title": {
+      "type": "text",
+      "label": "Game Title",
+      "required": true,
+      "default": "Word Builder"
+    },
+    "gameMode": {
+      "type": "enum",
+      "label": "Game Mode",
+      "required": false,
+      "default": "timed",
+      "options": [
+        "timed",
+        "attempts_based"
+      ]
+    },
+    "timePerWord": {
+      "type": "number",
+      "label": "Time Per Word (seconds)",
+      "required": false,
+      "default": 30,
+      "min": 10,
+      "max": 300
+    },
+    "maxAttempts": {
+      "type": "number",
+      "label": "Max Attempts Per Word",
+      "required": false,
+      "default": 3,
+      "min": 1,
+      "max": 10
+    },
+    "showHints": {
+      "type": "boolean",
+      "label": "Show Hints",
+      "required": false,
+      "default": true
+    },
+    "textDirection": {
+      "type": "enum",
+      "label": "Text Direction",
+      "required": false,
+      "default": "left_to_right",
+      "options": [
+        "left_to_right",
+        "right_to_left"
+      ]
+    }
+  },
+  "content": {
+    "label": "Words",
+    "minItems": 1,
+    "itemSchema": {
+      "word": {
+        "type": "text",
+        "label": "Target Word",
+        "required": true,
+        "placeholder": "e.g., ELEPHANT"
+      },
+      "hint": {
+        "type": "textarea",
+        "label": "Hint",
+        "required": true,
+        "rows": 2,
+        "placeholder": "e.g., A large animal with a trunk"
+      },
+      "extraLetters": {
+        "type": "text",
+        "label": "Extra Letters (optional)",
+        "required": false,
+        "placeholder": "e.g., XYZ (additional letters mixed in)"
+      },
+      "points": {
+        "type": "number",
+        "label": "Points for Correct Answer",
+        "required": false,
+        "default": 10,
+        "min": 1,
+        "max": 100
+      }
+    }
+  }
+}

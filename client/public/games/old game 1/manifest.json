@@ -1,0 +1,35 @@
+{
+  "name": "Word Builder",
+  "version": "1.0.0",
+  "description": "A fun word-building game where students drag letters to form correct words. Supports timed rounds and real-time scoring.",
+  "gameType": "word-builder",
+  "engineEntry": "engine/index.html",
+  "attemptPolicy": "first_only",
+  "xp": {
+    "assignment": {
+      "enabled": true,
+      "amount": 15,
+      "firstAttemptOnly": true
+    },
+    "online": {
+      "enabled": true,
+      "amount": 10
+    }
+  },
+  "platformIntegration": {
+    "supportsInitGame": true,
+    "supportsLiveAnswer": true,
+    "supportsLiveFinish": true,
+    "supportsGameComplete": true,
+    "postMessageEvents": [
+      "LIVE_ANSWER",
+      "LIVE_FINISH",
+      "GAME_COMPLETE"
+    ]
+  },
+  "gamification": {
+    "scoringMode": "words_correct",
+    "supportsTimedQuestions": true,
+    "supportsLeaderboard": true
+  }
+}

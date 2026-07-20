@@ -33,6 +33,7 @@
         // In production, we could verify event.origin here.
         if (event.data && event.data.type === 'GAME_INIT_ACK') {
           const config = event.data.payload || {};
+          state.gameCreation = config.gameCreation || null;
           state.direction = config.direction || 'ltr';
           state.locale = config.locale || 'en';
           state.resumeState = config.resumeState || null;
@@ -118,6 +119,13 @@
      */
     getLocale: function() {
       return state.locale;
+    },
+
+    /**
+     * Get the complete GameCreation configuration.
+     */
+    getGameCreation: function() {
+      return state.gameCreation;
     }
   };
 

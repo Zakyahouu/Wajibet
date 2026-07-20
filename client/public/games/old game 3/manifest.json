@@ -1,0 +1,34 @@
+{
+  "name": "Multiple Choice Quiz 1759435912846",
+  "version": "1.0.0",
+  "description": "A colorful multiple-choice quiz game with countdown, per-question timer, optional explanations, and live result events.",
+  "gameType": "multiple-choice-quiz",
+  "engineEntry": "index.html",
+  "attemptPolicy": "first_only",
+  "xp": {
+    "assignment": {
+      "enabled": true,
+      "amount": 20,
+      "firstAttemptOnly": true
+    },
+    "online": {
+      "enabled": false,
+      "amount": 0
+    }
+  },
+  "platformIntegration": {
+    "supportsInitGame": true,
+    "supportsLiveAnswer": true,
+    "supportsLiveFinish": true,
+    "supportsGameComplete": true,
+    "postMessageEvents": [
+      "LIVE_ANSWER",
+      "LIVE_FINISH",
+      "GAME_COMPLETE"
+    ]
+  },
+  "gamification": {
+    "scoringMode": "correct_answers",
+    "supportsTimedQuestions": true
+  }
+}

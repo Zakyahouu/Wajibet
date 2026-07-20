@@ -1,0 +1,137 @@
+{
+  "settings": {
+    "title": {
+      "type": "text",
+      "label": "Game Title",
+      "required": true,
+      "default": "Arithmetic Sprint"
+    },
+    "durationSec": {
+      "type": "number",
+      "label": "Total Game Time (seconds)",
+      "required": false,
+      "default": 120,
+      "min": 30,
+      "max": 3600
+    },
+    "autoGenerate": {
+      "type": "boolean",
+      "label": "Auto-generate questions",
+      "required": false,
+      "default": false
+    },
+    "questionCount": {
+      "type": "number",
+      "label": "Number of Questions (auto-generation)",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "description": "Only used when auto-generate is enabled"
+    },
+    "opAdd": {
+      "type": "boolean",
+      "label": "Addition (+)",
+      "required": false,
+      "default": true
+    },
+    "opSub": {
+      "type": "boolean",
+      "label": "Subtraction (-)",
+      "required": false,
+      "default": true
+    },
+    "opMul": {
+      "type": "boolean",
+      "label": "Multiplication (*)",
+      "required": false,
+      "default": false
+    },
+    "opDiv": {
+      "type": "boolean",
+      "label": "Division (/)",
+      "required": false,
+      "default": false
+    },
+    "numberRangeMin": {
+      "type": "number",
+      "label": "Minimum Number (for auto-generation)",
+      "required": false,
+      "default": 1,
+      "min": 0,
+      "max": 100,
+      "description": "Smallest number to use in equations"
+    },
+    "numberRangeMax": {
+      "type": "number",
+      "label": "Maximum Number (for auto-generation)",
+      "required": false,
+      "default": 20,
+      "min": 1,
+      "max": 1000,
+      "description": "Largest number to use in equations"
+    },
+    "pointsPerCorrect": {
+      "type": "number",
+      "label": "Points Per Correct Answer",
+      "required": false,
+      "default": 10,
+      "min": 1,
+      "max": 100
+    },
+    "penaltyPerWrong": {
+      "type": "number",
+      "label": "Penalty Points Per Wrong Answer",
+      "required": false,
+      "default": 0,
+      "min": 0,
+      "max": 50
+    }
+  },
+  "content": {
+    "label": "Problems (Manual Entry)",
+    "minItems": 0,
+    "itemSchema": {
+      "operandA": {
+        "type": "number",
+        "label": "First Number",
+        "required": true,
+        "min": 0,
+        "max": 1000,
+        "placeholder": "e.g., 15"
+      },
+      "operation": {
+        "type": "enum",
+        "label": "Operation",
+        "required": true,
+        "options": [
+          "+",
+          "-",
+          "*",
+          "/"
+        ]
+      },
+      "operandB": {
+        "type": "number",
+        "label": "Second Number",
+        "required": true,
+        "min": 0,
+        "max": 1000,
+        "placeholder": "e.g., 4"
+      },
+      "correctAnswer": {
+        "type": "number",
+        "label": "Correct Answer",
+        "required": false,
+        "description": "Leave empty to auto-calculate. For division, use numbers that divide evenly."
+      },
+      "category": {
+        "type": "text",
+        "label": "Category/Topic (optional)",
+        "required": false,
+        "placeholder": "e.g., Multiplication"
+      }
+    },
+    "description": "Only used when generation mode is 'manual'. Leave empty if using automatic generation."
+  }
+}
