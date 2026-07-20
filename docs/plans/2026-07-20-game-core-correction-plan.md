@@ -124,13 +124,20 @@ paths — verified by `server/test-batch-3.js`.
 
 ## Phase 6 — Fix the guides & clean up
 
-- [ ] **6.1** Rewrite `client/src/components/admin/TemplateGuide.jsx` to describe
-      Protocol A: SDK handshake, Tier 0 contract, `finishGame`, `review.html`,
-      `metaStatsSchema`, preview mode. Remove all `INIT_GAME` / `{ index, correct, deltaMs }` content.
-- [ ] **6.2** Write a fresh, correct `docs/Wajibet-Engine-Developer-Guide.md`
-      (replaces the deleted wrong one) matching the fixed SDK exactly.
-- [ ] **6.3** Delete duplicate timestamped engine folders under `server/public/engines/`;
-      keep one clean copy per engine.
+- [x] **6.1** Rewrote `client/src/components/admin/TemplateGuide.jsx` to Protocol A:
+      SDK handshake, Tier 0 contract, `finishGame`, `review.html`, `metaStatsSchema`,
+      preview mode. All `INIT_GAME` / `{ index, correct, deltaMs }` content removed.
+- [x] **6.2** Wrote a fresh `docs/Wajibet-Engine-Developer-Guide.md` matching the fixed SDK.
+- [ ] **6.3** DEFERRED (manual, needs DB verification). `server/public/engines/`
+      holds both clean-named retrofit copies and timestamped upload dirs. Uploaded
+      `GameTemplate` records store `enginePath` pointing at a timestamped dir, so a
+      folder can only be safely removed after confirming no template references it:
+      ```
+      // in mongosh against the madrassaplay DB
+      db.gametemplates.find({}, { name: 1, enginePath: 1 })
+      ```
+      Delete only folders that appear in NO `enginePath`. (All engine folders are in
+      git, so any deletion is recoverable.)
 
 ## Phase 7 — Wizard live preview (Batch 5 Task 3)
 
