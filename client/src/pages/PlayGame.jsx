@@ -3,10 +3,12 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
+import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
 
 const PlayGame = () => {
   const { user } = useContext(AuthContext);
+  const { language, isRTL } = useLanguage();
   const socketContext = useContext(SocketContext);
   const socket = socketContext?.socket;
   const socketConnected = socketContext?.connected;
@@ -74,6 +76,19 @@ const PlayGame = () => {
 
   useEffect(() => {
     const handleGameMessage = async (event) => {
+      // Handle the new WajibetSDK GAME_INIT event
+      if (event.data?.type === 'GAME_INIT') {
+        const payload = {
+          direction: isRTL ? 'rtl' : 'ltr',
+          locale: language || 'en',
+          resumeState: null
+        };
+        // Reply back to the engine with its configuration
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({ type: 'GAME_INIT_ACK', payload }, '*');
+        }
+      }
+
       // Live progress from engine (optional but recommended for real-time leaderboard)
   if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_ANSWER') {
         try {
@@ -223,10 +238,13 @@ const PlayGame = () => {
         ...gameCreation,
         questions: gameCreation.content,
         assignmentId,
-  mode: (user?.role === 'student') ? 'student' : (user?.role === 'teacher' ? 'teacher' : 'admin'),
-  isTest: user?.role !== 'student',
+        mode: (user?.role === 'student') ? 'student' : (user?.role === 'teacher' ? 'teacher' : 'admin'),
+        isTest: user?.role !== 'student',
         live: liveInfo || undefined,
+        direction: isRTL ? 'rtl' : 'ltr',
+        locale: language || 'en'
       };
+      // Send INIT_GAME for backward compatibility with old engines
       iframeRef.current.contentWindow.postMessage(
         { type: 'INIT_GAME', payload },
         '*'

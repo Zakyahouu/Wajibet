@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SDK Test Harness - Review</title>
+    <script src="/sdk/wajibet-sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #fafafa; }
+        #review-data { background: #333; color: #fff; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h3>Delegated Review Mode</h3>
+    <div id="review-data">Waiting for REVIEW_INIT...</div>
+    <script>
+        window.WajibetSDK.onReviewData(function(meta) {
+            document.getElementById('review-data').textContent = JSON.stringify(meta, null, 2);
+        });
+    </script>
+</body>
+</html>

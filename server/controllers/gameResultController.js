@@ -489,7 +489,9 @@ module.exports.getResultDetail = async (req, res) => {
     if (!result) return res.status(404).json({ message: 'Result not found' });
 
     // Authorization: teacher must own the game; admin/manager allowed; student can only see own
-    const creation = await GameCreation.findById(result.gameCreation).select('owner content name template');
+    const creation = await GameCreation.findById(result.gameCreation)
+      .select('owner content name template')
+      .populate('template', 'enginePath name');
     const isElevated = req.user && (req.user.role === 'admin' || req.user.role === 'manager');
     const isTeacherOwner = req.user?.role === 'teacher' && creation?.owner?.toString() === req.user?._id?.toString();
     const isOwnerStudent = req.user?._id?.toString() === result.student?._id?.toString();

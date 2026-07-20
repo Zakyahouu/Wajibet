@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SDK Test Harness - Live Game</title>
+    <script src="/sdk/wajibet-sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .btn { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        #log { margin-top: 20px; padding: 10px; background: #f0f0f0; min-height: 100px; white-space: pre-wrap; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h2>SDK Test Harness (Live Game)</h2>
+    <div id="controls" style="display:none;">
+        <button class="btn" id="btn-correct">Record Correct Answer</button>
+        <button class="btn" id="btn-wrong">Record Wrong Answer</button>
+        <button class="btn" id="btn-finish">Finish Game</button>
+    </div>
+    <div id="log">Waiting for init...</div>
+    <script src="game.js"></script>
+</body>
+</html>

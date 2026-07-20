@@ -99,6 +99,7 @@ app.use((req, res, next) => {
 
 // Serve game engine static files from /engines/*
 app.use('/engines', express.static(path.join(__dirname, 'public', 'engines')));
+app.use('/sdk', express.static(path.join(__dirname, 'public', 'sdk')));
 // Teacher resource files must go through the authenticated download controller.
 app.use('/uploads/teacher-resources', (req, res) => {
   res.status(403).json({ message: 'Use the authenticated resource download endpoint.' });
