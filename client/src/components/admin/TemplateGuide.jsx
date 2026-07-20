@@ -33,7 +33,7 @@ const TemplateGuide = () => {
 
       <section>
         <h4 className="font-semibold text-gray-900 mb-2">manifest.json</h4>
-        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 overflow-auto">{`{
+        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 whitespace-pre-wrap break-words">{`{
   "name": "Reference Quiz",
   "description": "A minimal reference multiple-choice game.",
   "attemptPolicy": "multiple",
@@ -56,7 +56,7 @@ const TemplateGuide = () => {
 
       <section>
         <h4 className="font-semibold text-gray-900 mb-2">Engine — SDK handshake</h4>
-        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 overflow-auto">{`<script src="/sdk/wajibet-sdk.js"></script>
+        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 whitespace-pre-wrap break-words">{`<script src="/sdk/wajibet-sdk.js"></script>
 
 WajibetSDK.init((resumeState) => {
   document.documentElement.dir = WajibetSDK.getDirection();  // 'rtl' | 'ltr'
@@ -74,7 +74,7 @@ WajibetSDK.init((resumeState) => {
           Anything engine-specific goes under <code>meta</code> (declared in the template's
           <code> metaStatsSchema</code> to appear in reports).
         </p>
-        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 overflow-auto">{`WajibetSDK.recordInteraction({
+        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 whitespace-pre-wrap break-words">{`WajibetSDK.recordInteraction({
   itemId, itemIndex, type,
   isCorrect, userAnswer, correctAnswer,
   score, maxScore, timeMs, attempts, skipped,
@@ -87,7 +87,7 @@ WajibetSDK.finishGame(totalScore, totalTimeMs);`}</pre>
 
       <section>
         <h4 className="font-semibold text-gray-900 mb-2">review.html (optional, recommended)</h4>
-        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 overflow-auto">{`<script src="/sdk/wajibet-sdk.js"></script>
+        <pre className="bg-gray-50 text-xs p-3 rounded-md border border-gray-200 whitespace-pre-wrap break-words">{`<script src="/sdk/wajibet-sdk.js"></script>
 
 WajibetSDK.onReviewData((interaction) => {
   // interaction is the FULL Tier 0 object (userAnswer, correctAnswer, isCorrect, ...)

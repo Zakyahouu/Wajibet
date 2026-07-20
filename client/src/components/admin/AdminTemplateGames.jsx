@@ -135,7 +135,7 @@ const AdminTemplateGames = () => {
               <p className="text-xs text-text-muted-light">{t.status}: {currentTemplate.status}</p>
             </div>
           </div>
-          <div className="text-xs text-text-muted-light max-w-md line-clamp-2">{currentTemplate.description}</div>
+          <div className="text-xs text-text-muted-light max-w-md line-clamp-2 break-words min-w-0">{currentTemplate.description}</div>
         </div>
       )}
 
