@@ -25,6 +25,11 @@ const PlayGame = () => {
   const [submitError, setSubmitError] = useState(null);
   const [liveSaved, setLiveSaved] = useState(false);
   const [liveEnded, setLiveEnded] = useState(false);
+
+  const [resumeState, setResumeState] = useState(null);
+  const [joinConfirmed, setJoinConfirmed] = useState(!liveInfo?.roomCode || user?.role !== 'student');
+  const initSent = useRef(false);
+
   const [ranks, setRanks] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const iframeRef = useRef(null);
@@ -81,7 +86,7 @@ const PlayGame = () => {
         const payload = {
           direction: isRTL ? 'rtl' : 'ltr',
           locale: language || 'en',
-          resumeState: null
+          resumeState: resumeState || null
         };
         // Reply back to the engine with its configuration
         if (iframeRef.current && iframeRef.current.contentWindow) {
@@ -90,14 +95,14 @@ const PlayGame = () => {
       }
 
       // Live progress from engine (optional but recommended for real-time leaderboard)
-  if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_ANSWER') {
+      if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_ANSWER') {
         try {
           const payload = event.data.payload || {};
           const correct = !!payload.correct;
           const deltaMs = Number.isFinite(Number(payload.deltaMs)) ? Number(payload.deltaMs) : 0;
-      const scoreDelta = Number.isFinite(Number(payload.scoreDelta)) ? Number(payload.scoreDelta) : undefined;
-      const currentScore = Number.isFinite(Number(payload.currentScore)) ? Number(payload.currentScore) : undefined;
-      try { socket.emit('live:answer', { roomCode: liveInfo.roomCode, userId: user?._id, correct, deltaMs, scoreDelta, currentScore }); } catch {}
+          const scoreDelta = Number.isFinite(Number(payload.scoreDelta)) ? Number(payload.scoreDelta) : undefined;
+          const currentScore = Number.isFinite(Number(payload.currentScore)) ? Number(payload.currentScore) : undefined;
+          try { socket.emit('live:answer', { roomCode: liveInfo.roomCode, userId: user?._id, correct, deltaMs, scoreDelta, currentScore }); } catch {}
         } catch {}
       }
       if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_FINISH') {
@@ -107,7 +112,7 @@ const PlayGame = () => {
           try { socket.emit('live:finish', { roomCode: liveInfo.roomCode, userId: user?._id, totalTimeMs }); } catch {}
         } catch {}
       }
-  if (event.data?.type === 'GAME_COMPLETE') {
+      if (event.data?.type === 'GAME_COMPLETE') {
         try {
       const payload = { ...event.data.payload };
   // Normalize identifiers expected by backend
@@ -183,7 +188,7 @@ const PlayGame = () => {
 
     window.addEventListener('message', handleGameMessage);
     return () => window.removeEventListener('message', handleGameMessage);
-  }, [socket, liveInfo?.roomCode, user?._id, gameCreation?._id, assignmentId]);
+  }, [socket, liveInfo?.roomCode, user?._id, gameCreation?._id, assignmentId, resumeState]);
 
   // Listen for live leaderboard updates during a live session
   useEffect(() => {
@@ -215,9 +220,7 @@ const PlayGame = () => {
     };
   }, [socket, liveInfo?.roomCode, user?.role, navigate, gameCreation?.liveSessionId, gameCreation?.sessionId, liveInfo?.sessionId, liveInfo?.id]);
 
-  const [resumeState, setResumeState] = useState(null);
-  const [joinConfirmed, setJoinConfirmed] = useState(!liveInfo?.roomCode || user?.role !== 'student');
-  const initSent = useRef(false);
+
 
   useEffect(() => {
     if (!socket || !liveInfo?.roomCode || user?.role !== 'student') return;
