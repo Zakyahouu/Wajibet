@@ -139,13 +139,40 @@ paths — verified by `server/test-batch-3.js`.
       Delete only folders that appear in NO `enginePath`. (All engine folders are in
       git, so any deletion is recoverable.)
 
-## Phase 7 — Wizard live preview (Batch 5 Task 3)
+## Phase 7 — Wizard live preview (Batch 5 Task 3) — OPTIONAL, DEFERRED
 
-- [ ] **7.1** Re-add a sandboxed live-preview pane in the creation wizard that mounts
-      the engine iframe and replies to `GAME_INIT` with `mode: 'preview'`, so the
-      SDK's preview guard prevents ghost `GameResult` records.
-- [ ] **7.2** Manual test: play through the preview → zero rows in the `GameResult`
-      collection; `console.debug` logs present.
+The safety-critical half is DONE: the SDK's preview guard (Phase 1) silently
+swallows `recordInteraction`/`finishGame` when the host answers `GAME_INIT` with
+`mode: 'preview'`. Verified in Node (0 postMessages in preview mode).
+
+The remaining half is a UI feature the previous AI deliberately removed
+(commit `5ec33e3` "drop live preview logic"). `CreateGame.jsx` is a 2-step wizard
+with no preview pane. Re-adding it is a feature addition, not a bug fix.
+
+- [ ] **7.1** Add a preview pane (Step 3 or split view) that mounts the target
+      engine iframe, builds a draft `gameCreation` from the current form state, and
+      replies to `GAME_INIT` with `{ ..., mode: 'preview' }`.
+- [ ] **7.2** Manual test: play the preview → zero `GameResult` rows; `console.debug`
+      logs present.
+
+---
+
+## Engine reality (recorded during Phase 7)
+
+Per the canonical plan, legacy engines are **retired and recreated from scratch**
+under the new contract — not piecemeal-patched.
+
+- `multiple-choice-quiz`: shipped by the previous AI **syntactically broken**
+  (unbalanced braces; `node --check` fails at EOF). A partial init fix was reverted
+  to avoid a misleading half-fixed non-compiling file. Recreate using
+  `reference-quiz` as the template.
+- `arithmetic-sprint`, `word-builder`: not wired to the SDK (no `wajibet-sdk.js`
+  load, no `WajibetSDK.init`). Recreate under the v2 contract.
+- The previous AI's broken sample bundles remain for reference and are superseded by
+  `reference-quiz`: `client/public/games/quiz-game` (Quiz Master — calls a
+  non-existent `WajibetSDK.playSound`), `client/public/games/test-game` (Memory
+  Matrix), and the `server/public/engines/quiz-master-*` upload. Remove after DB
+  verification (same caveat as 6.3).
 
 ---
 
