@@ -75,7 +75,8 @@ const validateAnswersContract = (answers) => {
 // @access  Private/Student
 const submitGameResult = async (req, res) => {
   try {
-  const { gameCreationId, score, totalPossibleScore, assignmentId, answers, liveSessionId: liveSessionIdFromBody } = req.body;
+  const { gameCreationId, totalPossibleScore, assignmentId, liveSessionId: liveSessionIdFromBody } = req.body;
+  let { answers, score } = req.body;
   const studentId = req.user._id;
 
   // v2 SDK payloads may omit totalPossibleScore; derive it from the Tier 0 answers'
@@ -113,6 +114,36 @@ const submitGameResult = async (req, res) => {
         liveSessionId = req.liveGames[hintedCode].sessionId || null;
       }
     } catch {}
+  }
+
+  // If this is a live session, the backend accumulated all answers in LiveParticipant via Socket.IO.
+  // Merge them to ensure disconnected/reconnected students don't lose their previous answers.
+  if (liveSessionId) {
+    const LiveParticipant = require('../models/LiveParticipant');
+    const participant = await LiveParticipant.findOne({ sessionId: liveSessionId, studentId }).lean();
+    
+    if (participant && Array.isArray(participant.answers) && participant.answers.length > 0) {
+      const answerMap = new Map();
+      
+      // Seed with server-tracked answers
+      participant.answers.forEach(a => {
+        if (a && a.itemIndex !== undefined) answerMap.set(a.itemIndex, a);
+      });
+      
+      // Override/merge with client-submitted answers (in case they have more recent data)
+      if (Array.isArray(answers)) {
+        answers.forEach(a => {
+          if (a && a.itemIndex !== undefined) answerMap.set(a.itemIndex, a);
+        });
+      }
+      
+      answers = Array.from(answerMap.values()).sort((a, b) => a.itemIndex - b.itemIndex);
+
+      // Recalculate score and maxScore based on the merged answers to prevent reconnect scoring bug
+      score = answers.reduce((sum, a) => sum + (Number(a && a.score) || 0), 0);
+      const derivedMax = answers.reduce((sum, a) => sum + (Number(a && a.maxScore) || 0), 0);
+      if (derivedMax > 0) resolvedTotalPossibleScore = derivedMax;
+    }
   }
 
   let assignment;
@@ -344,16 +375,21 @@ const getResultsForGame = async (req, res) => {
     const isTeacher = req.user?.role === 'teacher';
     const isOwner = creation.owner?.toString() === req.user?._id?.toString();
     const isElevated = req.user && (req.user.role === 'admin' || req.user.role === 'manager');
-    if (!((isTeacher && isOwner) || isElevated)) {
+    const isStudent = req.user?.role === 'student';
+
+    if (!((isTeacher && isOwner) || isElevated || isStudent)) {
       return res.status(403).json({ message: 'Not authorized to view results for this game.' });
     }
 
     // 2) If sessionId provided, return only results for that live session
     if (sessionId) {
-      const results = await GameResult.find({
+      const liveQuery = {
         liveSessionId: sessionId,
         gameCreation: gameCreationId
-      })
+      };
+      if (isStudent) liveQuery.student = req.user._id;
+
+      const results = await GameResult.find(liveQuery)
         .populate('student', 'name firstName lastName')
         .sort({ createdAt: -1 });
 
@@ -372,6 +408,7 @@ const getResultsForGame = async (req, res) => {
 
     // 3) Build result query with optional date range
     const resultQuery = { gameCreation: gameCreationId, assignment: { $in: assignmentIds } };
+    if (isStudent) resultQuery.student = req.user._id;
     if (startDate || endDate) {
       resultQuery.createdAt = {};
       if (startDate) resultQuery.createdAt.$gte = new Date(startDate);
@@ -402,13 +439,14 @@ const getGameGlobalStats = async (req, res) => {
     const isTeacher = req.user?.role === 'teacher';
     const isOwner = creation.owner?.toString() === req.user?._id?.toString();
     const isElevated = req.user && (req.user.role === 'admin' || req.user.role === 'manager');
+    const isStudent = req.user?.role === 'student';
     
-    if (!((isTeacher && isOwner) || isElevated)) {
+    if (!((isTeacher && isOwner) || isElevated || isStudent)) {
       return res.status(403).json({ message: 'Not authorized to view stats for this game.' });
     }
 
     // Check TTL Cache
-    const cacheKey = gameCreationId.toString();
+    const cacheKey = `${gameCreationId}_${req.query.assignmentId || ''}_${req.query.classId || ''}_${req.query.sessionId || ''}_${req.query.startDate || ''}_${req.query.endDate || ''}_${isStudent ? req.user._id : ''}`;
     const cached = globalStatsCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp < STATS_CACHE_TTL_MS)) {
       return res.status(200).json(cached.data);
@@ -418,6 +456,8 @@ const getGameGlobalStats = async (req, res) => {
     const options = {
       assignmentId: req.query.assignmentId,
       classId: req.query.classId,
+      liveSessionId: req.query.sessionId,
+      studentId: isStudent ? req.user._id : undefined,
       dateRange: (req.query.startDate || req.query.endDate) ? {
         start: req.query.startDate,
         end: req.query.endDate
@@ -631,6 +671,8 @@ module.exports.getMyRecentLiveResults = async (req, res) => {
       code: r.liveSessionId?.code || null,
       percentage: r.totalPossibleScore > 0 ? Math.round((r.score / r.totalPossibleScore) * 100) : 0,
       createdAt: r.createdAt,
+      gameCreationId: r.gameCreation?._id || r.gameCreation,
+      sessionId: r.liveSessionId?._id || r.liveSessionId,
     }));
     res.json(mapped);
   } catch (err) {

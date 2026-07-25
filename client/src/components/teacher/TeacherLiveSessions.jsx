@@ -252,51 +252,78 @@ const TeacherLiveSessions = () => {
               {!quickResults.loading && !quickResults.error && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500">Participants</p>
-                      <p className="text-lg font-semibold">{quickResults.ranks.length}</p>
+                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col items-center">
+                      <p className="text-xs text-gray-500 font-bold uppercase mb-1">Participants</p>
+                      <p className="text-xl font-black text-gray-800">{quickResults.ranks.length}</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">{t.status}</p>
-                      <p className="text-lg font-semibold capitalize">{quickResults.session?.status || '-'}</p>
+                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col items-center">
+                      <p className="text-xs text-gray-500 font-bold uppercase mb-1">{t.status}</p>
+                      <p className="text-xl font-black text-gray-800 capitalize">{quickResults.session?.status || '-'}</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Code</p>
-                      <p className="text-lg font-mono">{quickResults.session?.code || '-'}</p>
+                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col items-center">
+                      <p className="text-xs text-gray-500 font-bold uppercase mb-1">Code</p>
+                      <p className="text-xl font-black text-gray-800 font-mono tracking-wider">{quickResults.session?.code || '-'}</p>
                     </div>
                   </div>
                   {quickResults.ranks.length === 0 ? (
-                    <div className="text-sm text-gray-600">No results recorded.</div>
+                    <div className="text-sm text-gray-600 py-8 text-center">No results recorded yet.</div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-gray-100 text-gray-700">
-                          <tr>
-                            <th className="px-3 py-2 text-left">#</th>
-                            <th className="px-3 py-2 text-left">{t.fullName || "Name"}</th>
-                            <th className="px-3 py-2 text-left">Score</th>
-                            <th className="px-3 py-2 text-left">Time</th>
-                            <th className="px-3 py-2 text-left">Wrong</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {quickResults.ranks.slice(0, 10).map((r, i) => (
-                            <tr key={`${r.studentId || r.userId || i}`} className="border-t border-gray-100">
-                              <td className="px-3 py-2">{i + 1}</td>
-                              <td className="px-3 py-2">{[r.firstName, r.lastName].filter(Boolean).join(' ') || r.name || r.userId || '-'}</td>
-                              <td className="px-3 py-2">{r.score ?? 0}</td>
-                              <td className="px-3 py-2">{Number.isFinite(r.effectiveTimeMs) ? `${Math.round(r.effectiveTimeMs / 100) / 10}s` : '-'}</td>
-                              <td className="px-3 py-2">{r.wrong ?? 0}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {quickResults.ranks.length > 10 && (
-                        <div className="text-xs text-gray-500 mt-2">Showing top 10 of {quickResults.ranks.length}</div>
+                    <div className="mt-4">
+                      {/* Top 3 Podium View */}
+                      <div className="flex justify-center items-end gap-2 md:gap-4 mb-6 pt-8 h-40">
+                        {[1, 0, 2].map(podiumIndex => {
+                          const r = quickResults.ranks[podiumIndex];
+                          if (!r) return <div key={podiumIndex} className="w-1/3 max-w-[100px]" />;
+                          const isFirst = podiumIndex === 0;
+                          const isSecond = podiumIndex === 1;
+                          const height = isFirst ? 'h-full' : isSecond ? 'h-4/5' : 'h-3/5';
+                          const colors = isFirst 
+                            ? 'from-amber-300 to-yellow-500 border-yellow-400' 
+                            : isSecond 
+                              ? 'from-gray-300 to-gray-400 border-gray-400'
+                              : 'from-orange-300 to-orange-500 border-orange-400';
+                          return (
+                            <div key={podiumIndex} className={`w-1/3 max-w-[100px] flex flex-col items-center ${height}`}>
+                              <div className="text-center w-full truncate px-1 font-bold text-gray-700 text-xs md:text-sm mb-2">
+                                {[r.firstName, r.lastName].filter(Boolean).join(' ') || r.name || r.userId || '-'}
+                              </div>
+                              <div className="text-xs font-black text-gray-500 mb-1">{r.score ?? 0} pts</div>
+                              <div className={`w-full bg-gradient-to-t ${colors} rounded-t-xl border-t-2 border-l border-r flex-1 flex justify-center pt-2 shadow-inner shadow-white/30`}>
+                                <span className="text-white font-black text-xl drop-shadow-md">{podiumIndex + 1}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Remaining Students */}
+                      {quickResults.ranks.length > 3 && (
+                        <div className="max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
+                          <table className="min-w-full text-sm">
+                            <thead className="bg-gray-100 text-gray-600 sticky top-0 shadow-sm z-10">
+                              <tr>
+                                <th className="px-4 py-3 text-left font-bold rounded-tl-lg">#</th>
+                                <th className="px-4 py-3 text-left font-bold">{t.fullName || "Name"}</th>
+                                <th className="px-4 py-3 text-right font-bold">Score</th>
+                                <th className="px-4 py-3 text-right font-bold rounded-tr-lg">Time</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {quickResults.ranks.slice(3).map((r, i) => (
+                                <tr key={`${r.studentId || r.userId || i}`} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-gray-500 font-bold">{i + 4}</td>
+                                  <td className="px-4 py-3 font-semibold text-gray-800">{[r.firstName, r.lastName].filter(Boolean).join(' ') || r.name || r.userId || '-'}</td>
+                                  <td className="px-4 py-3 text-right text-indigo-600 font-black">{r.score ?? 0}</td>
+                                  <td className="px-4 py-3 text-right text-gray-500">{Number.isFinite(r.effectiveTimeMs) ? `${Math.round(r.effectiveTimeMs / 100) / 10}s` : '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                     </div>
                   )}
-                  <div className="flex items-center justify-end gap-2 pt-2">
+                  <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 mt-4">
                     {getSessionGameCreationId(quickResults.session) && (
                       <button
                         onClick={() => {
@@ -305,13 +332,12 @@ const TeacherLiveSessions = () => {
                           closeQuickResults();
                           navigate(`/teacher/results/${creationId}?sessionId=${id}`);
                         }}
-                        className="px-3 py-2 text-sm rounded-md border"
+                        className="flex-1 md:flex-none px-6 py-2.5 text-sm font-bold rounded-xl text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors border border-indigo-200"
                       >
-                        Open Results
+                        View Full Statistics
                       </button>
                     )}
-                    <button onClick={() => { const id = quickResults.id; closeQuickResults(); navigate(`/teacher/live-sessions/${id}`); }} className="px-3 py-2 text-sm rounded-md border">Open Full Summary</button>
-                    <button onClick={closeQuickResults} className="px-3 py-2 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700">Close</button>
+                    <button onClick={closeQuickResults} className="flex-1 md:flex-none px-6 py-2.5 text-sm font-bold rounded-xl bg-gray-900 text-white hover:bg-gray-800 shadow-md">Close</button>
                   </div>
                 </>
               )}
@@ -533,9 +559,6 @@ const TeacherLiveSessions = () => {
                     <div className="flex items-center space-x-2">
                       <button title="Quick Results" aria-label="Quick results" onClick={() => openQuickResults(key, title)} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300">
                         <Trophy className="w-4 h-4" />
-                      </button>
-                      <button title="View Summary" aria-label="View summary" onClick={() => navigate(`/teacher/live-sessions/${key}`)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">
-                        <Eye className="w-4 h-4" />
                       </button>
                       <button title="Delete Session" aria-label="Delete session" onClick={() => setConfirmDelete({ open: true, id: key, title })} className="p-2 text-red-600 hover:bg-red-50 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300">
                         <Trash className="w-4 h-4" />

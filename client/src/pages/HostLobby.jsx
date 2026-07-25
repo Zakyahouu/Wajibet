@@ -40,6 +40,14 @@ const HostLobby = () => {
   };
 
   useEffect(() => {
+    return () => {
+      if (socket && roomCode) {
+        socket.emit('leave-room', roomCode);
+      }
+    };
+  }, [socket, roomCode]);
+
+  useEffect(() => {
     let mounted = true;
     if (!socket) return () => { mounted = false; };
 
@@ -262,9 +270,41 @@ const HostLobby = () => {
             ) : (
               <ol className="space-y-2">
                 {ranks.slice(0, 10).map((r, i) => (
-                  <li key={`${r.userId}-${i}`} className="bg-gray-700 p-3 rounded-md text-sm flex items-center justify-between">
-                    <span className="text-gray-300">{i+1}. {r.name || r.userId}</span>
-                    <span className="text-gray-400">Score {r.score} • Time {(r.effectiveTimeMs/1000).toFixed(1)}s • Wrong {r.wrong||0}</span>
+                  <li key={`${r.userId}-${i}`} className="bg-gray-700 p-3 rounded-md text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300 font-bold w-6">{i+1}.</span>
+                      <span className="text-gray-100 font-medium truncate max-w-[120px]">{r.name || r.userId}</span>
+                      
+                      {r.status === 'disconnected' && (
+                        <span className="px-2 py-0.5 text-xs font-semibold rounded bg-red-900/50 text-red-300 border border-red-700/50">
+                          Disconnected
+                        </span>
+                      )}
+                      {r.status === 'finished' && (
+                        <span className="px-2 py-0.5 text-xs font-semibold rounded bg-green-900/50 text-green-300 border border-green-700/50">
+                          Finished
+                        </span>
+                      )}
+                      {r.status === 'active' && (
+                        <span className="px-2 py-0.5 text-xs font-semibold rounded bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                          Playing (Q{r.currentItemIndex + 1})
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="flex flex-col items-end">
+                        <span className="text-gray-400 font-semibold tracking-wide uppercase text-[10px]">Score</span>
+                        <span className="text-amber-400 font-bold">{r.score}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-gray-400 font-semibold tracking-wide uppercase text-[10px]">Time</span>
+                        <span className="text-gray-200">{(r.effectiveTimeMs/1000).toFixed(1)}s</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-gray-400 font-semibold tracking-wide uppercase text-[10px]">Wrong</span>
+                        <span className={r.wrong > 0 ? "text-red-400" : "text-gray-200"}>{r.wrong||0}</span>
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ol>

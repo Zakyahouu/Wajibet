@@ -523,30 +523,67 @@ const TeacherAssignments = () => {
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-200">
-                        {studentsList.map(s => (
-                          <div key={s.id} className="p-4 hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                                  <span className="text-white font-bold text-sm">{(s.name || 'S').slice(0, 1).toUpperCase()}</span>
+                        {(() => {
+                          const finished = studentsList.filter(s => s.submitted);
+                          const pending = studentsList.filter(s => !s.submitted);
+                          return (
+                            <>
+                              {finished.length > 0 && (
+                                <div className="bg-gray-50 px-4 py-2 border-y border-gray-200">
+                                  <h5 className="text-sm font-bold text-gray-700">Finished ({finished.length})</h5>
                                 </div>
-                                <div>
-                                  <h5 className="font-semibold text-gray-900">{s.name || 'Student'}</h5>
-                                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                                    <span>Attempts: <span className="font-medium text-gray-700">{s.attemptCount || 0}</span></span>
-                                    <span>Best Score: <span className="font-medium text-gray-700">{s.bestPercentage ?? 0}%</span></span>
+                              )}
+                              {finished.map(s => (
+                                <div key={s.id} className="p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                                        <span className="text-white font-bold text-sm">{(s.name || 'S').slice(0, 1).toUpperCase()}</span>
+                                      </div>
+                                      <div>
+                                        <h5 className="font-semibold text-gray-900">{s.name || 'Student'}</h5>
+                                        <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                                          <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-xs">Submitted</span>
+                                          <span>Attempts: <span className="font-medium text-gray-700">{s.attemptCount || 0}</span></span>
+                                          <span>Best Score: <span className="font-medium text-gray-700">{s.bestPercentage ?? 0}%</span></span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      className="px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors"
+                                      onClick={() => openAttemptsForStudent(s)}
+                                    >
+                                      View Details
+                                    </button>
                                   </div>
                                 </div>
-                              </div>
-                              <button
-                                className="px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors"
-                                onClick={() => openAttemptsForStudent(s)}
-                              >
-                                View Details
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                              ))}
+                              
+                              {pending.length > 0 && (
+                                <div className="bg-gray-50 px-4 py-2 border-y border-gray-200">
+                                  <h5 className="text-sm font-bold text-gray-700">Not Finished ({pending.length})</h5>
+                                </div>
+                              )}
+                              {pending.map(s => (
+                                <div key={s.id} className="p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0 opacity-60">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center">
+                                        <span className="text-gray-500 font-bold text-sm">{(s.name || 'S').slice(0, 1).toUpperCase()}</span>
+                                      </div>
+                                      <div>
+                                        <h5 className="font-semibold text-gray-900">{s.name || 'Student'}</h5>
+                                        <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                                          <span className="text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded text-xs">Pending</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

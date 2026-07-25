@@ -3,9 +3,184 @@ const LiveParticipant = require('../models/LiveParticipant');
 const LiveSession = require('../models/LiveSession');
 const Enrollment = require('../models/Enrollment');
 const Class = require('../models/Class');
+const GameCreation = require('../models/GameCreation');
 
 module.exports = function (io) {
   if (!io) return;
+
+  // Background Finalizer loop handles timeouts
+  let flusherInterval = setInterval(async () => {
+    try {
+      for (const code of Object.keys(liveGames)) {
+        const room = liveGames[code];
+        if (!room || !room.sessionId) continue;
+        
+        let hasActive = false;
+        let hasDisconnected = false;
+        let allFinishedOrDisconnected = true;
+        
+        for (const player of room.players) {
+          if (player.stats && player.stats.status === 'active') hasActive = true;
+          if (player.stats && player.stats.status === 'disconnected') hasDisconnected = true;
+          if (player.stats && player.stats.status !== 'finished' && player.stats.status !== 'disconnected') allFinishedOrDisconnected = false;
+
+          // 1. Process dirty stats
+          if (player.stats && player.stats.dirty) {
+            player.stats.dirty = false; // clear flag before save to prevent race conditions
+            await LiveParticipant.findOneAndUpdate(
+              { sessionId: room.sessionId, studentId: player.userId },
+              { $set: {
+                score: player.stats.score,
+                correct: player.stats.correct,
+                wrong: player.stats.wrong,
+                effectiveTimeMs: player.stats.effectiveTimeMs,
+                currentItemIndex: player.stats.currentItemIndex,
+                currentItemStartedAt: player.stats.currentItemStartedAt,
+                status: player.stats.status,
+                pausedRemainingMs: player.stats.pausedRemainingMs,
+                accumulatedPauseMs: player.stats.accumulatedPauseMs,
+                leftAt: player.stats.status === 'disconnected' ? new Date() : undefined
+              } }
+            ).catch(err => {
+              console.error('[socket] Background save failed for', player.userId, err);
+              player.stats.dirty = true; // retry next tick
+            });
+          }
+        }
+
+        // 2. Ghost eviction
+        if (!hasActive && hasDisconnected && allFinishedOrDisconnected) {
+          if (!room.emptySince) {
+            room.emptySince = Date.now();
+          } else if (Date.now() - room.emptySince > 60000) {
+            console.log(`[socket] Room ${code} ghost eviction triggered. Finishing disconnected players.`);
+            for (const player of room.players) {
+              if (player.stats && player.stats.status === 'disconnected') {
+                player.stats.status = 'finished';
+                player.stats.dirty = true;
+                await LiveParticipant.findOneAndUpdate(
+                  { sessionId: room.sessionId, studentId: player.userId },
+                  { $set: { status: 'finished', finishedAt: new Date() } }
+                );
+              }
+            }
+            // The room will be auto-ended by the 'live:finish' check soon, but we can force it:
+            setTimeout(async () => {
+              try {
+                const session = await LiveSession.findById(room.sessionId);
+                if (session && session.status !== 'ended') {
+                  session.status = 'ended';
+                  session.endedAt = new Date();
+                  await session.save();
+                }
+                io.to(code).emit('game-ended', { sessionId: room.sessionId, autoEnded: true });
+                delete liveGames[code];
+              } catch (e) {
+                console.error('[socket] Auto-end failed:', e);
+              }
+            }, 3000);
+          }
+        } else {
+          room.emptySince = null;
+        }
+      }
+    } catch (e) {
+      console.error('[socket] background flusher error:', e);
+    }
+  }, 4000);
+
+  // Real-time ticking leaderboard for the Host dashboard
+  let tickerInterval = setInterval(() => {
+    try {
+      for (const code of Object.keys(liveGames)) {
+        const room = liveGames[code];
+        // Only tick and emit if the game is actually running
+        if (!room || !room.sessionId || room.status !== 'running') continue;
+        
+        let hasActivePlayer = false;
+        const now = Date.now();
+        
+        const ranks = room.players
+          .filter(p => p.stats)
+          .map(p => {
+            let liveTime = p.stats.effectiveTimeMs || 0;
+            // Add real-time ticking if they are active on a question
+            if (p.stats.status === 'active' && p.stats.currentItemStartedAt) {
+              hasActivePlayer = true;
+              const elapsed = now - new Date(p.stats.currentItemStartedAt).getTime();
+              if (elapsed > 0) {
+                liveTime += elapsed;
+              }
+            }
+            
+            return {
+              userId: String(p.userId),
+              name: p.name || 'Unknown',
+              score: p.stats.score || 0,
+              correct: p.stats.correct || 0,
+              wrong: p.stats.wrong || 0,
+              effectiveTimeMs: liveTime,
+              finishedAt: p.stats.finishedAt,
+              status: p.stats.status || 'active',
+              currentItemIndex: p.stats.currentItemIndex || 0
+            };
+          })
+          .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
+            return (a.wrong || 0) - (b.wrong || 0);
+          });
+          
+        // Emit only if there are active players ticking up time
+        if (hasActivePlayer) {
+          io.to(code).emit('live:scoreboard', { ranks });
+        }
+      }
+    } catch (e) {
+      console.error('[socket] live ticker error:', e);
+    }
+  }, 1000);
+
+  // Graceful shutdown flush
+  const shutdown = async () => {
+    console.log('[socket] SIGTERM/SIGINT received, flushing sockets...');
+    clearInterval(flusherInterval);
+    clearInterval(tickerInterval);
+    // Flush all players immediately
+    for (const code of Object.keys(liveGames)) {
+      const room = liveGames[code];
+      if (!room || !room.sessionId) continue;
+      for (const player of room.players) {
+        if (player.stats && player.stats.status === 'active') {
+          await LiveParticipant.findOneAndUpdate(
+            { sessionId: room.sessionId, studentId: player.userId },
+            { $set: { 
+              status: 'disconnected', 
+              pausedRemainingMs: player.stats.pausedRemainingMs, 
+              accumulatedPauseMs: player.stats.accumulatedPauseMs,
+              score: player.stats.score,
+              currentItemIndex: player.stats.currentItemIndex,
+              leftAt: new Date()
+            } }
+          );
+        } else if (player.stats && player.stats.dirty) {
+          await LiveParticipant.findOneAndUpdate(
+            { sessionId: room.sessionId, studentId: player.userId },
+            { $set: { 
+              status: player.stats.status, 
+              pausedRemainingMs: player.stats.pausedRemainingMs, 
+              accumulatedPauseMs: player.stats.accumulatedPauseMs,
+              score: player.stats.score,
+              currentItemIndex: player.stats.currentItemIndex,
+            } }
+          );
+        }
+      }
+    }
+    process.exit(0);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   io.on('connection', (socket) => {
     console.log('[socket] connected', socket.id);
@@ -39,20 +214,51 @@ module.exports = function (io) {
             return;
           }
         }
-        const room = liveGames[code] = liveGames[code] || { players: [], sessionId: null, gameCreationId: null, status: 'lobby' };
+        
+        let config = { itemPauseCapMs: 120000, maxPauseCycles: 2, rejoinWindowMs: 600000 };
+        if (gameCreationId) {
+          const creation = await GameCreation.findById(gameCreationId).select('itemPauseCapMs maxPauseCycles rejoinWindowMs').lean();
+          if (creation) {
+            config.itemPauseCapMs = creation.itemPauseCapMs ?? 120000;
+            config.maxPauseCycles = creation.maxPauseCycles ?? 2;
+            config.rejoinWindowMs = creation.rejoinWindowMs ?? 600000;
+          }
+        }
+
+        const room = liveGames[code] = liveGames[code] || { players: [], sessionId: null, gameCreationId: null, status: 'lobby', config };
         room.sessionId = sessionId || room.sessionId;
         room.gameCreationId = gameCreationId || room.gameCreationId;
         room.hostUserId = socket.user._id;
         room.status = room.status === 'running' || session?.status === 'running' ? 'running' : 'lobby';
-        // join the socket to the room so emits can target it
         socket.join(code);
-
-        // Send room-created to host only
         io.to(socket.id).emit('room-created', code);
-
-        // Notify any listeners about current players (likely empty at host creation)
-        io.to(code).emit('player-joined', room.players.slice());
-        console.log('[socket] host-game -> created room', code);
+        io.to(socket.id).emit('player-joined', room.players.slice());
+        
+        if (room.status === 'running') {
+          io.to(socket.id).emit('game-started', { gameCreationId: room.gameCreationId });
+          
+          const ranks = room.players
+            .filter(p => p.stats)
+            .map(p => ({
+              userId: String(p.userId),
+              name: p.name || 'Unknown',
+              score: p.stats.score || 0,
+              correct: p.stats.correct || 0,
+              wrong: p.stats.wrong || 0,
+              effectiveTimeMs: p.stats.effectiveTimeMs || 0,
+              finishedAt: p.stats.finishedAt,
+              status: p.stats.status || 'active',
+              currentItemIndex: p.stats.currentItemIndex || 0
+            }))
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
+              return (a.wrong || 0) - (b.wrong || 0);
+            });
+          io.to(socket.id).emit('live:scoreboard', { ranks });
+        }
+        
+        console.log('[socket] host-game -> created/rejoined room', code, room.status);
       } catch (e) { console.error('host-game handler failed', e); }
     });
 
@@ -94,7 +300,6 @@ module.exports = function (io) {
           }
         }
 
-        // add or update player in memory
         const existing = room.players.find(p => String(p.userId) === String(verifiedUserId));
         let isRejoining = false;
         
@@ -106,8 +311,7 @@ module.exports = function (io) {
             stats: {
               score: 0, correct: 0, wrong: 0, effectiveTimeMs: 0,
               currentItemIndex: 0, currentItemStartedAt: new Date(),
-              status: 'active', pausedRemainingMs: 0, accumulatedPauseMs: 0,
-              dirty: false
+              status: 'active', pausedRemainingMs: 0, pauseCyclesUsed: 0
             }
           };
           room.players.push(player);
@@ -116,53 +320,25 @@ module.exports = function (io) {
           existing.name = playerName;
           
           if (existing.stats && existing.stats.status === 'disconnected') {
-            isRejoining = true;
-            // Calculate pause abuse guard
-            const disconnectDurationMs = Date.now() - new Date(existing.stats.disconnectedAt).getTime();
-            existing.stats.accumulatedPauseMs = (existing.stats.accumulatedPauseMs || 0) + disconnectDurationMs;
-            
-            if (existing.stats.accumulatedPauseMs > 120000) {
-              existing.stats.currentItemIndex = (existing.stats.currentItemIndex || 0) + 1;
-              existing.stats.currentItemStartedAt = new Date();
-              existing.stats.pausedRemainingMs = 0;
-              existing.stats.accumulatedPauseMs = 0;
-              console.log('[socket] Player exceeded pause cap on rejoin. Auto-skipped item.');
-            } else {
-               existing.stats.currentItemStartedAt = new Date(Date.now() - (existing.stats.pausedRemainingMs || 0));
-            }
-            existing.stats.status = 'active';
-            existing.stats.dirty = true;
+            socket.emit('join-error', 'You are already in this room. Please use the Rejoin button.');
+            return;
           } else if (!existing.stats) {
             existing.stats = {
               score: 0, correct: 0, wrong: 0, effectiveTimeMs: 0,
               currentItemIndex: 0, currentItemStartedAt: new Date(),
-              status: 'active', pausedRemainingMs: 0, accumulatedPauseMs: 0,
-              dirty: false
+              status: 'active', pausedRemainingMs: 0, pauseCyclesUsed: 0
             };
           }
         }
         socket.join(roomCode);
 
         let resumeState = null;
-        if (isRejoining && existing) {
-          // Resume contract: { currentItemIndex, currentScore, elapsedMs }.
-          // elapsedMs = time already spent on the current item before the drop;
-          // the engine subtracts it from its own per-item budget to resume the timer.
-          resumeState = {
-            currentItemIndex: existing.stats.currentItemIndex,
-            currentScore: existing.stats.score,
-            elapsedMs: existing.stats.pausedRemainingMs
-          };
-          socket.emit('live:resume-state', resumeState);
-        }
 
-        // ✅ Create or update LiveParticipant in database
         if (room.sessionId && verifiedUserId) {
           try {
             const User = require('../models/User');
             const student = await User.findById(verifiedUserId).select('firstName lastName').lean();
 
-            // Create or update participant record
             await LiveParticipant.findOneAndUpdate(
               { sessionId: room.sessionId, studentId: verifiedUserId },
               {
@@ -178,7 +354,8 @@ module.exports = function (io) {
                   correct: 0,
                   wrong: 0,
                   rawTimeMs: 0,
-                  effectiveTimeMs: 0
+                  effectiveTimeMs: 0,
+                  pauseCyclesUsed: 0
                 }
               },
               { upsert: true, new: true }
@@ -231,7 +408,6 @@ module.exports = function (io) {
 
         let finalRanks = [];
 
-        // Update session status in database
         if (room.sessionId) {
           try {
             const session = await LiveSession.findById(room.sessionId);
@@ -246,7 +422,6 @@ module.exports = function (io) {
             console.error('[socket] Failed to update session status:', e);
           }
 
-          // Fetch final leaderboard from DB
           try {
             const allParticipants = await LiveParticipant.find({
               sessionId: room.sessionId
@@ -262,7 +437,9 @@ module.exports = function (io) {
                   correct: p.correct || 0,
                   wrong: p.wrong || 0,
                   effectiveTimeMs: p.effectiveTimeMs || 0,
-                  finishedAt: p.finishedAt
+                  finishedAt: p.finishedAt,
+                  status: p.status || 'active',
+                  currentItemIndex: p.currentItemIndex || 0
                 };
               })
               .sort((a, b) => {
@@ -271,7 +448,6 @@ module.exports = function (io) {
                 return (a.wrong || 0) - (b.wrong || 0);
               });
 
-            // Emit final scoreboard
             io.to(roomCode).emit('live:scoreboard', { ranks: finalRanks });
           } catch (e) {
             console.error('[socket] Failed to fetch final leaderboard:', e);
@@ -279,48 +455,83 @@ module.exports = function (io) {
         }
 
         io.to(roomCode).emit('game-ended', { sessionId: room.sessionId, ranks: finalRanks });
-        // remove live game state
         try { delete liveGames[roomCode]; } catch { }
         console.log('[socket] end-game ->', roomCode);
       } catch (e) { console.error('end-game handler failed', e); }
     });
 
-    // ✅ Handle live answer submissions from players
-    socket.on('live:answer', async ({ roomCode, userId, correct, deltaMs, scoreDelta, currentScore } = {}) => {
+    socket.on('live:answer', async ({ roomCode, answers } = {}) => {
       try {
         const room = liveGames[roomCode];
         if (!room || !room.sessionId) return;
-        if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) return;
+        if (socket.user?.role !== 'student') return;
+        
+        const userId = socket.user._id;
+        console.log(`\n[WAJIBET_V2] [socket] LIVE:ANSWER RECEIVED -> room: ${roomCode}, user: ${userId}`);
+        console.log(`[WAJIBET_V2] [socket] Raw Answers Payload:`, JSON.stringify(answers, null, 2));
 
-        console.log('[socket] live:answer ->', { roomCode, userId, correct, deltaMs, scoreDelta, currentScore });
+        if (!Array.isArray(answers) || answers.length === 0) return;
 
-        // Update participant record in memory
         try {
           const player = room.players.find(p => String(p.userId) === String(userId));
           if (player && player.stats) {
-            // Update stats
-            if (correct) {
-              player.stats.correct = (player.stats.correct || 0) + 1;
-            } else {
-              player.stats.wrong = (player.stats.wrong || 0) + 1;
-            }
-
-            if (typeof currentScore === 'number') {
-              player.stats.score = currentScore;
-            } else if (typeof scoreDelta === 'number') {
-              player.stats.score = (player.stats.score || 0) + scoreDelta;
-            }
-
-            // Add time penalty for wrong answers (3 seconds per wrong)
-            const timePenaltyMs = correct ? 0 : 3000;
-            player.stats.effectiveTimeMs = (player.stats.effectiveTimeMs || 0) + deltaMs + timePenaltyMs;
             
-            // Advance pacing
-            player.stats.currentItemIndex = (player.stats.currentItemIndex || 0) + 1;
-            player.stats.currentItemStartedAt = new Date();
-            player.stats.dirty = true; // Mark for background save
+            let totalCorrect = 0;
+            let totalWrong = 0;
+            let totalTimeMs = 0;
+            let totalScore = 0;
 
-            // Calculate ranks entirely in-memory
+            // Process the V2 array
+            for (const answer of answers) {
+              if (answer.isCorrect) totalCorrect++;
+              else totalWrong++;
+              
+              totalScore += (answer.score || 0);
+              
+              // 3 second penalty for wrong answers to discourage spamming
+              const timePenaltyMs = answer.isCorrect ? 0 : 3000;
+              totalTimeMs += (answer.timeMs || 0) + timePenaltyMs;
+              
+              // Store the detailed answer for the DB
+              if (!player.stats.answers) player.stats.answers = [];
+              player.stats.answers.push(answer);
+            }
+
+            player.stats.correct = (player.stats.correct || 0) + totalCorrect;
+            player.stats.wrong = (player.stats.wrong || 0) + totalWrong;
+            player.stats.score = (player.stats.score || 0) + totalScore;
+            player.stats.effectiveTimeMs = (player.stats.effectiveTimeMs || 0) + totalTimeMs;
+            
+            player.stats.currentItemIndex = (player.stats.currentItemIndex || 0) + answers.length;
+            player.stats.currentItemStartedAt = new Date();
+            player.stats.pauseCyclesUsed = 0; 
+            
+            console.log(`[WAJIBET_V2] [socket] Calculated -> Score += ${totalScore}, Time += ${totalTimeMs}ms`);
+            console.log(`[WAJIBET_V2] [socket] New Totals -> Score: ${player.stats.score}, Time: ${player.stats.effectiveTimeMs}ms, Index: ${player.stats.currentItemIndex}`);
+
+            if (room.sessionId) {
+              await LiveParticipant.findOneAndUpdate(
+                { sessionId: room.sessionId, studentId: userId },
+                {
+                  $inc: { 
+                    correct: totalCorrect, 
+                    wrong: totalWrong, 
+                    effectiveTimeMs: totalTimeMs 
+                  },
+                  $set: { 
+                    score: player.stats.score, 
+                    currentItemIndex: player.stats.currentItemIndex, 
+                    currentItemStartedAt: player.stats.currentItemStartedAt,
+                    pauseCyclesUsed: 0,
+                    lastPingAt: new Date()
+                  },
+                  $push: {
+                    answers: { $each: answers }
+                  }
+                }
+              ).catch(e => console.error('[WAJIBET_V2] [socket] DB write failed', e));
+            }
+
             const ranks = room.players
               .filter(p => p.stats)
               .map(p => ({
@@ -330,7 +541,9 @@ module.exports = function (io) {
                 correct: p.stats.correct || 0,
                 wrong: p.stats.wrong || 0,
                 effectiveTimeMs: p.stats.effectiveTimeMs || 0,
-                finishedAt: p.stats.finishedAt
+                finishedAt: p.stats.finishedAt,
+                status: p.stats.status || 'active',
+                currentItemIndex: p.stats.currentItemIndex || 0
               }))
               .sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
@@ -338,29 +551,66 @@ module.exports = function (io) {
                 return (a.wrong || 0) - (b.wrong || 0);
               });
 
-            // Emit updated scoreboard to everyone in the room
             io.to(roomCode).emit('live:scoreboard', { ranks });
-          } else {
-            console.warn('[socket] live:answer - participant not found in memory:', { roomCode, userId });
           }
         } catch (e) {
           console.error('[socket] Failed to update participant in memory:', e);
         }
       } catch (e) {
-        console.error('[socket] live:answer handler failed', e);
+        console.error('live:answer handler failed', e);
       }
     });
 
-    // ✅ Handle when a player finishes the game
+    socket.on('live:finish', async ({ roomCode, userId }) => {
+      try {
+        const room = liveGames[roomCode];
+        if (!room || !room.sessionId) return;
+        
+        const player = room.players.find(p => String(p.userId) === String(userId));
+        if (player && player.stats) {
+          player.stats.finishedAt = new Date();
+          
+          if (room.sessionId) {
+            await LiveParticipant.findOneAndUpdate(
+              { sessionId: room.sessionId, studentId: userId },
+              { $set: { finishedAt: player.stats.finishedAt } }
+            ).catch(e => console.error('[WAJIBET_V2] [socket] finish write failed', e));
+          }
+          
+          const ranks = room.players
+            .filter(p => p.stats)
+            .map(p => ({
+              userId: String(p.userId),
+              name: p.name || 'Unknown',
+              score: p.stats.score || 0,
+              correct: p.stats.correct || 0,
+              wrong: p.stats.wrong || 0,
+              effectiveTimeMs: p.stats.effectiveTimeMs || 0,
+              finishedAt: p.stats.finishedAt
+            }))
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
+              return (a.wrong || 0) - (b.wrong || 0);
+            });
+
+          io.to(roomCode).emit('live:scoreboard', { ranks });
+          console.log(`[WAJIBET_V2] [socket] Player Finished -> room: ${roomCode}, user: ${userId}`);
+        }
+      } catch (e) {
+        console.error('live:finish handler failed', e);
+      }
+    });
+
     socket.on('live:finish', async ({ roomCode, userId, totalTimeMs, score, correct, wrong } = {}) => {
       try {
         const room = liveGames[roomCode];
         if (!room || !room.sessionId) return;
-        if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) return;
+        if (socket.user?.role !== 'student') return;
 
-        console.log('[socket] live:finish ->', { roomCode, userId, totalTimeMs, score, correct, wrong });
+        console.log(`\n[WAJIBET_V2] [socket] LIVE:FINISH RECEIVED -> room: ${roomCode}, user: ${userId}`);
+        console.log(`[WAJIBET_V2] [socket] Engine Payload -> Score: ${score}, Correct: ${correct}, Wrong: ${wrong}, totalTimeMs: ${totalTimeMs}`);
 
-        // Mark participant as finished and set final stats
         try {
           const participant = await LiveParticipant.findOne({
             sessionId: room.sessionId,
@@ -369,27 +619,31 @@ module.exports = function (io) {
 
           if (participant) {
             participant.finishedAt = participant.finishedAt || new Date();
-            // Set final score data from GAME_COMPLETE
+            participant.status = 'finished';
+            
+            // We NO LONGER overwrite effectiveTimeMs from the engine's totalTimeMs. 
+            // We trust the backend's live:answer calculation instead to prevent 0s bugs.
+            
             if (typeof score === 'number') participant.score = score;
             if (typeof correct === 'number') participant.correct = correct;
             if (typeof wrong === 'number') participant.wrong = wrong;
-            if (typeof totalTimeMs === 'number') {
-              participant.effectiveTimeMs = totalTimeMs;
-            }
+            
             await participant.save();
-            console.log('[socket] LiveParticipant updated:', { score: participant.score, correct: participant.correct, wrong: participant.wrong });
+            
+            console.log(`[WAJIBET_V2] [socket] DB Saved! Final Backend Time: ${participant.effectiveTimeMs}ms`);
 
-            // Check if all participants have finished
+            const player = room.players.find(p => String(p.userId) === String(userId));
+            if (player && player.stats) {
+               player.stats.status = 'finished';
+               player.stats.finishedAt = participant.finishedAt;
+               player.stats.score = participant.score;
+            }
+
             const allParticipants = await LiveParticipant.find({
               sessionId: room.sessionId
             }).lean();
 
             const allFinished = allParticipants.every(p => p.finishedAt);
-            const finishedCount = allParticipants.filter(p => p.finishedAt).length;
-
-            console.log('[socket] Participants finished:', finishedCount, '/', allParticipants.length);
-
-            // Emit final scoreboard
             const ranks = allParticipants
               .map(p => {
                 const pName = p.firstName ? [p.firstName, p.lastName].filter(Boolean).join(' ') : 'Unknown';
@@ -400,7 +654,9 @@ module.exports = function (io) {
                   correct: p.correct || 0,
                   wrong: p.wrong || 0,
                   effectiveTimeMs: p.effectiveTimeMs || 0,
-                  finishedAt: p.finishedAt
+                  finishedAt: p.finishedAt,
+                  status: p.status || 'active',
+                  currentItemIndex: p.currentItemIndex || 0
                 };
               })
               .sort((a, b) => {
@@ -411,9 +667,7 @@ module.exports = function (io) {
 
             io.to(roomCode).emit('live:scoreboard', { ranks });
 
-            // If all finished, auto-end the session after a short delay
             if (allFinished) {
-              console.log('[socket] All participants finished! Auto-ending session in 3 seconds...');
               setTimeout(async () => {
                 try {
                   const session = await LiveSession.findById(room.sessionId);
@@ -425,7 +679,6 @@ module.exports = function (io) {
                   }
                   io.to(roomCode).emit('game-ended', { sessionId: room.sessionId, autoEnded: true });
                   delete liveGames[roomCode];
-                  console.log('[socket] Session auto-ended:', room.sessionId);
                 } catch (e) {
                   console.error('[socket] Auto-end failed:', e);
                 }
@@ -440,15 +693,14 @@ module.exports = function (io) {
       }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       try {
-        console.log('[socket] disconnected', socket.id);
+        console.log(`[WAJIBET_V2] [socket] DISCONNECT DETECTED -> socket: ${socket.id}`);
         for (const code of Object.keys(liveGames)) {
           const room = liveGames[code];
           
           if (room.hostUserId && socket.user && String(room.hostUserId) === String(socket.user._id)) {
-             // Host disconnected. Do NOT kill the room.
-             console.log('[socket] Host disconnected, keeping room alive:', code);
+             console.log(`[WAJIBET_V2] [socket] HOST DISCONNECTED -> room: ${code}`);
              continue;
           }
 
@@ -456,122 +708,98 @@ module.exports = function (io) {
           if (player) {
             if (player.stats && player.stats.status === 'active') {
               player.stats.status = 'disconnected';
-              // Calculate elapsed time on current item
               const startedAt = player.stats.currentItemStartedAt ? new Date(player.stats.currentItemStartedAt).getTime() : Date.now();
               const elapsed = Date.now() - startedAt;
-              // We'll store this elapsed time as pausedRemainingMs since we don't know the budget here.
-              // When they rejoin, we'll calculate how much pause time accumulated.
               player.stats.pausedRemainingMs = elapsed; 
               player.stats.disconnectedAt = new Date();
-              player.stats.dirty = true;
+              
+              if (room.sessionId) {
+                await LiveParticipant.findOneAndUpdate(
+                  { sessionId: room.sessionId, studentId: player.userId },
+                  { $set: { 
+                    status: 'disconnected', 
+                    pausedRemainingMs: elapsed,
+                    accumulatedPauseMs: player.stats.accumulatedPauseMs,
+                    score: player.stats.score,
+                    currentItemIndex: player.stats.currentItemIndex,
+                    currentItemStartedAt: player.stats.currentItemStartedAt,
+                    leftAt: new Date()
+                  } }
+                ).catch(e => console.error(e));
+              }
             }
-            // Notify others
             io.to(code).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
           }
         }
       } catch (e) { console.error('disconnect cleanup failed', e); }
     });
     
-    // ✅ Rejoin Game handler
-    socket.on('rejoin-game', async ({ roomCode, userId }) => {
+    socket.on('rejoin-game', async ({ roomCode, userId }, cb) => {
       try {
         const room = liveGames[roomCode];
         if (!room) { socket.emit('join-error', 'Room not found'); return; }
         if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) return;
 
         const player = room.players.find(p => String(p.userId) === String(userId));
-        if (player && player.stats && player.stats.status === 'disconnected') {
+        if (player && player.stats && (player.stats.status === 'disconnected' || player.stats.status === 'active')) {
+          const wasDisconnected = player.stats.status === 'disconnected';
+          
           player.id = socket.id;
           socket.join(roomCode);
           
-          // Calculate pause abuse guard
-          const disconnectDurationMs = Date.now() - new Date(player.stats.disconnectedAt).getTime();
-          player.stats.accumulatedPauseMs = (player.stats.accumulatedPauseMs || 0) + disconnectDurationMs;
-          
-          if (player.stats.accumulatedPauseMs > 120000) {
-            // Exceeded 2-minute cap, skip item
-            player.stats.currentItemIndex = (player.stats.currentItemIndex || 0) + 1;
-            player.stats.currentItemStartedAt = new Date(); // Reset timer
-            player.stats.pausedRemainingMs = 0;
-            player.stats.accumulatedPauseMs = 0; // Reset for next item
-            console.log('[socket] Player exceeded pause cap. Auto-skipped item.');
+          if (wasDisconnected) {
+            const disconnectDurationMs = Date.now() - new Date(player.stats.disconnectedAt || Date.now()).getTime();
+            player.stats.accumulatedPauseMs = (player.stats.accumulatedPauseMs || 0) + disconnectDurationMs;
+            
+            if (player.stats.accumulatedPauseMs > (room.config?.itemPauseCapMs || 120000)) {
+              player.stats.currentItemIndex = (player.stats.currentItemIndex || 0) + 1;
+              player.stats.currentItemStartedAt = new Date(); 
+              player.stats.pausedRemainingMs = 0;
+              player.stats.accumulatedPauseMs = 0; 
+              console.log('[socket] Player exceeded pause cap. Auto-skipped item.');
+            } else {
+               player.stats.currentItemStartedAt = new Date(Date.now() - player.stats.pausedRemainingMs);
+            }
+            
+            player.stats.status = 'active';
+            player.stats.dirty = true;
+            room.emptySince = null; // Clear empty timer
           } else {
-             // Resume item
-             // Shift the startedAt forward so elapsed time matches
-             player.stats.currentItemStartedAt = new Date(Date.now() - player.stats.pausedRemainingMs);
+            // Player was active, but component remounted (SPA navigation).
+            // Calculate elapsed time dynamically based on current time so they resume exactly where they were
+            const startedAt = player.stats.currentItemStartedAt ? new Date(player.stats.currentItemStartedAt).getTime() : Date.now();
+            player.stats.pausedRemainingMs = Date.now() - startedAt;
           }
           
-          player.stats.status = 'active';
-          player.stats.dirty = true;
-          
-          // Send RESUME_STATE — same contract as the join-game rejoin path above:
-          // { currentItemIndex, currentScore, elapsedMs } (elapsedMs = spent on item).
-          socket.emit('live:resume-state', {
+          const resumeState = {
             currentItemIndex: player.stats.currentItemIndex,
             currentScore: player.stats.score,
             elapsedMs: player.stats.pausedRemainingMs
-          });
+          };
+          
+          socket.emit('live:resume-state', resumeState);
           
           io.to(roomCode).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
-          console.log('[socket] player rejoined', player.name, '->', roomCode);
+          console.log(`[WAJIBET_V2] [socket] REJOIN SUCCESS -> player: ${player.name}, room: ${roomCode}, elapsedMs: ${resumeState.elapsedMs}, index: ${resumeState.currentItemIndex}`);
+          
+          if (typeof cb === 'function') {
+            cb({ success: true, resumeState });
+          }
         } else {
-          socket.emit('join-error', 'Cannot rejoin. You are not disconnected in this room.');
+          console.warn(`[WAJIBET_V2] [socket] REJOIN REJECTED -> user: ${userId}, room: ${roomCode} - Invalid Status: ${player?.stats?.status}`);
+          socket.emit('join-error', 'Cannot rejoin. Invalid game state.');
         }
       } catch (e) { console.error('rejoin-game handler failed', e); }
     });
 
+    socket.on('leave-room', (code) => {
+      if (code) {
+        socket.leave(code);
+        console.log(`[socket] left room: ${code}`);
+      }
+    });
+
   });
 
-  // Background Finalizer / Flusher loop (Runs every 4 seconds)
-  setInterval(async () => {
-    try {
-      for (const code of Object.keys(liveGames)) {
-        const room = liveGames[code];
-        if (!room || !room.sessionId) continue;
-        
-        for (const player of room.players) {
-          if (player.stats && player.stats.dirty) {
-            player.stats.dirty = false; // clear flag before save to prevent race conditions
-            await LiveParticipant.findOneAndUpdate(
-              { sessionId: room.sessionId, studentId: player.userId },
-              { $set: {
-                score: player.stats.score,
-                correct: player.stats.correct,
-                wrong: player.stats.wrong,
-                effectiveTimeMs: player.stats.effectiveTimeMs,
-                currentItemIndex: player.stats.currentItemIndex,
-                currentItemStartedAt: player.stats.currentItemStartedAt,
-                status: player.stats.status,
-                pausedRemainingMs: player.stats.pausedRemainingMs,
-                accumulatedPauseMs: player.stats.accumulatedPauseMs
-              } }
-            ).catch(err => {
-              console.error('[socket] Background save failed for', player.userId, err);
-              player.stats.dirty = true; // retry next tick
-            });
-          }
-          
-          // Task 4: Session-level auto-finalizer job (Rejoin window: 10 mins disconnected)
-          if (player.stats && player.stats.status === 'disconnected') {
-             const disconnectMs = Date.now() - new Date(player.stats.disconnectedAt).getTime();
-             const sessionRejoinWindowMs = 10 * 60 * 1000; // 10 minutes buffer
-             
-             if (disconnectMs > sessionRejoinWindowMs) {
-                console.log(`[socket] Player ${player.userId} absent past rejoin window. Auto-finalizing.`);
-                player.stats.status = 'finished';
-                player.stats.dirty = true;
-                
-                await LiveParticipant.findOneAndUpdate(
-                  { sessionId: room.sessionId, studentId: player.userId },
-                  { $set: { status: 'finished', finishedAt: new Date() } }
-                );
-             }
-          }
-        }
-      }
-    } catch (e) {
-      console.error('[socket] background flusher error:', e);
-    }
-  }, 4000);
-
 };
+

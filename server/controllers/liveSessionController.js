@@ -116,11 +116,26 @@ exports.listStudentActiveSessions = async (req, res) => {
 
     if (!classIds.length) return res.json([]);
 
+    // First, find sessions where this student is explicitly disconnected or active so they can always Rejoin/Resume
+    const myParticipants = await LiveParticipant.find({
+      studentId: req.user._id,
+      status: { $in: ['active', 'disconnected'] }
+    }).select('sessionId').lean();
+    
+    const myDisconnectedSessionIds = myParticipants.map(p => String(p.sessionId));
+
     const sessions = await LiveSession.find({
-      classes: { $in: classIds },
       $or: [
-        { status: 'lobby' },
-        { status: 'running', allowLateJoin: true },
+        { 
+          classes: { $in: classIds },
+          status: 'lobby'
+        },
+        { 
+          classes: { $in: classIds },
+          status: 'running', 
+          allowLateJoin: true 
+        },
+        { _id: { $in: myDisconnectedSessionIds } }
       ],
     })
       .sort({ createdAt: -1 })
@@ -143,11 +158,20 @@ exports.listStudentActiveSessions = async (req, res) => {
     const creationMap = new Map(creations.map(c => [String(c._id), c]));
     const teacherMap = new Map(teachers.map(t => [String(t._id), t]));
     const participantMap = new Map(participants.map(p => [String(p._id), p.count]));
-    const activeRoomSessionIds = new Set(
-      Object.values(liveGames || {})
-        .map(room => room?.sessionId && String(room.sessionId))
-        .filter(Boolean)
-    );
+    
+    const activeRoomSessionIds = new Set();
+    const myStatusMap = new Map();
+    
+    const { liveGames } = require('../realtimeState');
+    for (const [code, room] of Object.entries(liveGames || {})) {
+      if (room?.sessionId) {
+        activeRoomSessionIds.add(String(room.sessionId));
+        const me = room.players?.find(p => String(p.userId) === String(req.user._id));
+        if (me && me.stats) {
+          myStatusMap.set(String(room.sessionId), me.stats.status);
+        }
+      }
+    }
 
     const items = sessions.map(session => {
       const creation = creationMap.get(String(session.gameCreationId));
@@ -161,6 +185,7 @@ exports.listStudentActiveSessions = async (req, res) => {
         createdAt: session.createdAt,
         startedAt: session.startedAt,
         isRoomOnline: activeRoomSessionIds.has(String(session._id)),
+        myStatus: myStatusMap.get(String(session._id)) || null,
         participantsCount: participantMap.get(String(session._id)) || 0,
         gameCreation: creation ? {
           _id: creation._id,

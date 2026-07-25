@@ -1,9 +1,0 @@
-{
-  "name": "Quiz Master",
-  "description": "A fast-paced multiple choice quiz game. Students earn points for correct answers.",
-  "attemptPolicy": "multiple",
-  "xp": {
-    "assignment": { "enabled": true, "amount": 100, "firstAttemptOnly": false },
-    "online": { "enabled": true, "amount": 50 }
-  }
-}

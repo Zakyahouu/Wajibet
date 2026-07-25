@@ -112,11 +112,13 @@ const computeStudentStats = async (gameResultId) => {
 // 2. computeGameGlobalStats(gameCreationId, options)
 // ============================================================================
 const computeGameGlobalStats = async (gameCreationId, options = {}) => {
-  const { assignmentId, classId, dateRange } = options;
+  const { assignmentId, classId, dateRange, liveSessionId, studentId } = options;
 
   // Build the query filter
   const query = { gameCreation: gameCreationId };
   if (assignmentId) query.assignment = assignmentId;
+  if (liveSessionId) query.liveSessionId = liveSessionId;
+  if (studentId) query.student = studentId;
   if (dateRange?.start) query.createdAt = { ...query.createdAt, $gte: new Date(dateRange.start) };
   if (dateRange?.end) query.createdAt = { ...query.createdAt, $lte: new Date(dateRange.end) };
 

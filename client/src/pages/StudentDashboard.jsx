@@ -23,6 +23,8 @@ import {
   CheckCircle,
   Megaphone,
   Lock,
+  ChevronRight,
+  Search,
 } from 'lucide-react';
 import { Copy as CopyIcon } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
@@ -43,6 +45,8 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
+  const [liveSubTab, setLiveSubTab] = useState('active'); // 'active' or 'past'
+  const [pastSessionsSearch, setPastSessionsSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [adsPanelOpen, setAdsPanelOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -83,7 +87,7 @@ const StudentDashboard = () => {
       if (activeTab !== 'live') return;
       try {
         setLiveAll({ loading: true, error: null, items: [] });
-        const res = await axios.get('/api/results/me/live?limit=25');
+        const res = await axios.get('/api/results/me/live?limit=100');
         if (!mounted) return;
         setLiveAll({ loading: false, error: null, items: Array.isArray(res.data) ? res.data : [] });
       } catch (e) {
@@ -160,13 +164,21 @@ const StudentDashboard = () => {
     return () => { mounted = false; };
   }, []);
 
-  // Pick initial tab from navigation state (e.g., coming from PlayGame after live result)
   useEffect(() => {
     if (location.state && location.state.tab && typeof location.state.tab === 'string') {
       setActiveTab(location.state.tab);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const filteredPastSessions = useMemo(() => {
+    const q = pastSessionsSearch.trim().toLowerCase();
+    if (!q) return liveAll.items;
+    return liveAll.items.filter(g => 
+      (g.name || '').toLowerCase().includes(q) || 
+      (g.code || '').toLowerCase().includes(q)
+    );
+  }, [liveAll.items, pastSessionsSearch]);
 
   const stats = useMemo(() => {
     const hours = (summary.timeSpentMinutes || 0) / 60;
@@ -581,44 +593,94 @@ const StudentDashboard = () => {
         );
       case 'live':
         return (
-          <div className="space-y-4">
-            <UnifiedCard>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t.myLiveSessions}</h3>
-              {liveAll.loading && <div className="text-sm text-gray-500">{t.loading}</div>}
-              {!liveAll.loading && liveAll.items.length === 0 && <div className="text-sm text-gray-500">{t.noPastLiveSessions}</div>}
-              <div className="divide-y divide-gray-100">
-                {liveAll.items.map((g, idx) => (
-                  <div key={idx} className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0"><Gamepad2 className="w-4 h-4 text-gray-600" /></div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">{g.name}</p>
-                        <p className="text-xs text-gray-500 truncate flex items-center gap-2">
-                          <span>{new Date(g.createdAt).toLocaleString()}</span>
-                          {g.code && (
-                            <span className="inline-flex items-center gap-1">
-                              • Code <span className="font-mono select-all">{g.code}</span>
-                              <button
-                                type="button"
-                                onClick={async (e) => { e.stopPropagation(); try { await navigator.clipboard.writeText(g.code); toast(t.codeCopied); } catch { } }}
-                                title="Copy code"
-                                aria-label="Copy code"
-                                className="p-1 rounded hover:bg-gray-200 text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-                              >
-                                <CopyIcon className="w-3.5 h-3.5" />
-                              </button>
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0 ml-2">
-                      <p className="font-semibold text-gray-900 text-sm">{g.percentage}%</p>
+          <div className="space-y-6">
+            {/* Sub-tabs for Online Games */}
+            <div className="flex space-x-4 border-b border-gray-200">
+              <button 
+                onClick={() => setLiveSubTab('active')}
+                className={`py-2 px-1 text-sm font-medium border-b-2 transition-colors ${liveSubTab === 'active' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                {t.activeGames || 'Active Games'}
+              </button>
+              <button 
+                onClick={() => setLiveSubTab('past')}
+                className={`py-2 px-1 text-sm font-medium border-b-2 transition-colors ${liveSubTab === 'past' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                {t.pastSessions || 'Past Sessions'}
+              </button>
+            </div>
+
+            {liveSubTab === 'active' ? (
+              <StudentGames />
+            ) : (
+              <div className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
+                <UnifiedCard>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">{t.myPastLiveSessions || 'Past Sessions'}</h3>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by name or code..."
+                        value={pastSessionsSearch}
+                        onChange={e => setPastSessionsSearch(e.target.value)}
+                        className="pl-9 pr-4 py-2 rounded-xl border border-gray-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 outline-none w-full sm:w-64 text-sm"
+                      />
                     </div>
                   </div>
-                ))}
+
+                  {liveAll.loading && <div className="text-sm text-gray-500">{t.loading}</div>}
+                  {!liveAll.loading && filteredPastSessions.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      {pastSessionsSearch ? 'No sessions found matching your search.' : t.noPastLiveSessions}
+                    </div>
+                  )}
+
+                  <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                    {filteredPastSessions.map((g, idx) => (
+                      <div 
+                        key={idx} 
+                        className="flex items-center justify-between py-3 cursor-pointer hover:bg-sky-50 transition-all px-3 rounded-xl group border border-transparent hover:border-sky-100"
+                        onClick={() => navigate(`/student/results/${g.gameCreationId}?sessionId=${g.sessionId}`)}
+                      >
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <Gamepad2 className="w-5 h-5 text-indigo-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-900 text-sm truncate">{g.name}</p>
+                            <p className="text-xs text-gray-500 truncate flex items-center gap-2 mt-0.5">
+                              <span>{new Date(g.createdAt).toLocaleString()}</span>
+                              {g.code && (
+                                <span className="inline-flex items-center gap-1">
+                                  • <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{g.code}</span>
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-4 flex items-center gap-4">
+                          <div className="flex flex-col items-end">
+                            <p className={`font-black text-sm ${g.percentage >= 80 ? 'text-emerald-600' : g.percentage >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                              {g.percentage}%
+                            </p>
+                            <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-sky-500 transition-colors">View Details</span>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-sky-500 transition-colors transform group-hover:translate-x-1" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </UnifiedCard>
               </div>
-            </UnifiedCard>
+            )}
+            
+            <style>{`
+              @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+              }
+            `}</style>
           </div>
         );
       case 'resources':
@@ -636,12 +698,10 @@ const StudentDashboard = () => {
   const navigationItems = [
     { id: 'overview', name: t.overview },
     { id: 'assignments', name: t.myAssignments },
-    { id: 'games', name: t.games },
-    { id: 'progress', name: t.myProgress },
+    { id: 'live', name: t.onlineGames || 'Online Games' },
     { id: 'badges', name: t.badges },
     { id: 'leaderboard', name: t.leaderboard },
     { id: 'announcements', name: t.announcements },
-    { id: 'live', name: t.liveSessions },
     { id: 'resources', name: t.resources }
   ];
 

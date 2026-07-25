@@ -20,6 +20,7 @@ const liveParticipantSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'disconnected', 'finished'], default: 'active' },
   pausedRemainingMs: { type: Number, default: 0 },
   accumulatedPauseMs: { type: Number, default: 0 },
+  answers: { type: [mongoose.Schema.Types.Mixed], default: [] },
 }, { timestamps: true });
 
 liveParticipantSchema.index({ sessionId: 1, studentId: 1 }, { unique: true });

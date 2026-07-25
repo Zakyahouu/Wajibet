@@ -457,7 +457,13 @@ const getAssignmentBreakdown = async (req, res) => {
       const key = r.gameCreation.toString();
       if (!grouped[key]) continue;
       const pct = r.totalPossibleScore > 0 ? (r.score / r.totalPossibleScore) * 100 : 0;
-      grouped[key].attempts.push({ attemptNumber: r.attemptNumber, score: r.score, totalPossibleScore: r.totalPossibleScore, percent: Math.round(pct) });
+      grouped[key].attempts.push({ 
+        attemptNumber: r.attemptNumber, 
+        score: r.score, 
+        totalPossibleScore: r.totalPossibleScore, 
+        percent: Math.round(pct),
+        answers: r.answers || []
+      });
       if (pct > grouped[key].bestPercent) grouped[key].bestPercent = pct;
     }
     const breakdown = Object.values(grouped).map(g => ({

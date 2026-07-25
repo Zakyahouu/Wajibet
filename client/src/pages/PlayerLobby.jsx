@@ -1,8 +1,9 @@
 // client/src/pages/PlayerLobby.jsx
 import React, { useEffect, useContext, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { SocketContext } from '../context/SocketContext';
 import { AuthContext } from '../context/AuthContext';
+import { GameLogger } from '../utils/gameLogger';
 
 const PlayerLobby = () => {
   const { roomCode } = useParams();
@@ -11,6 +12,8 @@ const PlayerLobby = () => {
   const socketConnected = socketContext?.connected;
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRejoin = location.state?.isRejoin;
   const [error, setError] = useState('');
 
   // This useEffect hook listens for the game starting
@@ -20,7 +23,15 @@ const PlayerLobby = () => {
     const userId = user?._id;
     const doJoin = () => {
       if (roomCode && userId && socket) {
-        try { socket.emit('join-game', { roomCode, playerName, userId }); } catch {}
+        try { 
+          if (isRejoin) {
+             GameLogger.log('PlayerLobby', 'Emitting rejoin-game', { roomCode, userId });
+             socket.emit('rejoin-game', { roomCode, userId });
+          } else {
+             GameLogger.log('PlayerLobby', 'Emitting join-game', { roomCode, playerName, userId });
+             socket.emit('join-game', { roomCode, playerName, userId }); 
+          }
+        } catch {}
       }
     };
 
@@ -31,6 +42,7 @@ const PlayerLobby = () => {
 
     // Listen for server events
     const handleGameStarted = ({ gameCreationId }) => {
+      GameLogger.log('PlayerLobby', 'Received game-started', { gameCreationId });
       console.log(`Player Lobby: Game starting! Navigating to play game: ${gameCreationId}`);
       navigate(`/student/play-game/${gameCreationId}`, { state: { live: { roomCode } } });
     };

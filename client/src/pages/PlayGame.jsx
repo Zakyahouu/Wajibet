@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { SocketContext } from '../context/SocketContext';
+import { GameLogger } from '../utils/gameLogger';
 import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
 
@@ -46,6 +47,14 @@ const PlayGame = () => {
   const getLiveSessionId = () => {
     return liveInfo?.sessionId || liveInfo?.id || gameCreation?.liveSessionId || gameCreation?.sessionId || null;
   };
+
+  useEffect(() => {
+    return () => {
+      if (socket && liveInfo?.roomCode) {
+        socket.emit('leave-room', liveInfo.roomCode);
+      }
+    };
+  }, [socket, liveInfo?.roomCode]);
 
   useEffect(() => {
     const fetchGameCreation = async () => {
@@ -107,10 +116,18 @@ const PlayGame = () => {
       if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_ANSWER') {
         try {
           const p = event.data.payload || {};
-          const correct = !!p.isCorrect;
-          const deltaMs = Number.isFinite(Number(p.timeMs)) ? Number(p.timeMs) : 0;
-          const scoreDelta = Number.isFinite(Number(p.score)) ? Number(p.score) : undefined;
-          try { socket.emit('live:answer', { roomCode: liveInfo.roomCode, userId: user?._id, correct, deltaMs, scoreDelta }); } catch {}
+          const answers = [{
+            isCorrect: !!p.isCorrect,
+            timeMs: Number.isFinite(Number(p.timeMs)) ? Number(p.timeMs) : 0,
+            score: Number.isFinite(Number(p.score)) ? Number(p.score) : 0,
+            itemId: p.itemId,
+            itemIndex: p.itemIndex,
+            type: p.type
+          }];
+          try { 
+            GameLogger.log('PlayGame', 'Emitting live:answer (iframe)', { answers });
+            socket.emit('live:answer', { roomCode: liveInfo.roomCode, answers }); 
+          } catch {}
         } catch {}
       }
       if (event.data?.type === 'GAME_COMPLETE') {
@@ -122,19 +139,34 @@ const PlayGame = () => {
             ? Number(raw.finalScore)
             : (Number(raw.score) || 0);
           const totalTimeMs = Number.isFinite(Number(raw.totalTimeMs)) ? Number(raw.totalTimeMs) : undefined;
-          // Derive max possible score from the answers' maxScore; fall back to the item
-          // count so the backend's required totalPossibleScore is always satisfied.
+          // Derive total possible score safely.
+          // 1. If engine explicitly provided it in GAME_COMPLETE payload, use it.
+          // 2. Otherwise, try to calculate from game config (pointsPerQuestion * content.length).
+          // 3. Fallback to deriving from answers (which is inaccurate if skipped) or finalScore.
+          const configPoints = Number(gameCreation?.config?.pointsPerQuestion || gameCreation?.settings?.pointsPerQuestion);
+          const itemsCount = Array.isArray(gameCreation?.content) ? gameCreation.content.length : 0;
+          const configMax = (configPoints && itemsCount) ? (configPoints * itemsCount) : 0;
+          
           const derivedMax = answers.reduce((sum, a) => sum + (Number(a?.maxScore) || 0), 0);
-          const totalPossibleScore = derivedMax > 0
-            ? derivedMax
-            : (Array.isArray(gameCreation?.content) ? gameCreation.content.length : finalScore);
+          
+          const totalPossibleScore = Number.isFinite(Number(raw.totalPossibleScore))
+            ? Number(raw.totalPossibleScore)
+            : (configMax > 0 ? configMax : (derivedMax > 0 ? derivedMax : (itemsCount > 0 ? itemsCount : finalScore)));
+          // Apply the same 3-second penalty per wrong answer that the socket handler uses, 
+          // so Full Results perfectly matches Quick Results.
+          const penaltyPerWrongMs = 3000;
+          const adjustedTotalTimeMs = answers.reduce((acc, ans) => {
+             return acc + (Number(ans?.timeMs) || 0) + (ans?.isCorrect ? 0 : penaltyPerWrongMs);
+          }, 0);
+          const finalTimeMs = adjustedTotalTimeMs > 0 ? adjustedTotalTimeMs : totalTimeMs;
+          
           const body = {
             gameCreationId: gameCreation?._id,
             assignmentId: assignmentId || undefined,
             score: finalScore,
             totalPossibleScore,
             finalScore,
-            totalTimeMs,
+            totalTimeMs: finalTimeMs,
             statsSchemaVersion: raw.statsSchemaVersion || 1,
             answers,
           };
@@ -254,7 +286,11 @@ const PlayGame = () => {
       const playerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'Player';
       if (user?._id) {
         try { 
-          socket.emit('join-game', { roomCode: liveInfo.roomCode, playerName, userId: user._id }, (response) => {
+          const isRejoin = location.state?.isRejoin || joinConfirmed;
+          const eventName = isRejoin ? 'rejoin-game' : 'join-game';
+          GameLogger.log('PlayGame', `Emitting ${eventName}`, { roomCode: liveInfo.roomCode, userId: user._id });
+          socket.emit(eventName, { roomCode: liveInfo.roomCode, playerName, userId: user._id }, (response) => {
+            GameLogger.log('PlayGame', `${eventName} Ack Received`, response);
             if (response && response.resumeState) {
               setResumeState(response.resumeState);
             }

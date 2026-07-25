@@ -46,9 +46,13 @@ export default function StudentGames() {
     });
   }, [liveGames, search]);
 
-  const handleJoin = (code) => {
-    if (!code) return;
-    navigate(`/student/lobby/${String(code).toUpperCase()}`);
+  const handleJoin = (game, isRejoin = false) => {
+    if (!game.code) return;
+    if (isRejoin && game.gameCreation?._id) {
+      navigate(`/student/play-game/${game.gameCreation._id}`, { state: { live: { roomCode: game.code }, isRejoin: true } });
+    } else {
+      navigate(`/student/lobby/${String(game.code).toUpperCase()}`, { state: { isRejoin } });
+    }
   };
 
   if (loading) return <LoadingState message={t.loadingGames || 'Loading online games...'} />;
@@ -102,7 +106,9 @@ export default function StudentGames() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-        {filteredGames.map(game => (
+        {filteredGames.map(game => {
+          const canResume = ['disconnected', 'active'].includes(game.myStatus);
+          return (
           <div key={game._id} className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all overflow-hidden">
             <div className="h-36 bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-600 relative p-5 flex flex-col justify-between text-white">
               <div className="flex items-start justify-between gap-3">
@@ -141,15 +147,17 @@ export default function StudentGames() {
 
               <button
                 type="button"
-                onClick={() => handleJoin(game.code)}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark transition-colors"
+                onClick={() => handleJoin(game, canResume)}
+                className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-colors ${
+                  canResume ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary-dark'
+                }`}
               >
                 <Play className="w-4 h-4 fill-current" />
-                {game.status === 'running' ? (t.joinNow || 'Join now') : (t.enterLobby || 'Enter lobby')}
+                {canResume ? (t.rejoinNow || 'Resume') : game.status === 'running' ? (t.joinNow || 'Join now') : (t.enterLobby || 'Enter lobby')}
               </button>
             </div>
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );

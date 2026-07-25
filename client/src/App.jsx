@@ -212,6 +212,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/student/results/:gameCreationId"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <ViewResults />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Detailed result page (teacher/admin) */}
               <Route
