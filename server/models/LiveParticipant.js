@@ -21,6 +21,7 @@ const liveParticipantSchema = new mongoose.Schema({
   pausedRemainingMs: { type: Number, default: 0 },
   accumulatedPauseMs: { type: Number, default: 0 },
   answers: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  xpProcessed: { type: Boolean, default: false },
 }, { timestamps: true });
 
 liveParticipantSchema.index({ sessionId: 1, studentId: 1 }, { unique: true });

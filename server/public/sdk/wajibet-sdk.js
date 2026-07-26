@@ -7,7 +7,7 @@
  * Handshake:
  *   engine  -> parent : { type: 'GAME_INIT' }
  *   parent  -> engine : { type: 'GAME_INIT_ACK',
- *                         payload: { gameCreation, direction, locale, resumeState, mode } }
+ *                         payload: { gameCreation, direction, locale, resumeState } }
  *
  * Per-answer (engine -> parent), full Tier 0 object via recordInteraction().
  *
@@ -28,7 +28,6 @@
     direction: 'ltr',
     locale: 'en',
     resumeState: null,
-    mode: 'live',          // 'live' | 'preview'
     gameCreation: null,
     initialized: false,
     interactions: []        // buffer of every recorded interaction this session
@@ -52,7 +51,6 @@
           state.direction = config.direction || 'ltr';
           state.locale = config.locale || 'en';
           state.resumeState = config.resumeState || null;
-          state.mode = config.mode === 'preview' ? 'preview' : 'live';
           state.initialized = true;
 
           window.removeEventListener('message', messageListener);
@@ -89,9 +87,7 @@
 
     /**
      * Record a single interaction/answer. Buffers it for the final GAME_COMPLETE
-     * payload and (in live mode) posts a LIVE_ANSWER for the real-time leaderboard.
-     * In preview mode the event is swallowed (console.debug only) so the wizard
-     * preview never creates ghost records.
+     * payload and posts a LIVE_ANSWER for the real-time leaderboard.
      * @param {Object} interaction Must contain all Tier 0 fields.
      */
     recordInteraction: function (interaction) {
@@ -109,11 +105,6 @@
       // Always buffer, so finishGame can transmit the full answers array.
       state.interactions.push(Object.assign({}, interaction));
 
-      if (state.mode === 'preview') {
-        console.debug('[WajibetSDK] preview mode: recordInteraction swallowed', interaction);
-        return;
-      }
-
       window.parent.postMessage({
         type: 'LIVE_ANSWER',
         payload: interaction
@@ -122,16 +113,11 @@
 
     /**
      * Notify the host that the game is complete. Consolidates every buffered
-     * interaction into the GAME_COMPLETE payload. Swallowed in preview mode.
+     * interaction into the GAME_COMPLETE payload.
      * @param {Number} finalScore   Total score achieved.
      * @param {Number} totalTimeMs  Total time spent, in milliseconds.
      */
     finishGame: function (finalScore, totalTimeMs) {
-      if (state.mode === 'preview') {
-        console.debug('[WajibetSDK] preview mode: finishGame swallowed',
-          { finalScore, totalTimeMs, answers: state.interactions.length });
-        return;
-      }
 
       window.parent.postMessage({
         type: 'GAME_COMPLETE',
@@ -152,11 +138,6 @@
     /** Locale configured by the host (e.g. 'en', 'ar'). */
     getLocale: function () {
       return state.locale;
-    },
-
-    /** True when running inside the creation wizard's sandboxed preview. */
-    isPreviewMode: function () {
-      return state.mode === 'preview';
     },
 
     /** The full GameCreation configuration ({ settings, content, ... }). */

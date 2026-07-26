@@ -36,6 +36,8 @@ const PlayGame = () => {
   const [ranks, setRanks] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const iframeRef = useRef(null);
+  const checkpointBufferRef = useRef([]);
+  const checkpointCounterRef = useRef(0);
 
   const resolveEngineSrc = (enginePath) => {
     if (!enginePath) return '';
@@ -102,6 +104,23 @@ const PlayGame = () => {
     return () => { mounted = false; };
   }, [assignmentId, creationId]);
 
+  // Offline assignment checkpoint: fetch existing progress on load
+  useEffect(() => {
+    if (!assignmentId || !gameCreation || liveInfo?.roomCode) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await axios.get(`/api/game-progress/${assignmentId}/${gameCreation._id}`);
+        if (mounted && res.data?.progress) {
+          setResumeState(res.data.progress);
+        }
+      } catch (e) {
+        // No checkpoint yet, or fetch failed — that's fine, just start fresh.
+      }
+    })();
+    return () => { mounted = false; };
+  }, [assignmentId, gameCreation, liveInfo?.roomCode]);
+
   useEffect(() => {
     const handleGameMessage = async (event) => {
       // WajibetSDK handshake: the engine announces GAME_INIT; reply with its config.
@@ -118,7 +137,6 @@ const PlayGame = () => {
               direction: isRTL ? 'rtl' : 'ltr',
               locale: language || 'en',
               resumeState: resumeState || null,
-              mode: 'live',
             },
           }, '*');
         }
@@ -143,6 +161,23 @@ const PlayGame = () => {
           } catch {}
         } catch {}
       }
+      // Offline assignment checkpoint: buffer answers and save every 3
+      else if (!liveInfo?.roomCode && assignmentId && event.data?.type === 'LIVE_ANSWER') {
+        checkpointBufferRef.current.push(event.data.payload || {});
+        checkpointCounterRef.current += 1;
+        if (checkpointCounterRef.current >= 3) {
+          checkpointCounterRef.current = 0;
+          const last = checkpointBufferRef.current[checkpointBufferRef.current.length - 1];
+          axios.post('/api/game-progress', {
+            assignmentId,
+            gameCreationId: gameCreation?._id,
+            currentItemIndex: (last?.itemIndex ?? 0) + 1,
+            currentScore: checkpointBufferRef.current.reduce((s, a) => s + (Number(a?.score) || 0), 0),
+            elapsedMs: checkpointBufferRef.current.reduce((s, a) => s + (Number(a?.timeMs) || 0), 0),
+            answers: checkpointBufferRef.current,
+          }).catch(() => {}); // best-effort, never block gameplay
+        }
+      }
       if (event.data?.type === 'GAME_COMPLETE') {
         try {
           const raw = event.data.payload || {};
@@ -156,7 +191,7 @@ const PlayGame = () => {
           // 1. If engine explicitly provided it in GAME_COMPLETE payload, use it.
           // 2. Otherwise, try to calculate from game config (pointsPerQuestion * content.length).
           // 3. Fallback to deriving from answers (which is inaccurate if skipped) or finalScore.
-          const configPoints = Number(gameCreation?.config?.pointsPerQuestion || gameCreation?.settings?.pointsPerQuestion);
+          const configPoints = Number(gameCreation?.config?.pointsPerQuestion);
           const itemsCount = Array.isArray(gameCreation?.content) ? gameCreation.content.length : 0;
           const configMax = (configPoints && itemsCount) ? (configPoints * itemsCount) : 0;
           
@@ -321,6 +356,28 @@ const PlayGame = () => {
     };
   }, [socket, liveInfo?.roomCode, user?.role, user?._id, user?.firstName, user?.lastName, user?.name]);
 
+  // Offline assignment checkpoint: flush on tab hide (visibilitychange)
+  useEffect(() => {
+    if (!assignmentId || liveInfo?.roomCode) return;
+    const flush = () => {
+      if (document.visibilityState !== 'hidden') return;
+      if (checkpointBufferRef.current.length === 0) return;
+      const last = checkpointBufferRef.current[checkpointBufferRef.current.length - 1];
+      axios.post('/api/game-progress', {
+        assignmentId,
+        gameCreationId: gameCreation?._id,
+        currentItemIndex: (last?.itemIndex ?? 0) + 1,
+        currentScore: checkpointBufferRef.current.reduce((s, a) => s + (Number(a?.score) || 0), 0),
+        elapsedMs: checkpointBufferRef.current.reduce((s, a) => s + (Number(a?.timeMs) || 0), 0),
+        answers: checkpointBufferRef.current,
+      }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', flush);
+    };
+  }, [assignmentId, gameCreation?._id, liveInfo?.roomCode]);
+
   // (Re)send the SDK handshake ACK once the engine is ready and we have the config.
   // Covers the case where GAME_INIT arrived before gameCreation / join / resume were ready.
   const sendInitAck = () => {
@@ -334,7 +391,6 @@ const PlayGame = () => {
         direction: isRTL ? 'rtl' : 'ltr',
         locale: language || 'en',
         resumeState: resumeState || null,
-        mode: 'live',
       },
     }, '*');
   };

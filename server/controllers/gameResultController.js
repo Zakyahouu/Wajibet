@@ -10,6 +10,7 @@ const Enrollment = require('../models/Enrollment');
 const { evaluateTemplateBadgeForResult } = require('./templateBadgeController');
 const { checkCanAttempt } = require('../services/attemptGate');
 const { computeStudentStats, computeGameGlobalStats } = require('../services/gameStatsService');
+const { clearProgress } = require('./gameProgressController');
 
 // In-memory TTL cache for global stats aggregations
 const globalStatsCache = new Map();
@@ -223,12 +224,35 @@ const submitGameResult = async (req, res) => {
   const isTest = req.user.role !== 'student';
 
     // XP policy
-    let xpAwarded = 0;
-  if (!isTest && counted && assignment) {
-      // assignment mode: honor creation.xp.assignment
-      const xpConf = creation.xp?.assignment || { enabled: true, amount: 0, firstAttemptOnly: true };
-      if (xpConf.enabled) xpAwarded = Number(xpConf.amount || 0);
+const XP_MIN_FLOOR_RATIO = 0.2; // a genuine attempt always earns at least 20% of the base XP
+
+function xpForPercentage(baseAmount, percentage) {
+  const ratio = Math.max(XP_MIN_FLOOR_RATIO, Math.min(1, percentage / 100));
+  return Math.round(baseAmount * ratio);
+}
+
+  const percentage = resolvedTotalPossibleScore > 0 ? Math.round((score / resolvedTotalPossibleScore) * 100) : 0;
+
+let xpAwarded = 0;
+if (!isTest && assignment) {
+  const xpConf = creation.xp?.assignment || { enabled: true, amount: 0, firstAttemptOnly: true };
+  if (xpConf.enabled) {
+    const thisAttemptXp = xpForPercentage(Number(xpConf.amount || 0), percentage);
+
+    if (xpConf.firstAttemptOnly) {
+      const anyPriorAttempt = await GameResult.findOne({
+        student: studentId, assignment: assignment._id, gameCreation: gameCreationId,
+      }).select('_id').lean();
+      xpAwarded = anyPriorAttempt ? 0 : thisAttemptXp;
+    } else {
+      const priorResults = await GameResult.find({
+        student: studentId, assignment: assignment._id, gameCreation: gameCreationId,
+      }).select('xpAwarded').lean();
+      const previousBestXp = priorResults.reduce((max, r) => Math.max(max, r.xpAwarded || 0), 0);
+      xpAwarded = Math.max(0, thisAttemptXp - previousBestXp);
     }
+  }
+}
 
   // --- Tier 0 Contract Validation ---
   let statsIncomplete = false;
@@ -269,11 +293,15 @@ const submitGameResult = async (req, res) => {
       statsIncomplete,
     });
 
+  // Clear offline assignment checkpoint now that the result is saved
+  if (assignment) {
+    clearProgress(studentId, assignment._id, gameCreationId); // fire-and-forget, do not await
+  }
+
   // Invalidate the cache entry for this game creation
   globalStatsCache.delete(gameCreationId.toString());
 
     // --- Update student's XP and points ---
-  const percentage = resolvedTotalPossibleScore > 0 ? Math.round((score / resolvedTotalPossibleScore) * 100) : 0;
   const pointsEarned = score; // raw score as points
 
     const user = await User.findById(studentId);

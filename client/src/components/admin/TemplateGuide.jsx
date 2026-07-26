@@ -108,7 +108,7 @@ WajibetSDK.onReviewData((interaction) => {
           <li>Use CSS logical properties (<code>margin-inline-start</code>, <code>inset-inline-start</code>) — never <code>left</code>/<code>right</code>. The platform mirrors RTL automatically.</li>
           <li>Students never play drafts. Admin/Teacher test runs never grant XP or record results.</li>
           <li>Assignments: the first attempt is counted by default; replays don't change the report.</li>
-          <li>Never invent SDK methods — the full API is <code>init</code>, <code>getGameCreation</code>, <code>getDirection</code>, <code>getLocale</code>, <code>isPreviewMode</code>, <code>recordInteraction</code>, <code>finishGame</code>, <code>onReviewData</code>.</li>
+          <li>Never invent SDK methods — the full API is <code>init</code>, <code>getGameCreation</code>, <code>getDirection</code>, <code>getLocale</code>, <code>recordInteraction</code>, <code>finishGame</code>, <code>onReviewData</code>.</li>
         </ul>
       </section>
     </div>

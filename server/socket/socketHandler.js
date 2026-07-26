@@ -4,9 +4,75 @@ const LiveSession = require('../models/LiveSession');
 const Enrollment = require('../models/Enrollment');
 const Class = require('../models/Class');
 const GameCreation = require('../models/GameCreation');
+const { awardOnlineXpForSession } = require('../services/onlineXpService');
 
 module.exports = function (io) {
   if (!io) return;
+
+// Rebuilds an in-memory liveGames[roomCode] entry from persisted DB records
+// if the process restarted and lost it. Returns the room object, or null if
+// there genuinely is no such active session (not a restart-recovery case).
+async function ensureRoomLoaded(roomCode) {
+  if (liveGames[roomCode]) {
+    return liveGames[roomCode]; // fast path — already in memory, do nothing extra
+  }
+
+  const session = await LiveSession.findOne({ code: roomCode }).lean();
+  if (!session || session.status === 'ended') {
+    return null; // no recovery possible — this is a genuinely invalid/ended room code
+  }
+
+  let config = { itemPauseCapMs: 120000, maxPauseCycles: 2, rejoinWindowMs: 600000 };
+  if (session.gameCreationId) {
+    const creation = await GameCreation.findById(session.gameCreationId)
+      .select('itemPauseCapMs maxPauseCycles rejoinWindowMs').lean();
+    if (creation) {
+      config.itemPauseCapMs = creation.itemPauseCapMs ?? 120000;
+      config.maxPauseCycles = creation.maxPauseCycles ?? 2;
+      config.rejoinWindowMs = creation.rejoinWindowMs ?? 600000;
+    }
+  }
+
+  const participants = await LiveParticipant.find({ sessionId: session._id }).lean();
+  const players = participants.map((p) => ({
+    id: null, // no live socket yet — set when they actually reconnect
+    userId: p.studentId,
+    name: [p.firstName, p.lastName].filter(Boolean).join(' ') || 'Student',
+    stats: {
+      score: p.score || 0,
+      correct: p.correct || 0,
+      wrong: p.wrong || 0,
+      effectiveTimeMs: p.effectiveTimeMs || 0,
+      currentItemIndex: p.currentItemIndex || 0,
+      currentItemStartedAt: p.currentItemStartedAt || new Date(),
+      // Everyone lost their live connection when the server restarted — force
+      // 'disconnected' so they go through the normal rejoin flow, UNLESS they
+      // had already genuinely finished before the restart.
+      status: p.status === 'finished' ? 'finished' : 'disconnected',
+      pausedRemainingMs: p.pausedRemainingMs || 0,
+      pauseCyclesUsed: 0,
+      accumulatedPauseMs: p.accumulatedPauseMs || 0,
+      // We don't know exactly when they really disconnected before the crash/restart,
+      // so we start their pause clock from "now" — this slightly undercounts their
+      // pause duration, which is the safer direction (favors the student, not the platform).
+      disconnectedAt: new Date(),
+      dirty: false,
+    },
+  }));
+
+  const room = {
+    players,
+    sessionId: session._id,
+    gameCreationId: session.gameCreationId,
+    hostUserId: session.teacherId,
+    status: session.status === 'running' ? 'running' : 'lobby',
+    config,
+  };
+
+  liveGames[roomCode] = room;
+  console.log(`[socket] Rehydrated room ${roomCode} from DB after apparent restart (${players.length} participants).`);
+  return room;
+}
 
   // Background Finalizer loop handles timeouts
   let flusherInterval = setInterval(async () => {
@@ -72,6 +138,7 @@ module.exports = function (io) {
                   session.status = 'ended';
                   session.endedAt = new Date();
                   await session.save();
+                  awardOnlineXpForSession(session._id); // fire-and-forget
                 }
                 io.to(code).emit('game-ended', { sessionId: room.sessionId, autoEnded: true });
                 delete liveGames[code];
@@ -225,7 +292,7 @@ module.exports = function (io) {
           }
         }
 
-        const room = liveGames[code] = liveGames[code] || { players: [], sessionId: null, gameCreationId: null, status: 'lobby', config };
+        const room = (await ensureRoomLoaded(code)) || (liveGames[code] = { players: [], sessionId: null, gameCreationId: null, status: 'lobby', config });
         room.sessionId = sessionId || room.sessionId;
         room.gameCreationId = gameCreationId || room.gameCreationId;
         room.hostUserId = socket.user._id;
@@ -264,7 +331,7 @@ module.exports = function (io) {
 
     socket.on('join-game', async ({ roomCode, playerName, userId } = {}, cb) => {
       try {
-        const room = liveGames[roomCode];
+        const room = await ensureRoomLoaded(roomCode);
         if (!room) { socket.emit('join-error', 'Room not found'); return; }
         if (socket.user?.role !== 'student') { socket.emit('join-error', 'Only students can join as players.'); return; }
         const verifiedUserId = socket.user._id;
@@ -416,6 +483,7 @@ module.exports = function (io) {
               session.endedAt = new Date();
               if (!session.startedAt) session.startedAt = session.createdAt || new Date();
               await session.save();
+              awardOnlineXpForSession(session._id); // fire-and-forget
               console.log('[socket] end-game -> session marked as ended:', room.sessionId);
             }
           } catch (e) {
@@ -736,7 +804,7 @@ module.exports = function (io) {
     
     socket.on('rejoin-game', async ({ roomCode, userId }, cb) => {
       try {
-        const room = liveGames[roomCode];
+        const room = await ensureRoomLoaded(roomCode);
         if (!room) { socket.emit('join-error', 'Room not found'); return; }
         if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) return;
 

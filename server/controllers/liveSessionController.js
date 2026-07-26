@@ -3,6 +3,7 @@ const LiveParticipant = require('../models/LiveParticipant');
 const GameCreation = require('../models/GameCreation');
 const Enrollment = require('../models/Enrollment');
 const GameResult = require('../models/GameResult');
+const { awardOnlineXpForSession } = require('../services/onlineXpService');
 const { liveGames, io: realtimeIO } = require('../realtimeState');
 const Class = require('../models/Class');
 
@@ -258,6 +259,7 @@ exports.endSession = async (req, res) => {
     s.endedAt = new Date();
     if (!s.startedAt) s.startedAt = new Date(s.createdAt || Date.now());
     await s.save();
+    awardOnlineXpForSession(s._id); // fire-and-forget
 
     // Notify any active socket room for this session so players and hosts exit cleanly.
     try {

@@ -56,6 +56,7 @@ function loadAllRoutes(app) {
     { path: '/api/creations', file: './routes/gameCreationRoutes' },
     { path: '/api/assignments', file: './routes/assignmentRoutes' },
     { path: '/api/results', file: './routes/gameResultRoutes' },
+    { path: '/api/game-progress', file: './routes/gameProgressRoutes' },
     { path: '/api/template-badges', file: './routes/templateBadgeRoutes' },
     { path: '/api/leaderboard', file: './routes/leaderboardRoutes' },
     { path: '/api/reporting', file: './routes/reportingRoutes' },
