@@ -31,6 +31,7 @@ const PlayGame = () => {
   const [joinConfirmed, setJoinConfirmed] = useState(!liveInfo?.roomCode || user?.role !== 'student');
   // True once the engine has announced GAME_INIT via the SDK handshake.
   const engineReady = useRef(false);
+  const [engineFailed, setEngineFailed] = useState(false);
 
   const [ranks, setRanks] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -70,6 +71,18 @@ const PlayGame = () => {
     };
     fetchGameCreation();
   }, [creationId]);
+
+  // Robust SDK Fallback: Wait 15 seconds for the engine to initialize
+  useEffect(() => {
+    if (gameCreation && !loading && !error && !engineFailed) {
+      const timeout = setTimeout(() => {
+        if (!engineReady.current) {
+          setEngineFailed(true);
+        }
+      }, 15000);
+      return () => clearTimeout(timeout);
+    }
+  }, [gameCreation, loading, error, engineFailed]);
 
   // Fetch canAttempt gate
   useEffect(() => {
@@ -370,6 +383,34 @@ const PlayGame = () => {
         >
           Go Back
         </button>
+      </div>
+    </div>
+  );
+
+  if (engineFailed) return (
+    <div className="h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center bg-white p-10 rounded-2xl shadow-sm border border-gray-200 max-w-sm mx-4">
+        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="text-2xl">🔌</span>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Game failed to load</h2>
+        <p className="text-gray-500 text-sm mb-6">
+          The game engine took too long to respond. This might be due to a poor connection or an issue with the game files.
+        </p>
+        <div className="flex gap-3 justify-center">
+          <button 
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl text-sm transition-colors"
+          >
+            Go Back
+          </button>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl text-sm transition-colors shadow-sm"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     </div>
   );
