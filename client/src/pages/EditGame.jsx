@@ -716,6 +716,7 @@ const EditGame = () => {
                                                             uploadUrl={`/api/templates/${template._id}/media`}
                                                             authToken={user.token}
                                                             accept={field.accept}
+                                                            creationId={creationId}
                                                             radiusMin={field.radiusMin}
                                                             radiusMax={field.radiusMax}
                                                             radiusDefault={field.radiusDefault}

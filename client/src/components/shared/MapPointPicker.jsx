@@ -4,7 +4,7 @@ import axios from 'axios';
 // A single field value looks like: { imageUrl, xPercent, yPercent, radiusPercent }
 // or null/undefined before an image has been uploaded.
 export default function MapPointPicker({
-  value, onChange, uploadUrl, authToken, accept,
+  value, onChange, uploadUrl, authToken, accept, creationId,
   radiusMin = 1, radiusMax = 40, radiusDefault = 6,
 }) {
   const frameRef = useRef(null);
@@ -24,7 +24,7 @@ export default function MapPointPicker({
       const fd = new FormData();
       fd.append('file', file);
       fd.append('usage', 'content');
-      fd.append('creationId', 'draft');
+      fd.append('creationId', creationId || 'draft');
       const { data } = await axios.post(uploadUrl, fd, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
