@@ -2,8 +2,6 @@
   "name": "Arithmetic Sprint",
   "version": "1.0.0",
   "description": "A fast-paced math game where students solve arithmetic problems as quickly as possible. Supports live scoring and leaderboards.",
-  "gameType": "arithmetic-sprint",
-  "engineEntry": "engine/index.html",
   "attemptPolicy": "first_only",
   "xp": {
     "assignment": {
@@ -16,20 +14,8 @@
       "amount": 15
     }
   },
-  "platformIntegration": {
-    "supportsInitGame": true,
-    "supportsLiveAnswer": true,
-    "supportsLiveFinish": true,
-    "supportsGameComplete": true,
-    "postMessageEvents": [
-      "LIVE_ANSWER",
-      "LIVE_FINISH",
-      "GAME_COMPLETE"
-    ]
-  },
-  "gamification": {
-    "scoringMode": "problems_correct_speed",
-    "supportsTimedQuestions": true,
-    "supportsLeaderboard": true
-  }
+  "limits": { "maxCreationsPerTeacher": 100 },
+  "assets": { "maxImagesPerCreation": 0 },
+  "platformIntegration": {},
+  "gamification": {}
 }

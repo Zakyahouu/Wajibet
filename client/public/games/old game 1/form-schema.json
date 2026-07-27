@@ -37,16 +37,6 @@
       "label": "Show Hints",
       "required": false,
       "default": true
-    },
-    "textDirection": {
-      "type": "enum",
-      "label": "Text Direction",
-      "required": false,
-      "default": "left_to_right",
-      "options": [
-        "left_to_right",
-        "right_to_left"
-      ]
     }
   },
   "content": {

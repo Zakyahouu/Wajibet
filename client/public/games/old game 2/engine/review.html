@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <style>
+    body { 
+        display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        /* Using the exact same fallback color as style.css to match visual identity */
+        background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 50%, #fd79a8 100%);
+    }
+    #review-card {
+      background: rgba(255, 255, 255, 0.95); color: #2d3436; padding: 30px; border-radius: 16px;
+      max-width: 400px; width: 90%; text-align: center;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
+    }
+    .review-label { font-size: 0.8em; color: #636e72; margin-top: 12px; margin-bottom: 4px; font-weight: bold; }
+    .review-question { font-size: 2em; margin: 8px 0; font-weight: 800; color: #ff6b35; }
+    .review-answer { font-size: 1.4em; font-weight: 800; margin: 4px 0; }
+    .review-correct { color: #00d4aa; }
+    .review-wrong { color: #ff4757; }
+    .review-meta { font-size: 0.85em; color: #636e72; margin-top: 14px; }
+    .review-badge {
+      display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 0.9em; margin-top: 10px; font-weight: bold;
+    }
+    .review-badge.correct { background: rgba(0, 212, 170, 0.1); color: #00d4aa; }
+    .review-badge.wrong { background: rgba(255, 71, 87, 0.1); color: #ff4757; }
+  </style>
+</head>
+<body>
+  <div id="review-card">
+    <p style="color: #888; font-size: 0.9em;">Loading review…</p>
+  </div>
+  <script>
+    WajibetSDK.onReviewData(function (interaction) {
+      document.documentElement.dir = WajibetSDK.getDirection();
+      var card = document.getElementById('review-card');
+      var meta = interaction.meta || {};
+
+      var question = meta.question || '';
+      var studentAnswer = interaction.userAnswer || '';
+      var isCorrect = interaction.isCorrect;
+      var attempts = interaction.attempts || 1;
+      var timeMs = interaction.timeMs || 0;
+      var timeSec = (timeMs / 1000).toFixed(1);
+
+      card.innerHTML =
+        '<p class="review-label">Question</p>' +
+        '<p class="review-question"><span dir="ltr">' + escapeHtml(question) + '</span></p>' +
+        '<p class="review-label">Student\'s Answer</p>' +
+        '<p class="review-answer ' + (isCorrect ? 'review-correct' : 'review-wrong') + '">' +
+          escapeHtml(studentAnswer || '(no answer)') + '</p>' +
+        '<span class="review-badge ' + (isCorrect ? 'correct' : 'wrong') + '">' +
+          (isCorrect ? '✓ Correct' : '✗ Wrong') + '</span>' +
+        '<p class="review-meta">' +
+          'Time: ' + timeSec + 's · ' +
+          'Score: ' + interaction.score + '/' + interaction.maxScore +
+        '</p>';
+    });
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

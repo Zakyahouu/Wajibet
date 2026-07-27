@@ -1,5 +1,5 @@
-﻿/* --- GENERAL STYLES --- */
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto Mono', monospace; font-weight: 700; }
+/* --- GENERAL STYLES --- */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-weight: 700; }
 
 body {
     display: flex;
@@ -38,7 +38,7 @@ body {
 #play-screen { justify-content: space-between; padding: 15px; }
 
 /* HUD & HINT */
-.hud { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; }
+.hud { width: 100%; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px; }
 .hud-item { display: flex; gap: 10px; align-items: center; background: rgba(0, 0, 0, 0.2); padding: 8px 15px; border-radius: 20px; }
 .hud-item img { width: 24px; height: 24px; }
 .hint-bubble { position: relative; text-align: right; }
@@ -102,6 +102,8 @@ body {
     border-radius: 8px;
     width: 50px;
     height: 50px;
+    min-width: 44px;
+    min-height: 44px;
     font-size: 1.5em;
     cursor: grab;
     display: flex;
@@ -114,7 +116,7 @@ body {
 .letter-btn.dragging { background: #130A3E; color: yellow; opacity: 0.7; transform: scale(1.1); }
 
 /* ACTION BUTTONS */
-.action-buttons { width: 100%; display: flex; justify-content: center; gap: 10px; margin-top: auto; padding-top: 20px; }
+.action-buttons { width: 100%; display: flex; justify-content: center; gap: 10px; margin-top: auto; padding-top: 20px; flex-wrap: wrap; }
 .game-btn { width: 160px; padding: 18px; border-radius: 10px; border: none; font-size: 1.1em; cursor: pointer; }
 .clear-btn { background-color: #130A3E; color: yellow; }
 .check-btn { background-color: white; color: #130A3E; }
@@ -134,3 +136,28 @@ body {
 }
 .done-card h1 { font-size: 2.5em; margin-bottom: 15px; }
 #summary-text { font-size: 1.2em; }
+
+/* --- FOCUS VISIBLE (B7) --- */
+button:focus-visible,
+.letter-btn:focus-visible,
+.game-btn:focus-visible,
+.start-btn:focus-visible {
+    outline: 3px solid #f5c500;
+    outline-offset: 2px;
+}
+
+/* --- RESPONSIVE (B6) — 360px viewport --- */
+@media (max-width: 480px) {
+    .container {
+        max-width: 100%;
+        border-radius: 0;
+        height: 100vh;
+        max-height: none;
+    }
+    .title { font-size: 2em; margin-bottom: 20px; }
+    .word-preview { font-size: 1.3em; letter-spacing: 3px; }
+    .letter-btn { width: 44px; height: 44px; font-size: 1.2em; }
+    .game-btn { width: 130px; padding: 14px; font-size: 1em; }
+    .build-area { min-height: 100px; padding: 10px; }
+    .hud-item { padding: 6px 10px; font-size: 0.85em; }
+}

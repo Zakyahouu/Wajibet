@@ -1,52 +1,43 @@
 (function(){
-  let creation, settings, pool=[], idx=0, score=0, streak=0, timerIv, timeLeft=0;
-  const answers = [];
+  let settings = {}, pool = [], idx = 0, score = 0, streak = 0;
+  let timerIv = null, timeLeft = 0;
   let qStartMs = 0;
-  let shuffledBackgrounds = [];
-  const byId=(id)=>document.getElementById(id);
-
-  const themes = [ 
-    { group: 1, color: '#6366f1' }, // Indigo (core cosmic)
-    { group: 2, color: '#8b5cf6' }, // Purple (mystical)
-    { group: 3, color: '#06b6d4' }, // Cyan (electric)
-    { group: 4, color: '#f59e0b' }  // Amber (star-like)
-  ];
-
-  // --- Asset Preloading ---
-  let assetsLoaded = false;
-  const preloadAssets = () => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        assetsLoaded = true;
-        resolve();
-      };
-      img.onerror = () => {
-        // Continue even if image fails to load
-        assetsLoaded = true;
-        resolve();
-      };
-      img.src = 'assets/background.jpeg';
-    });
-  };
-
-  // --- Element References ---
-  const screens={ready:byId('ready'),countdown:byId('countdown'),play:byId('play'),done:byId('done'),loading:byId('loading')};
-  const enterBtn=byId('enterBtn'); 
-  const timerEl=byId('timer').querySelector('.text'); 
-  const progressEl=byId('progress').querySelector('.text'); 
-  const scoreEl=byId('score').querySelector('.text');
-  const qWrapper=document.querySelector('.question-wrapper'); 
-  const qEl=byId('question'); 
-  const optionsContainer=byId('options-container'); 
-  const summary=byId('summary');
-  const progressBar = byId('progress-bar'); 
+  let gameStartMs = 0;
+  let resumeElapsedMs = 0;
+  
+  let selectedChoice = null;
+  
+  const byId = (id) => document.getElementById(id);
+  const screens = {ready: byId('ready'), countdown: byId('countdown'), play: byId('play'), done: byId('done'), loading: byId('loading')};
+  const enterBtn = byId('enterBtn');
+  const timerEl = byId('timer').querySelector('.text');
+  const progressEl = byId('progress').querySelector('.text');
+  const scoreEl = byId('score').querySelector('.text');
+  const qWrapper = document.querySelector('.question-wrapper');
+  const qEl = byId('question');
+  const optionsContainer = byId('options-container');
+  const summary = byId('summary');
+  const progressBar = byId('progress-bar');
   const streakCounter = byId('streak-counter');
   
-  const show=(id) => { Object.values(screens).forEach(s=>s.classList.add('hidden')); screens[id].classList.remove('hidden'); };
-  const shuffle = (a) => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(([_, v]) => v);
-  const rnd=(min,max) => Math.floor(Math.random()*(max-min+1))+min;
-  const calc=(a,op,b) => { switch(op){ case '+': return a+b; case '-': return a-b; case '×': return a*b; case '÷': return b===0? NaN : a/b; default: return NaN; } };
+  let confirmBtn = null;
+  let nextBtn = null;
+
+  const show = (id) => { Object.values(screens).forEach(s => s.classList.add('hidden')); screens[id].classList.remove('hidden'); };
+  
+  const shuffle = (a) => {
+    const copy = a.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = copy[i];
+        copy[i] = copy[j];
+        copy[j] = temp;
+    }
+    return copy;
+  };
+  
+  const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const calc = (a, op, b) => { switch(op){ case '+': return a+b; case '-': return a-b; case '×': return a*b; case '÷': return b===0? NaN : a/b; default: return NaN; } };
 
   function buildChoices(answer) {
     const choices = new Set();
@@ -79,137 +70,240 @@
     }
   }
 
-  function countdown(){ show('countdown'); let n=3; const c=document.querySelector('#countdown .count'); c.textContent=n; const iv=setInterval(()=>{ n--; c.textContent=n; if(n<=0){ clearInterval(iv); start(); } }, 800); }
-
-  function gen(){ /* ... (generation logic is the same, omitted for brevity) ... */ }
+  function countdown(){ 
+    show('countdown'); 
+    let n = 3; 
+    const c = document.querySelector('#countdown .count'); 
+    c.textContent = n; 
+    const iv = setInterval(() => { 
+      n--; 
+      c.textContent = n; 
+      if(n <= 0){ 
+        clearInterval(iv); 
+        start(); 
+      } 
+    }, 800); 
+  }
 
   function render(){
-    qWrapper.style.opacity = '0'; // Start fade out for transition
+    qWrapper.style.opacity = '0';
+    selectedChoice = null;
+    
+    if (confirmBtn) { confirmBtn.classList.add('hidden'); confirmBtn.disabled = true; }
+    if (nextBtn) nextBtn.classList.add('hidden');
     
     setTimeout(() => {
-      const q = pool[idx]; if(!q){ finish(); return; }
+      const q = pool[idx]; 
+      if(!q){ finish(); return; }
       
-      // Update HUD and Progress Bar
-      progressEl.textContent = `${idx+1}/${pool.length}`;
+      progressEl.textContent = (idx + 1) + '/' + pool.length;
       scoreEl.textContent = score;
-      progressBar.style.width = `${((idx + 1) / pool.length) * 100}%`;
+      progressBar.style.width = ((idx) / pool.length * 100) + '%';
 
-      qEl.textContent = q.question;
+      qEl.innerHTML = '<span dir="ltr">' + q.question + '</span>';
+      
       optionsContainer.innerHTML = '';
       const shuffledChoices = shuffle(q.choices);
       shuffledChoices.forEach(choice => {
         const btn = document.createElement('button');
-        btn.className = 'btn';
+        btn.className = 'btn option-btn';
         btn.textContent = choice;
-        btn.onclick = () => checkAnswer(choice, q.answer);
+        btn.onclick = () => selectAnswer(btn, choice);
         optionsContainer.appendChild(btn);
       });
+      
+      if (!confirmBtn) {
+        confirmBtn = document.createElement('button');
+        confirmBtn.className = 'btn confirm-btn hidden';
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.onclick = confirmAnswer;
+        optionsContainer.parentElement.appendChild(confirmBtn);
+      }
+      
+      if (!nextBtn) {
+        nextBtn = document.createElement('button');
+        nextBtn.className = 'btn next-btn hidden';
+        nextBtn.textContent = 'Next →';
+        nextBtn.onclick = () => { idx++; render(); };
+        optionsContainer.parentElement.appendChild(nextBtn);
+      }
+      
+      confirmBtn.classList.remove('hidden');
+      confirmBtn.disabled = true;
+      nextBtn.classList.add('hidden');
 
       qStartMs = Date.now();
-      qWrapper.style.opacity = '1'; // Fade in new question
-    }, 200); // Delay matches opacity transition time
+      qWrapper.style.opacity = '1';
+    }, 200);
   }
 
-  function checkAnswer(selectedValue, correctAnswer) {
-    const ok = selectedValue === correctAnswer;
+  function selectAnswer(btn, choice) {
+    if (btn.disabled) return;
+    
+    var children = optionsContainer.children;
+    for (var i = 0; i < children.length; i++) {
+        children[i].classList.remove('selected');
+    }
+    btn.classList.add('selected');
+    selectedChoice = choice;
+    
+    confirmBtn.disabled = false;
+  }
+
+  function confirmAnswer() {
+    if (selectedChoice === null) return;
+    confirmBtn.classList.add('hidden');
+    
+    const q = pool[idx];
+    const correctAnswer = q.answer;
+    const ok = selectedChoice === correctAnswer;
     const deltaMs = Date.now() - qStartMs;
     const pointsPerCorrect = Number(settings.pointsPerCorrect ?? 1);
     const penaltyPerWrong = Number(settings.penaltyPerWrong ?? 0);
-    const scoreDelta = ok ? pointsPerCorrect : -penaltyPerWrong;
     
-    // Speed bonus: +50 points if answered within 2 seconds (but score is just correct answers count)
+    const scoreDelta = ok ? pointsPerCorrect : 0;
+    
     if (ok && deltaMs <= 2000) {
       showBonus('+50 Speed Bonus!', 'speed');
     }
     
-    // Streak logic
     if (ok) {
       streak++;
       score += pointsPerCorrect;
-      if (streak >= 2) {
-        updateStreakDisplay();
-      }
+      if (streak >= 2) updateStreakDisplay();
     } else {
       streak = 0;
       updateStreakDisplay();
       score = Math.max(0, score - penaltyPerWrong);
     }
+    scoreEl.textContent = score;
     
-    // Visual Feedback with enhanced animations
-    [...optionsContainer.children].forEach(btn => {
+    var children = optionsContainer.children;
+    for (var i = 0; i < children.length; i++) {
+      const btn = children[i];
       const choice = Number(btn.textContent);
-      if(choice === correctAnswer) {
+      if (choice === correctAnswer) {
         btn.classList.add('correct');
+        btn.innerHTML = '✓ ' + choice;
         if (ok) btn.style.animation = 'thump 0.3s ease-out';
-      } else if(choice === selectedValue && !ok) {
+      } else if (choice === selectedChoice && !ok) {
         btn.classList.add('wrong');
+        btn.innerHTML = '✗ ' + choice;
         btn.style.animation = 'shake 0.5s ease-out';
       }
       btn.disabled = true;
+      btn.classList.remove('selected');
+    }
+
+    WajibetSDK.recordInteraction({
+      itemId: q.itemId,
+      itemIndex: idx,
+      type: 'arithmetic',
+      isCorrect: ok,
+      userAnswer: String(selectedChoice),
+      correctAnswer: String(correctAnswer),
+      score: scoreDelta,
+      maxScore: pointsPerCorrect,
+      timeMs: deltaMs,
+      attempts: 1,
+      skipped: false,
+      meta: { question: q.question }
     });
 
-    answers.push({ index: idx, correct: ok, timeMs: deltaMs, points: scoreDelta });
-    window.parent.postMessage({ type:'LIVE_ANSWER', payload:{ correct: ok, deltaMs, scoreDelta, currentScore: score }}, '*');
-    setTimeout(()=>{ idx++; render(); }, 1200); // Longer delay for animations
+    nextBtn.classList.remove('hidden');
+    if (idx + 1 >= pool.length) {
+        nextBtn.textContent = 'Finish';
+    } else {
+        nextBtn.textContent = 'Next →';
+    }
   }
 
-  function start(){
-    // Set background image
-    document.body.style.backgroundImage = `url(assets/background.jpeg)`;
+  function start(resumeState){
+    document.body.style.backgroundImage = 'url(assets/background.jpeg)';
+    show('play');
     
-    show('play'); idx=0; score=0; streak=0; gen(); render();
+    if (resumeState) {
+        idx = resumeState.currentItemIndex || 0;
+        score = resumeState.currentScore || 0;
+        resumeElapsedMs = resumeState.elapsedMs || 0;
+    } else {
+        idx = 0;
+        score = 0;
+        resumeElapsedMs = 0;
+    }
+    
+    streak = 0; 
+    render();
+    gameStartMs = Date.now();
 
     if (settings.durationSec > 0){
       timeLeft = Number(settings.durationSec);
-      timerEl.textContent = `${timeLeft}s`;
+      if (resumeState) {
+        timeLeft = Math.max(0, Math.floor(timeLeft - (resumeElapsedMs / 1000)));
+      }
+      
+      if (timeLeft <= 0) {
+          finish();
+          return;
+      }
+      
+      timerEl.textContent = timeLeft + 's';
       timerIv = setInterval(()=>{ 
         timeLeft--; 
-        timerEl.textContent=`${timeLeft}s`; 
+        timerEl.textContent = timeLeft + 's'; 
         
-        // Add shake effect when time is running low
         if (timeLeft <= 10) {
           timerEl.parentElement.classList.add('urgent-timer');
         } else {
           timerEl.parentElement.classList.remove('urgent-timer');
         }
         
-        if(timeLeft<=0){ 
+        if(timeLeft <= 0){ 
           clearInterval(timerIv); 
           timerEl.parentElement.classList.remove('urgent-timer');
           finish(); 
         } 
       }, 1000);
-    } else { timerEl.textContent = 'Sprint'; timerEl.parentElement.style.visibility = 'hidden'; }
+    } else { 
+      timerEl.textContent = 'Sprint'; 
+      timerEl.parentElement.style.visibility = 'hidden'; 
+    }
   }
 
   function finish(){
     if (timerIv) clearInterval(timerIv);
-    // Remove urgent timer effect
     timerEl.parentElement.classList.remove('urgent-timer');
     show('done');
-    summary.textContent = `Final Score: ${score}`;
-    const totalTimeMs = answers.reduce((a,b)=>a+(b.timeMs || 0),0);
-    const pointsPerCorrect = Number(settings.pointsPerCorrect ?? 1);
-    window.parent.postMessage({ type:'LIVE_FINISH', payload:{ totalTimeMs }}, '*');
-    window.parent.postMessage({ type:'GAME_COMPLETE', payload:{ gameCreationId: creation?.gameCreationId || creation?._id, score, totalPossibleScore: pool.length * pointsPerCorrect, answers }}, '*');
+    summary.textContent = 'Final Score: ' + score;
+    
+    const totalTime = (gameStartMs ? Date.now() - gameStartMs : 0) + resumeElapsedMs;
+    WajibetSDK.finishGame(score, totalTime);
   }
 
-  window.addEventListener('message', (e)=>{
-    if (e.data?.type==='INIT_GAME'){
-      // Handle both old format (payload) and new platform format
-      const data = e.data.payload || e.data;
-      creation = data;
-      settings = data.settings || data.config || {};
-      
-      // Preload all assets before starting
-      show('loading');
-      preloadAssets().then(() => {
-        gen = function() {
+  const preloadAssets = () => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = 'assets/background.jpeg';
+    });
+  };
+
+  window.onload = function() {
+    if (typeof WajibetSDK === 'undefined') {
+        byId('loading').textContent = 'SDK not loaded.';
+        return;
+    }
+
+    WajibetSDK.init(function(resumeState) {
+        document.documentElement.dir = WajibetSDK.getDirection();
+        const creation = WajibetSDK.getGameCreation() || {};
+        settings = creation.config || {};
+        
+        show('loading');
+        preloadAssets().then(() => {
           pool = [];
-          
-          // Check if using automatic generation
           if (settings.autoGenerate) {
-            // Auto-generate equations based on settings
             const numEquations = settings.questionCount || 10;
             const operations = [];
             if (settings.opAdd) operations.push('+');
@@ -224,58 +318,44 @@
             
             for (let i = 0; i < numEquations; i++) {
               let num1, num2, op, answer;
-              
-              // Pick random operation from selected operations
               op = operations[Math.floor(Math.random() * operations.length)];
               
-              // Generate numbers based on operation
               if (op === '/') {
-                if (maxNum < 2) {
-                  op = '+';
-                }
+                if (maxNum < 2) op = '+';
               }
-
               if (op === '/') {
-                // For division: ensure whole number result (child-friendly)
-                // num2 is divisor, num1 is multiple of num2
                 const divisorMax = Math.min(10, Math.max(2, maxNum));
-                num2 = rnd(2, divisorMax); // divisor 2-10
+                num2 = rnd(2, divisorMax);
                 const quotientMin = Math.ceil(Math.max(0, minNum) / num2);
                 const quotientMax = Math.floor(maxNum / num2);
-                if (quotientMax < quotientMin) {
-                  op = '+';
-                } else {
+                if (quotientMax < quotientMin) op = '+';
+                else {
                   const quotient = rnd(quotientMin, quotientMax);
-                  num1 = num2 * quotient; // ensure exact division
+                  num1 = num2 * quotient;
                   answer = quotient;
                 }
               }
-
               if (op !== '/' || answer === undefined) {
-                // For +, -, *: normal random generation
                 num1 = rnd(minNum, maxNum);
                 num2 = rnd(minNum, maxNum);
-                
                 if (op === '+') answer = num1 + num2;
                 else if (op === '-') {
-                  if (num2 > num1) [num1, num2] = [num2, num1];
+                  if (num2 > num1) { const t = num1; num1 = num2; num2 = t; }
                   answer = num1 - num2;
                 } else if (op === '*') answer = num1 * num2;
               }
-              
-              const question = `${num1} ${op} ${num2}`;
-              
+              const question = num1 + ' ' + op + ' ' + num2;
               pool.push({
-                question,
-                answer,
+                itemId: 'gen-' + i,
+                question: question,
+                answer: answer,
                 choices: buildChoices(answer)
               });
             }
-          } else if (data.content && Array.isArray(data.content)) {
-            // Manual content from platform
-            pool = data.content.map(item => {
+          } else if (creation.content && Array.isArray(creation.content)) {
+            pool = creation.content.map((item, i) => {
+              const itemId = item.itemId || ('item_' + i);
               if (item.operandA !== undefined && item.operation !== undefined && item.operandB !== undefined) {
-                // New structured format: { operandA, operation, operandB, correctAnswer }
                 const a = Number(item.operandA);
                 const b = Number(item.operandB);
                 const op = item.operation;
@@ -290,41 +370,34 @@
                     answer = a / b;
                   }
                 }
-
                 if (!Number.isFinite(answer) || answer < 0) return null;
-                const question = `${a} ${op} ${b}`;
-                return {
-                  question,
-                  answer,
-                  choices: buildChoices(answer)
-                };
+                return { itemId: itemId, question: a + ' ' + op + ' ' + b, answer: answer, choices: buildChoices(answer) };
               } else if (typeof item.expression === 'string') {
-                // Fallback to old expression format
-                const question = item.expression;
                 const answer = parseFloat(item.correctAnswer);
-                return { 
-                  question, 
-                  answer, 
-                  choices: buildChoices(answer)
-                };
+                return { itemId: itemId, question: item.expression, answer: answer, choices: buildChoices(answer) };
               } else if (item.a !== undefined && item.op !== undefined && item.b !== undefined) {
-                // Fallback to oldest format
                 const answer = calc(item.a, item.op, item.b);
                 const wrong1 = item.wrong1 ?? answer + rnd(1,5);
                 const wrong2 = item.wrong2 ?? answer - rnd(1,5);
-                return { question: `${item.a} ${item.op} ${item.b}`, answer, choices: shuffle([answer, wrong1, wrong2]) };
+                return { itemId: itemId, question: item.a + ' ' + item.op + ' ' + item.b, answer: answer, choices: shuffle([answer, wrong1, wrong2]) };
               }
             }).filter(Boolean);
           }
-        }
-        gen();
-        if (!pool.length) {
-          document.body.innerHTML = '<h1 style="color:#fff;text-align:center;">No valid questions found. Please check your settings.</h1>';
-          return;
-        }
-        show('ready');
-        enterBtn.onclick = countdown;
-      });
-    }
-  });
+          
+          if (!pool.length) {
+            document.body.innerHTML = '<h1 style="color:#fff;text-align:center;">No valid questions found. Please check your settings.</h1>';
+            return;
+          }
+          
+          show('ready');
+          
+          if (resumeState) {
+              enterBtn.textContent = 'Continue';
+              enterBtn.onclick = () => start(resumeState);
+          } else {
+              enterBtn.onclick = countdown;
+          }
+        });
+    });
+  };
 })();

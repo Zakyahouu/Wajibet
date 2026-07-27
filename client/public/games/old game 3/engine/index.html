@@ -8,6 +8,7 @@
 	<script>
 		window.addEventListener('contextmenu', e=> e.preventDefault());
 	</script>
+	<script src="/sdk/wajibet-sdk.js"></script>
 	<link rel="preload" as="script" href="game.js" />
 	<script defer src="game.js"></script>
 </head>
@@ -42,12 +43,13 @@
 			</div>
 
 			<div id="options-grid" class="options-grid">
-				</div>
+			</div>
 			
 			<div id="explain-container" class="explain-container hidden">
-				</div>
+			</div>
 
 			<div id="action-bar" class="action-bar">
+				<button id="confirm-btn" class="btn hidden">Confirm</button>
 				<button id="next-btn" class="btn hidden">Next Question</button>
 			</div>
 		</div>

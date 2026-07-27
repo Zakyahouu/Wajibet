@@ -1,36 +1,37 @@
 (function(){
-	let creation, settings, items=[], idx=0, score=0, timerIv, qStartMs = 0;
+	let settings = {}, items=[], idx=0, score=0, timerIv, qStartMs = 0;
 	const answers = [];
 	const byId = (id) => document.getElementById(id);
 	let preloadedBackgrounds = [];
+	let resumeElapsedMs = 0;
+	let gameStartMs = 0;
+	
+	let selectedKey = null;
 
-	// --- UPDATED Dynamic Theme Palettes (Based on your images) ---
 	const themes = [
-		{ bg: 1, color: '#ec4899' },  // Vibrant Pink (from 1.jpg)
-		{ bg: 2, color: '#ec4899' },  // Vibrant Pink
-		{ bg: 3, color: '#ec4899' },  // Vibrant Pink
-		{ bg: 4, color: '#3b82f6' },  // Royal Blue (from 4.jpg)
-		{ bg: 5, color: '#3b82f6' },  // Royal Blue
-		{ bg: 6, color: '#3b82f6' },  // Royal Blue
-		{ bg: 7, color: '#22c55e' },  // Leafy Green (from 7.jpg)
-		{ bg: 8, color: '#22c55e' },  // Leafy Green
-		{ bg: 9, color: '#22c55e' },  // Leafy Green
-		{ bg: 10, color: '#fb923c' }, // Academic Orange (from 10.jpg)
-		{ bg: 11, color: '#fb923c' }, // Academic Orange
-		{ bg: 12, color: '#f97316' }, // Fiery Orange (from 12.jpg)
-		{ bg: 13, color: '#f97316' }  // Fiery Orange
+		{ bg: 1, color: '#ec4899' },
+		{ bg: 2, color: '#ec4899' },
+		{ bg: 3, color: '#ec4899' },
+		{ bg: 4, color: '#3b82f6' },
+		{ bg: 5, color: '#3b82f6' },
+		{ bg: 6, color: '#3b82f6' },
+		{ bg: 7, color: '#22c55e' },
+		{ bg: 8, color: '#22c55e' },
+		{ bg: 9, color: '#22c55e' },
+		{ bg: 10, color: '#fb923c' },
+		{ bg: 11, color: '#fb923c' },
+		{ bg: 12, color: '#f97316' },
+		{ bg: 13, color: '#f97316' }
 	];
 
-	// Preload all background images
 	const preloadBackgrounds = () => {
 		for (let i = 1; i <= 13; i++) {
 			const img = new Image();
-			img.src = `assets/${i}.jpeg`;
+			img.src = 'assets/' + i + '.jpeg';
 			preloadedBackgrounds.push(img);
 		}
 	};
 
-	// --- Element References ---
 	const screens = { ready: byId('ready-screen'), countdown: byId('countdown-screen'), play: byId('play-screen'), done: byId('done-screen') };
 	const enterBtn = byId('enter-btn');
 	const qIdxEl = byId('q-idx');
@@ -42,9 +43,21 @@
 	const explainEl = byId('explain-container');
 	const timerBorder = byId('timer-border');
 	const nextBtn = byId('next-btn');
+	const confirmBtn = byId('confirm-btn');
 	
 	const show = (id) => { Object.values(screens).forEach(s => s.classList.add('hidden')); screens[id].classList.remove('hidden'); };
-	const shuffle = (a) => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(([_, v]) => v);
+	
+	const shuffle = (a) => {
+		const copy = a.slice();
+		for (let i = copy.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			const temp = copy[i];
+			copy[i] = copy[j];
+			copy[j] = temp;
+		}
+		return copy;
+	};
+	
 	const stopTimer = () => { if (timerIv) { clearInterval(timerIv); timerIv = null; } };
 
 	const countdown = () => { 
@@ -59,34 +72,36 @@
 		const item = items[idx];
 		if (!item) { finish(); return; }
 
-		// Remove fade-out classes at the start of each render
 		qCard.classList.remove('fade-out');
 		optsGrid.classList.remove('fade-out');
+		
+		selectedKey = null;
 
 		stopTimer();
 		
-		// --- DYNAMIC THEME LOGIC ---
-		const defaultColor = '#3b82f6'; // Default blue
+		const defaultColor = '#3b82f6';
 		if (!settings.backgroundUrl) {
 			const bgIndex = (idx % 13) + 1;
-			document.body.style.backgroundImage = `url(assets/${bgIndex}.jpeg)`;
+			document.body.style.backgroundImage = 'url(assets/' + bgIndex + '.jpeg)';
 			const theme = themes.find(t => t.bg === bgIndex);
 			document.documentElement.style.setProperty('--primary-color', theme ? theme.color : defaultColor);
 		} else {
 			document.documentElement.style.setProperty('--primary-color', defaultColor);
 		}
 
-		// Reset UI state for the new question
-		qIdxEl.textContent = `${idx + 1} / ${items.length}`;
+		qIdxEl.textContent = (idx + 1) + ' / ' + items.length;
 		explainEl.classList.add('hidden');
 		nextBtn.classList.add('hidden');
+		confirmBtn.classList.remove('hidden');
+		confirmBtn.disabled = true;
+		
 		qEl.textContent = item.question;
 		
 		const optionsMap = { A: 'triangle', B: 'diamond', C: 'square', D: 'circle' };
-		const rawOptions = [['A', item.optionA], ['B', item.optionB], ['C', item.optionC], ['D', item.optionD]].filter(([_, val]) => val?.trim());
+		const rawOptions = [['A', item.optionA], ['B', item.optionB], ['C', item.optionC], ['D', item.optionD]].filter(([_, val]) => val && val.trim());
 		
 		optsGrid.innerHTML = '';
-		optsGrid.className = `options-grid ${rawOptions.length === 3 ? 'three-options' : ''}`;
+		optsGrid.className = 'options-grid ' + (rawOptions.length === 3 ? 'three-options' : '');
 		
 		rawOptions.forEach(([key, label]) => {
 			const btn = document.createElement('button');
@@ -95,28 +110,29 @@
 			btn.textContent = label;
 			btn.setAttribute('data-key', key);
 			btn.setAttribute('data-shape', optionsMap[key]);
-			btn.onclick = () => lockAndReveal(key);
+			btn.onclick = () => selectOption(btn, key);
 			optsGrid.appendChild(btn);
 		});
 
-		// --- TIMER SETUP & BUG FIX ---
+		confirmBtn.onclick = () => lockAndReveal();
+
 		const sec = settings.timePerQuestion || 0;
 		if (sec > 0) {
 			let timeLeft = sec;
-			timerTextEl.textContent = `${timeLeft}s`;
+			timerTextEl.textContent = timeLeft + 's';
 			
 			timerBorder.style.transition = 'none';
 			timerBorder.style.width = '100%';
 			void timerBorder.offsetWidth;
 			
-			timerBorder.style.transition = `width ${sec}s linear`;
+			timerBorder.style.transition = 'width ' + sec + 's linear';
 			timerBorder.style.width = '0%';
 			
 			timerIv = setInterval(() => {
 				timeLeft--;
-				timerTextEl.textContent = `${timeLeft}s`;
+				timerTextEl.textContent = timeLeft + 's';
 				if (timeLeft <= 3 && timeLeft > 0) qCard.style.animation = 'shake 0.5s infinite';
-				if (timeLeft <= 0) lockAndReveal(null, true);
+				if (timeLeft <= 0) lockAndReveal(true);
 			}, 1000);
 		} else {
 			timerTextEl.textContent = '---';
@@ -126,9 +142,22 @@
 		qStartMs = Date.now();
 	};
 
-	const lockAndReveal = (selectedKey, timedOut = false) => {
+	const selectOption = (btn, key) => {
+		if (btn.disabled) return;
+		
+		[...optsGrid.children].forEach(b => b.classList.remove('selected'));
+		btn.classList.add('selected');
+		selectedKey = key;
+		
+		confirmBtn.disabled = false;
+	};
+
+	const lockAndReveal = (timedOut = false) => {
+		if (!timedOut && !selectedKey) return;
+		
 		stopTimer();
 		qCard.style.animation = '';
+		confirmBtn.classList.add('hidden');
 		
 		const item = items[idx];
 		if (!item) return;
@@ -143,57 +172,128 @@
 		}
 		
 		const deltaMs = Math.max(0, Date.now() - qStartMs);
-		window.parent.postMessage({ type:'LIVE_ANSWER', payload: { correct: ok, deltaMs, scoreDelta: ok ? 1 : 0, currentScore: score } }, '*');
 		answers.push({ index: idx, correct: ok, selectedKey: selectedKey || 'TIMEOUT', timeMs: deltaMs });
 
 		[...optsGrid.children].forEach(b => {
 			const key = b.getAttribute('data-key');
-			if (key.toUpperCase() === correctKey) b.classList.add('correct');
-			else if (key === selectedKey) b.classList.add('wrong');
+			if (key.toUpperCase() === correctKey) {
+				b.classList.add('correct');
+				b.innerHTML = '✓ ' + b.textContent;
+			} else if (key === selectedKey) {
+				b.classList.add('wrong');
+				b.innerHTML = '✗ ' + b.textContent;
+			}
 			b.disabled = true;
+			b.classList.remove('selected');
+		});
+
+		const rawOptions = [['A', item.optionA], ['B', item.optionB], ['C', item.optionC], ['D', item.optionD]].filter(([_, val]) => val && val.trim());
+		let correctText = correctKey;
+		let userText = timedOut ? null : selectedKey;
+        for (let i = 0; i < rawOptions.length; i++) {
+            if (rawOptions[i][0] === correctKey) correctText = rawOptions[i][1];
+            if (rawOptions[i][0] === selectedKey) userText = rawOptions[i][1];
+        }
+		
+		WajibetSDK.recordInteraction({
+			itemId: item.itemId || ('item_' + idx),
+			itemIndex: idx,
+			type: 'multiple_choice',
+			isCorrect: ok,
+			userAnswer: userText,
+			correctAnswer: correctText,
+			score: ok ? 1 : 0,
+			maxScore: 1,
+			timeMs: deltaMs,
+			attempts: 1,
+			skipped: timedOut,
+			meta: {
+				question: item.question,
+				options: rawOptions.map(o => o[1]),
+				explanation: item.explanation
+			}
 		});
 
 		if (item.explanation) {
-			explainEl.innerHTML = `<strong>Explanation:</strong> ${item.explanation}`;
+			explainEl.innerHTML = '<strong>Explanation:</strong> ' + item.explanation;
 			explainEl.classList.remove('hidden');
 		}
 
 		nextBtn.classList.remove('hidden');
+		if (idx + 1 >= items.length) {
+			nextBtn.textContent = 'Finish Game';
+		} else {
+			nextBtn.textContent = 'Next Question';
+		}
+		
 		nextBtn.onclick = () => {
-			// Add fade-out effect before transitioning
+			if (idx + 1 >= items.length) {
+				finish();
+				return;
+			}
+			
 			qCard.classList.add('fade-out');
 			optsGrid.classList.add('fade-out');
 			
-			// Wait for transition to complete before rendering next question
 			setTimeout(() => {
 				idx++;
 				render();
-			}, 300); // Match CSS transition duration
+			}, 300);
 		};
 	};
 
-	const start = () => { show('play'); idx = 0; score = 0; scoreTextEl.textContent = score; render(); };
+	const start = (resumeState) => { 
+		show('play'); 
+		if (resumeState) {
+			idx = resumeState.currentItemIndex || 0;
+			score = resumeState.currentScore || 0;
+			resumeElapsedMs = resumeState.elapsedMs || 0;
+		} else {
+			idx = 0;
+			score = 0;
+			resumeElapsedMs = 0;
+		}
+		
+		scoreTextEl.textContent = score; 
+		gameStartMs = Date.now();
+		render(); 
+	};
 	
 	const finish = () => {
 		show('done');
 		stopTimer();
-		byId('summary-text').textContent = `You scored ${score} out of ${items.length}!`;
-		const totalTimeMs = answers.reduce((a, b) => a + (b.timeMs || 0), 0);
-		window.parent.postMessage({ type:'LIVE_FINISH', payload:{ totalTimeMs }}, '*');
-		window.parent.postMessage({ type:'GAME_COMPLETE', payload: { gameCreationId: creation?.gameCreationId || creation?._id, score, totalPossibleScore: items.length, answers }}, '*');
+		byId('summary-text').textContent = 'You scored ' + score + ' out of ' + items.length + '!';
+		const totalTimeMs = answers.reduce((a, b) => a + (b.timeMs || 0), 0) + resumeElapsedMs;
+		WajibetSDK.finishGame(score, totalTimeMs);
 	};
 	
-	window.addEventListener('message', (e) => {
-		if (e.data?.type === 'INIT_GAME') {
-			const p = e.data.payload;
-			creation = p;
-			settings = p.config || p.settings || {};
-			items = Array.isArray(p.content) ? p.content : [];
-			if (settings.shuffleQuestions) items = shuffle(items);
-			if (items.length === 0) { byId('ready-screen').innerHTML = '<h2>Error: No questions provided.</h2>'; return; }
-			preloadBackgrounds(); // Preload all backgrounds
-			show('ready'); 
-			enterBtn.onclick = countdown;
+	window.onload = function() {
+		if (typeof WajibetSDK === 'undefined') {
+			byId('ready-screen').innerHTML = '<h2>SDK not loaded.</h2>';
+			return;
 		}
-	});
+
+		WajibetSDK.init(function(resumeState) {
+			document.documentElement.dir = WajibetSDK.getDirection();
+			const creation = WajibetSDK.getGameCreation() || {};
+			settings = creation.config || {};
+			items = Array.isArray(creation.content) ? creation.content : [];
+			if (settings.shuffleQuestions) items = shuffle(items);
+			
+			if (items.length === 0) { 
+				byId('ready-screen').innerHTML = '<h2>Error: No questions provided.</h2>'; 
+				return; 
+			}
+			
+			preloadBackgrounds();
+			show('ready'); 
+			
+			if (resumeState) {
+				enterBtn.textContent = 'Continue';
+				enterBtn.onclick = () => start(resumeState);
+			} else {
+				enterBtn.onclick = countdown;
+			}
+		});
+	};
 })();

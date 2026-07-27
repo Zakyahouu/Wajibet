@@ -162,7 +162,13 @@ body{
 
 .opt.correct{ background: #dcfce7; border-color: #22c55e; color: #15803d; font-weight: 700; transform: scale(1.02); }
 .opt.wrong{ background: #fee2e2; border-color: #ef4444; color: #b91c1c; }
-.opt:disabled:not(.correct) { opacity: 0.6; }
+.opt:disabled:not(.correct):not(.wrong) { opacity: 0.6; }
+
+.opt.selected {
+	border-color: var(--primary-color);
+	transform: scale(1.02);
+	box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
 
 /* --- EXPLANATION, ACTION BAR & COUNTDOWN --- */
 .explain-container {
@@ -180,3 +186,25 @@ body{
 }
 #countdown-screen{ text-align: center; }
 .count{ font-size:96px; font-weight: 700; color: var(--primary-color); }
+
+/* --- ACCESSIBILITY (B7) --- */
+.btn:focus-visible, .opt:focus-visible {
+	outline: 3px solid var(--primary-color);
+	outline-offset: 3px;
+}
+
+/* --- RESPONSIVE (B6) --- */
+@media (max-width: 480px) {
+	.options-grid {
+		grid-template-columns: 1fr;
+	}
+	.options-grid.three-options .opt:last-child {
+		grid-column: span 1;
+	}
+	.screen {
+		padding: 20px;
+	}
+	.hud {
+		font-size: 16px;
+	}
+}
