@@ -102,7 +102,7 @@ const createGameCreation = asyncHandler(async (req, res) => {
   // Enforce max images per creation (manifest.assets.maxImagesPerCreation) if content includes image fields
   const maxImagesPerCreation = Number(template.manifest?.assets?.maxImagesPerCreation || 0);
   if (maxImagesPerCreation > 0 && Array.isArray(processedContent)) {
-    const imageFieldTypes = new Set(['image', 'imageArray']);
+    const imageFieldTypes = new Set(['image', 'imageArray', 'mapPoint']);
     const itemSchema = template.formSchema?.content?.itemSchema || {};
     let imageCount = 0;
     processedContent.forEach(item => {
@@ -112,6 +112,7 @@ const createGameCreation = asyncHandler(async (req, res) => {
           if (!val) return;
           if (schema.type === 'image') imageCount += 1;
           else if (schema.type === 'imageArray' && Array.isArray(val)) imageCount += val.length;
+          else if (schema.type === 'mapPoint' && val.imageUrl) imageCount += 1;
         }
       });
     });
@@ -160,7 +161,7 @@ const createGameCreation = asyncHandler(async (req, res) => {
       const draftPrefix = `/uploads/templates/${templateId}/creations/draft/`;
       const finalPrefix = `/uploads/templates/${templateId}/creations/${gameCreation._id}/`;
       const itemSchema = template.formSchema?.content?.itemSchema || {};
-      const imageFieldTypes = new Set(['image', 'imageArray']);
+      const imageFieldTypes = new Set(['image', 'imageArray', 'mapPoint']);
       let changed = false;
       const newContent = (Array.isArray(processedContent) ? JSON.parse(JSON.stringify(processedContent)) : []);
       for (let i = 0; i < newContent.length; i++) {
@@ -203,6 +204,20 @@ const createGameCreation = asyncHandler(async (req, res) => {
               }
             }
             item[key] = updated;
+          } else if (schema.type === 'mapPoint') {
+            const point = item[key];
+            if (point && typeof point.imageUrl === 'string' && point.imageUrl.startsWith(draftPrefix)) {
+              const filename = point.imageUrl.substring(draftPrefix.length);
+              const src = path.join(baseUploads, 'draft', filename);
+              const destDir = path.join(baseUploads, String(gameCreation._id));
+              const dest = path.join(destDir, filename);
+              if (fs.existsSync(src)) {
+                if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+                fs.renameSync(src, dest);
+                item[key] = { ...point, imageUrl: finalPrefix + filename };
+                changed = true;
+              }
+            }
           }
         }
       }
@@ -367,7 +382,7 @@ const updateGameCreation = asyncHandler(async (req, res) => {
   // Validate image limits (same as create)
   const maxImagesPerCreation = Number(template.manifest?.assets?.maxImagesPerCreation || 0);
   if (maxImagesPerCreation > 0 && Array.isArray(processedContent)) {
-    const imageFieldTypes = new Set(['image', 'imageArray']);
+    const imageFieldTypes = new Set(['image', 'imageArray', 'mapPoint']);
     const itemSchema = template.formSchema?.content?.itemSchema || {};
     let imageCount = 0;
     processedContent.forEach(item => {
@@ -377,6 +392,7 @@ const updateGameCreation = asyncHandler(async (req, res) => {
           if (!val) return;
           if (schema.type === 'image') imageCount += 1;
           else if (schema.type === 'imageArray' && Array.isArray(val)) imageCount += val.length;
+          else if (schema.type === 'mapPoint' && val.imageUrl) imageCount += 1;
         }
       });
     });

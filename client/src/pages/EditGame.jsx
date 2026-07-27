@@ -14,6 +14,7 @@ import {
     Save,
     Loader2
 } from 'lucide-react';
+import MapPointPicker from '../components/shared/MapPointPicker';
 
 const EditGame = () => {
     const { creationId } = useParams();
@@ -95,8 +96,8 @@ const EditGame = () => {
     const addContentItem = () => {
         const newItem = {};
         if (template?.formSchema?.content?.itemSchema) {
-            Object.keys(template.formSchema.content.itemSchema).forEach(key => {
-                newItem[key] = '';
+            Object.entries(template.formSchema.content.itemSchema).forEach(([key, field]) => {
+                newItem[key] = field.type === 'mapPoint' ? null : (field.type === 'imageArray' ? [] : '');
             });
         }
         setContentItems(prev => [...prev, newItem]);
@@ -708,6 +709,17 @@ const EditGame = () => {
                                                                 <option key={opt} value={opt}>{opt}</option>
                                                             ))}
                                                         </select>
+                                                    ) : field.type === 'mapPoint' ? (
+                                                        <MapPointPicker
+                                                            value={item[key]}
+                                                            onChange={(val) => handleContentChange(index, key, val)}
+                                                            uploadUrl={`/api/templates/${template._id}/media`}
+                                                            authToken={user.token}
+                                                            accept={field.accept}
+                                                            radiusMin={field.radiusMin}
+                                                            radiusMax={field.radiusMax}
+                                                            radiusDefault={field.radiusDefault}
+                                                        />
                                                     ) : field.type === 'image' ? (
                                                         <div className="space-y-2">
                                                             {item[key] && (
