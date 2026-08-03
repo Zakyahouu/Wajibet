@@ -57,15 +57,27 @@
         var normalized = dir === 'rtl' ? 'rtl' : 'ltr';
         isRtl = normalized === 'rtl';
         document.body.setAttribute('dir', normalized);
-        wordPreview.style.direction = normalized;
-        wordPreview.style.textAlign = normalized === 'rtl' ? 'right' : 'center';
-        buildArea.style.direction = normalized;
-        buildArea.style.flexDirection = normalized === 'rtl' ? 'row-reverse' : 'row';
-        buildArea.style.justifyContent = normalized === 'rtl' ? 'flex-end' : 'flex-start';
-        letterBank.style.direction = normalized;
-        letterBank.style.justifyContent = normalized === 'rtl' ? 'flex-end' : 'center';
-        hintText.style.direction = normalized;
-        hintText.style.textAlign = normalized === 'rtl' ? 'right' : 'left';
+
+        // FIX: Use CSS `direction` on the flex containers instead of
+        // `flexDirection: row-reverse`. This lets the browser handle visual
+        // RTL ordering while the DOM stays in logical (first-character-first)
+        // order. We never need to .reverse() the letters array.
+        //
+        // How it works:
+        //   direction:rtl on a flex container causes children to layout
+        //   right-to-left visually, but they remain in their original DOM
+        //   order. Reading them back with querySelectorAll gives logical order.
+        //
+        // Letter bank: direction:rtl makes the bank flow right-to-left
+        // (natural for Arabic), while LTR keeps it centered.
+        wordPreview.style.direction  = normalized;
+        wordPreview.style.textAlign  = 'center';  // always center — browser RTL aligns correctly
+        buildArea.style.direction    = normalized;
+        buildArea.style.flexDirection = 'row';     // NEVER row-reverse — direction:rtl handles it
+        buildArea.style.justifyContent = 'flex-start'; // logical start = visual right for RTL
+        letterBank.style.direction   = normalized;
+        hintText.style.direction     = normalized;
+        hintText.style.textAlign     = normalized === 'rtl' ? 'right' : 'left';
     }
 
     // Fisher-Yates shuffle (returns a copy)
@@ -147,7 +159,10 @@
     function createLetterButton(letter, parent) {
         var btn = document.createElement('button');
         btn.className = 'letter-btn';
-        btn.textContent = letter.toUpperCase();
+        // FIX: Store the letter EXACTLY as given (preserve original case/codepoint).
+        // toUpperCase() is meaningless for Arabic and can corrupt codepoints.
+        // The comparison in checkAnswer() now uses the raw stored characters.
+        btn.textContent = letter;
         btn.draggable = true;
 
         btn.addEventListener('click', function () { handleLetterClick(btn); });
@@ -178,14 +193,16 @@
     }
 
     function updateWordPreview() {
+        // FIX: DOM order IS logical order — no reversal needed.
+        // direction:rtl on the container makes the browser display right-to-left visually.
         var letters = Array.from(buildArea.querySelectorAll('.letter-btn')).map(function (btn) { return btn.textContent; });
-        var builtWord = (isRtl ? letters.reverse() : letters).join('');
-        wordPreview.textContent = builtWord;
+        wordPreview.textContent = letters.join('');
     }
 
     function getBuiltWord() {
+        // FIX: Same — DOM order = logical word order for both LTR and RTL.
         var letters = Array.from(buildArea.querySelectorAll('.letter-btn')).map(function (btn) { return btn.textContent; });
-        return (isRtl ? letters.reverse() : letters).join('');
+        return letters.join('');
     }
 
     function getTotalPossibleScore() {
@@ -211,9 +228,11 @@
             attempts:      itemAttemptCount,
             skipped:       !!timedOut,
             meta: {
-                targetWord: puzzle.word || '',
-                builtWord: builtWord || '',
-                timedOut: !!timedOut
+                targetWord:  puzzle.word || '',
+                builtWord:   builtWord || '',
+                timedOut:    !!timedOut,
+                hint:        (settings.showHints !== false && puzzle.hint) ? puzzle.hint : null,
+                hintVisible: !!(settings.showHints !== false && puzzle.hint)
             }
         });
     }
@@ -226,11 +245,12 @@
     function moveLetter(btn, destination) {
         var target = destination === 'to_build' ? buildArea : letterBank;
         if (buildArea.querySelector('.placeholder')) buildArea.innerHTML = '';
-        if (destination === 'to_build' && isRtl) {
-            target.insertBefore(btn, target.firstChild);
-        } else {
-            target.appendChild(btn);
-        }
+        // FIX: Always append — direction:rtl makes the browser render new
+        // letters on the correct visual side automatically. The old
+        // `insertBefore(btn, firstChild)` for RTL caused click and
+        // drag-and-drop to produce different DOM orders, which broke
+        // the word comparison.
+        target.appendChild(btn);
         if (buildArea.children.length === 0) buildArea.innerHTML = '<span class="placeholder">Drop letters here to build your world . . .</span>';
         updateWordPreview();
     }
@@ -253,7 +273,14 @@
         var pointsEarned = Number(puzzle.points || 10);
         itemAttemptCount++;
 
-        if (builtWord.toLowerCase() === (puzzle.word || '').toLowerCase()) {
+        // FIX: Compare the built word directly against the stored word.
+        // toLowerCase() is meaningless for Arabic (no case), and can mask
+        // differences in Unicode normalization. We also normalise both sides
+        // with NFC to handle composed vs. decomposed Arabic characters.
+        var normalize = function (s) {
+            return (s || '').normalize ? (s || '').normalize('NFC') : (s || '');
+        };
+        if (normalize(builtWord) === normalize(puzzle.word || '')) {
             // CORRECT
             stopTimer();
             score += pointsEarned;
@@ -294,8 +321,11 @@
     function handleTimeoutOrNoTries(shouldEmit) {
         var builtWord = getBuiltWord();
         if (shouldEmit !== false) {
-            // Emit ONCE on timeout resolution
-            itemAttemptCount++;
+            // FIX: Do NOT increment itemAttemptCount here — it was already incremented
+            // in checkAnswer() when currentAttempts hit 0, or it represents the timer
+            // firing before the student ever pressed Check (1 attempt implied).
+            // Ensure at least 1 is reported even if the student never pressed Check.
+            if (itemAttemptCount === 0) itemAttemptCount = 1;
             emitInteraction(false, builtWord, true);
         }
         buildArea.innerHTML = '<span class="feedback-text">Word was: ' + items[idx].word.toUpperCase() + '</span>';

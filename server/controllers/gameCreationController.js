@@ -19,6 +19,52 @@ const normalizeAttemptPolicy = (value) => {
   return 'first_only';
 };
 
+const validateFillBlankDropdown = (itemVal, key, itemIndex) => {
+  if (!itemVal) return { valid: false, message: `Item ${itemIndex + 1}: Missing fillBlankDropdown data for ${key}` };
+  if (!itemVal.passageTemplate || typeof itemVal.passageTemplate !== 'string') {
+    return { valid: false, message: `Item ${itemIndex + 1}: Passage template must be a non-empty string.` };
+  }
+  const blanks = Array.isArray(itemVal.blanks) ? itemVal.blanks : [];
+  
+  // Extract tokens from passage
+  const regex = /\[\[(.*?)\]\]/g;
+  let match;
+  const detectedIds = new Set();
+  while ((match = regex.exec(itemVal.passageTemplate)) !== null) {
+    detectedIds.add(match[1]);
+  }
+
+  // Check orphaned blanks and missing blanks
+  const blankIds = new Set(blanks.map(b => b.id));
+  for (const id of detectedIds) {
+    if (!blankIds.has(id)) {
+      return { valid: false, message: `Item ${itemIndex + 1}: Blank token '[[${id}]]' in passage has no matching options configured.` };
+    }
+  }
+  for (const id of blankIds) {
+    if (!detectedIds.has(id)) {
+      return { valid: false, message: `Item ${itemIndex + 1}: Options configured for blank '${id}', but '[[${id}]]' is missing from the passage.` };
+    }
+  }
+
+  // Check options length and correctIndex
+  for (const blank of blanks) {
+    if (!Array.isArray(blank.options) || blank.options.length < 2) {
+      return { valid: false, message: `Item ${itemIndex + 1}: Blank '${blank.id}' must have at least 2 options.` };
+    }
+    if (typeof blank.correctIndex !== 'number' || blank.correctIndex < 0 || blank.correctIndex >= blank.options.length) {
+      return { valid: false, message: `Item ${itemIndex + 1}: Blank '${blank.id}' has an invalid correct answer selection.` };
+    }
+    for (let i = 0; i < blank.options.length; i++) {
+      if (typeof blank.options[i] !== 'string' || blank.options[i].trim() === '') {
+        return { valid: false, message: `Item ${itemIndex + 1}: Blank '${blank.id}' has an empty option.` };
+      }
+    }
+  }
+
+  return { valid: true };
+};
+
 // @desc    Create a new game creation
 // @route   POST /api/creations
 // @access  Private/Teacher or Admin
@@ -97,6 +143,22 @@ const createGameCreation = asyncHandler(async (req, res) => {
       }
       return processedItem;
     });
+  }
+
+  // Validate fillBlankDropdown logic if any exist
+  if (template.formSchema?.content?.itemSchema) {
+    const itemSchema = template.formSchema.content.itemSchema;
+    for (let i = 0; i < processedContent.length; i++) {
+      for (const [key, schema] of Object.entries(itemSchema)) {
+        if (schema.type === 'fillBlankDropdown') {
+          const valResult = validateFillBlankDropdown(processedContent[i][key], key, i);
+          if (!valResult.valid) {
+            res.status(400);
+            throw new Error(valResult.message);
+          }
+        }
+      }
+    }
   }
 
   // Enforce max images per creation (manifest.assets.maxImagesPerCreation) if content includes image fields
@@ -377,6 +439,22 @@ const updateGameCreation = asyncHandler(async (req, res) => {
       });
       return processed;
     });
+  }
+
+  // Validate fillBlankDropdown logic if any exist
+  if (template.formSchema?.content?.itemSchema) {
+    const itemSchema = template.formSchema.content.itemSchema;
+    for (let i = 0; i < processedContent.length; i++) {
+      for (const [key, schema] of Object.entries(itemSchema)) {
+        if (schema.type === 'fillBlankDropdown') {
+          const valResult = validateFillBlankDropdown(processedContent[i][key], key, i);
+          if (!valResult.valid) {
+            res.status(400);
+            throw new Error(valResult.message);
+          }
+        }
+      }
+    }
   }
 
   // Validate image limits (same as create)

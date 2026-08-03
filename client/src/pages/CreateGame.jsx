@@ -15,6 +15,7 @@ import {
     Loader2
 } from 'lucide-react';
 import MapPointPicker from '../components/shared/MapPointPicker';
+import FillBlankDropdownEditor from '../components/shared/FillBlankDropdownEditor';
 
 const CreateGame = () => {
     const { templateId } = useParams();
@@ -709,7 +710,11 @@ const CreateGame = () => {
                                                                 accept={field.accept}
                                                                 radiusMin={field.radiusMin}
                                                                 radiusMax={field.radiusMax}
-                                                                radiusDefault={field.radiusDefault}
+                                                            />
+                                                        ) : field.type === 'fillBlankDropdown' ? (
+                                                            <FillBlankDropdownEditor
+                                                                value={item[key] || { passageTemplate: '', blanks: [] }}
+                                                                onChange={(val) => handleContentChange(index, key, val)}
                                                             />
                                                         ) : field.type === 'image' ? (
                                                             <div className="space-y-2">

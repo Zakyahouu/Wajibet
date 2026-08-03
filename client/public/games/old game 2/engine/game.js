@@ -159,12 +159,21 @@
     const ok = selectedChoice === correctAnswer;
     const deltaMs = Date.now() - qStartMs;
     const pointsPerCorrect = Number(settings.pointsPerCorrect ?? 1);
-    const penaltyPerWrong = Number(settings.penaltyPerWrong ?? 0);
+    const penaltyPerWrong  = Number(settings.penaltyPerWrong  ?? 0);
     
-    const scoreDelta = ok ? pointsPerCorrect : 0;
+    // FIX: scoreDelta is positive for correct, negative for wrong (when penalty configured)
+    // so the sum of per-item scores equals the final score passed to finishGame().
+    var scoreDelta;
+    if (ok) {
+      scoreDelta = pointsPerCorrect;
+    } else {
+      // Penalty is a negative delta; clamp so it can't take score below 0 in aggregate
+      scoreDelta = penaltyPerWrong > 0 ? -penaltyPerWrong : 0;
+    }
     
+    // FIX: Speed bonus is cosmetic only — label it clearly, do NOT add to score
     if (ok && deltaMs <= 2000) {
-      showBonus('+50 Speed Bonus!', 'speed');
+      showBonus('⚡ Fast Answer!', 'speed');
     }
     
     if (ok) {
@@ -207,7 +216,12 @@
       timeMs: deltaMs,
       attempts: 1,
       skipped: false,
-      meta: { question: q.question }
+      meta: {
+        question: q.question,
+        correctAnswer: correctAnswer,
+        selectedAnswer: selectedChoice,
+        penaltyApplied: !ok && penaltyPerWrong > 0 ? penaltyPerWrong : 0
+      }
     });
 
     nextBtn.classList.remove('hidden');

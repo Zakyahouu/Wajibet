@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wajibet Reference Quiz</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- The platform serves the SDK at /sdk/wajibet-sdk.js -->
   <script src="/sdk/wajibet-sdk.js"></script>
 </head>
 <body>
@@ -14,6 +13,15 @@
     <section id="screen-loading" class="screen is-active">
       <div class="spinner" aria-hidden="true"></div>
       <p class="muted">Loading…</p>
+    </section>
+
+    <!-- Start / Continue -->
+    <section id="screen-start" class="screen">
+      <div class="card card--center">
+        <h1 id="start-title">Ready?</h1>
+        <p id="start-lede" class="muted-dark">Answer the questions below. Select your answer, then confirm.</p>
+        <button class="next-btn" id="start-btn">Start</button>
+      </div>
     </section>
 
     <!-- Play -->
@@ -26,7 +34,10 @@
         <h1 class="prompt" id="prompt">…</h1>
         <div class="options" id="options"></div>
         <p class="feedback" id="feedback"></p>
-        <button class="next-btn" id="next-btn" hidden>Next →</button>
+        <div class="action-row" id="action-row">
+          <button class="confirm-btn" id="confirm-btn" disabled>Confirm</button>
+          <button class="next-btn" id="next-btn" hidden>Next →</button>
+        </div>
       </div>
     </section>
 

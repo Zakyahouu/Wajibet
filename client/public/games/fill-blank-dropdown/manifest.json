@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "name": "Fill-In-The-Blank",
+  "description": "Read a sentence or passage and fill in the missing blanks.",
+  "attemptPolicy": "all",
+  "xp": {
+    "assignment": { "enabled": true, "amount": 100, "firstAttemptOnly": true },
+    "online": { "enabled": false, "amount": 0 }
+  },
+  "limits": {
+    "maxCreationsPerTeacher": 0
+  },
+  "assets": {
+    "maxImagesPerCreation": 10
+  }
+}

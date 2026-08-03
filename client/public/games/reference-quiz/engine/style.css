@@ -118,3 +118,40 @@ body {
 
 .final { font-size: 20px; }
 .final b { color: var(--bg-1); }
+
+/* Start / Continue screen */
+.muted-dark { color: var(--muted); margin-block: 8px 24px; }
+
+/* Selected state (before confirm) */
+.option.is-selected {
+  border-color: var(--bg-1);
+  background: #eff6ff;
+  font-weight: 600;
+}
+
+/* Action row with confirm + next */
+.action-row {
+  display: flex;
+  gap: 12px;
+  margin-block-start: 18px;
+  flex-wrap: wrap;
+}
+
+.confirm-btn {
+  flex: 1;
+  padding-block: 12px;
+  padding-inline: 24px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bg-1);
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.confirm-btn:disabled { opacity: 0.4; cursor: default; }
+.confirm-btn:focus-visible, .next-btn:focus-visible, .option:focus-visible {
+  outline: 3px solid var(--bg-2);
+  outline-offset: 2px;
+}

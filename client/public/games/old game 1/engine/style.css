@@ -71,6 +71,9 @@ body {
     font-size: 1.8em;
     letter-spacing: 5px;
     text-align: center;
+    /* Ensure Arabic text renders in its natural direction regardless of
+       whether the browser tries to apply bidi override. */
+    unicode-bidi: plaintext;
 }
 .build-area {
     width: 100%;
@@ -93,7 +96,10 @@ body {
 .container.correct-state { background-image: url('assets/image_correct.png'); }
 .container.game-ended { background-image: url('assets/background_end.png'); }
 
-/* LETTER BANK */
+/* LETTER BANK
+   justify-content stays center for LTR.
+   For RTL, direction:rtl (set by JS) makes the browser flow letters
+   from the right — no JS-side justifyContent override needed. */
 .letter-bank { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px 0; }
 .letter-btn {
     background: white;

@@ -1,6 +1,6 @@
 (function(){
 	let settings = {}, items=[], idx=0, score=0, timerIv, qStartMs = 0;
-	const answers = [];
+	const answers = [];   // local per-item timing log; SDK buffers its own answers
 	const byId = (id) => document.getElementById(id);
 	let preloadedBackgrounds = [];
 	let resumeElapsedMs = 0;
@@ -77,7 +77,9 @@
 		
 		selectedKey = null;
 
+		// FIX BUG 3: always clear any running timer before rendering the new question
 		stopTimer();
+		qCard.style.animation = '';
 		
 		const defaultColor = '#3b82f6';
 		if (!settings.backgroundUrl) {
@@ -163,16 +165,22 @@
 		if (!item) return;
 
 		const correctKey = String(item.correct || 'A').toUpperCase();
-		const ok = selectedKey && selectedKey.toUpperCase() === correctKey;
+		const ok = !!(selectedKey && selectedKey.toUpperCase() === correctKey);
+
+		// FIX BUG 2: respect teacher-configured points (settings.pointsPerQuestion)
+		const pointsPerQ = Number(settings.pointsPerQuestion) || 1;
+		const scoreEarned = ok ? pointsPerQ : 0;
 		if (ok) {
-			score++;
+			score += scoreEarned;
 			scoreTextEl.textContent = score;
 			scoreTextEl.classList.add('pop');
 			scoreTextEl.addEventListener('animationend', () => scoreTextEl.classList.remove('pop'), { once: true });
 		}
-		
+
 		const deltaMs = Math.max(0, Date.now() - qStartMs);
+		// Always push to local answers array for totalTimeMs calculation
 		answers.push({ index: idx, correct: ok, selectedKey: selectedKey || 'TIMEOUT', timeMs: deltaMs });
+
 
 		[...optsGrid.children].forEach(b => {
 			const key = b.getAttribute('data-key');
@@ -189,28 +197,35 @@
 
 		const rawOptions = [['A', item.optionA], ['B', item.optionB], ['C', item.optionC], ['D', item.optionD]].filter(([_, val]) => val && val.trim());
 		let correctText = correctKey;
-		let userText = timedOut ? null : selectedKey;
+		let userText = null;
         for (let i = 0; i < rawOptions.length; i++) {
             if (rawOptions[i][0] === correctKey) correctText = rawOptions[i][1];
             if (rawOptions[i][0] === selectedKey) userText = rawOptions[i][1];
         }
+
+		// FIX BUG 1: userAnswer must never be null (SDK throws if it is).
+		// When timed out with no selection, use the empty string.
+		const safeUserAnswer = userText !== null ? userText : (timedOut ? '' : '');
 		
 		WajibetSDK.recordInteraction({
 			itemId: item.itemId || ('item_' + idx),
 			itemIndex: idx,
 			type: 'multiple_choice',
 			isCorrect: ok,
-			userAnswer: userText,
+			userAnswer: safeUserAnswer,
 			correctAnswer: correctText,
-			score: ok ? 1 : 0,
-			maxScore: 1,
+			score: scoreEarned,
+			maxScore: pointsPerQ,
 			timeMs: deltaMs,
 			attempts: 1,
 			skipped: timedOut,
 			meta: {
 				question: item.question,
 				options: rawOptions.map(o => o[1]),
-				explanation: item.explanation
+				explanation: item.explanation,
+				timedOut: timedOut,
+				selectedKey: selectedKey || null,
+				correctKey: correctKey
 			}
 		});
 
@@ -262,8 +277,11 @@
 	const finish = () => {
 		show('done');
 		stopTimer();
-		byId('summary-text').textContent = 'You scored ' + score + ' out of ' + items.length + '!';
+		// FIX BUG 4: use answers array length * avg time (local tracking)
+		// totalTimeMs from local answers is in sync because we push BEFORE recordInteraction
 		const totalTimeMs = answers.reduce((a, b) => a + (b.timeMs || 0), 0) + resumeElapsedMs;
+		const totalPossibleScore = items.length * (Number(settings.pointsPerQuestion) || 1);
+		byId('summary-text').textContent = 'You scored ' + score + ' out of ' + totalPossibleScore + '!';
 		WajibetSDK.finishGame(score, totalTimeMs);
 	};
 	
