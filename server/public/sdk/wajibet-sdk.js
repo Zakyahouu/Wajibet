@@ -53,6 +53,10 @@
           state.resumeState = config.resumeState || null;
           state.initialized = true;
 
+          if (state.resumeState && Array.isArray(state.resumeState.answers)) {
+            state.interactions = state.resumeState.answers.slice();
+          }
+
           window.removeEventListener('message', messageListener);
           if (typeof onReady === 'function') {
             onReady(state.resumeState);

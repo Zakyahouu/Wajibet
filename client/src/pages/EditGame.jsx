@@ -14,8 +14,6 @@ import {
     Save,
     Loader2
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/shared/ToastProvider';
 import MapPointPicker from '../components/shared/MapPointPicker';
 import FillBlankDropdownEditor from '../components/shared/FillBlankDropdownEditor';
 
@@ -145,7 +143,7 @@ const EditGame = () => {
 
     const isContentValid = () => {
         if (autoMode) return true;
-        
+
         if (template?.directory === 'multiple-choice-quiz') {
             for (let i = 0; i < contentItems.length; i++) {
                 const item = contentItems[i];
@@ -164,14 +162,14 @@ const EditGame = () => {
                 }
             }
         }
-        
+
         return true;
     };
 
     const submitGame = async () => {
         setSaving(true);
         setError('');
-        
+
         let filteredContent = contentItems;
         if (!autoMode) {
             filteredContent = contentItems.filter(item => Object.values(item).some(v => v !== '' && v !== undefined));
@@ -280,348 +278,348 @@ const EditGame = () => {
 
                     {/* Game Settings Section (Step 1) */}
                     {currentStep === 1 && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="p-6 border-b border-gray-100">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-md flex items-center justify-center">
-                                    <Settings className="w-5 h-5" />
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="p-6 border-b border-gray-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-md flex items-center justify-center">
+                                        <Settings className="w-5 h-5" />
+                                    </div>
+                                    <h2 className="text-xl font-bold text-gray-800">Game Settings</h2>
                                 </div>
-                                <h2 className="text-xl font-bold text-gray-800">Game Settings</h2>
                             </div>
-                        </div>
 
-                        <div className="p-6">
-                            <div className="grid gap-6 md:grid-cols-2">
-                                {Object.entries(template.formSchema?.settings || {}).map(([key, field]) => {
-                                    const hasAuto = template.formSchema?.settings?.autoGenerate !== undefined;
-                                    if (key === 'questionCount' && !autoMode) return null;
-                                    if (key === 'autoGenerate') {
-                                        return (
-                                            <div key={key} className="flex items-center gap-3">
-                                                <input
-                                                    id="auto-generate-toggle"
-                                                    type="checkbox"
-                                                    checked={autoMode}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.checked)}
-                                                    className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                                />
-                                                <label htmlFor="auto-generate-toggle" className="text-sm font-medium text-gray-700">
-                                                    {field.label}
-                                                </label>
-                                            </div>
-                                        );
-                                    }
-                                    // Select/Enum: choose UI based on multiplicity
-                                    if (field.type === 'enum' || field.type === 'select') {
-                                        const isMultiple = Array.isArray(field.default) || field.multiple === true;
-                                        const currentVal = settingsData[key] ?? (isMultiple ? [] : '');
-                                        if (isMultiple) {
+                            <div className="p-6">
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    {Object.entries(template.formSchema?.settings || {}).map(([key, field]) => {
+                                        const hasAuto = template.formSchema?.settings?.autoGenerate !== undefined;
+                                        if (key === 'questionCount' && !autoMode) return null;
+                                        if (key === 'autoGenerate') {
+                                            return (
+                                                <div key={key} className="flex items-center gap-3">
+                                                    <input
+                                                        id="auto-generate-toggle"
+                                                        type="checkbox"
+                                                        checked={autoMode}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.checked)}
+                                                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                                    />
+                                                    <label htmlFor="auto-generate-toggle" className="text-sm font-medium text-gray-700">
+                                                        {field.label}
+                                                    </label>
+                                                </div>
+                                            );
+                                        }
+                                        // Select/Enum: choose UI based on multiplicity
+                                        if (field.type === 'enum' || field.type === 'select') {
+                                            const isMultiple = Array.isArray(field.default) || field.multiple === true;
+                                            const currentVal = settingsData[key] ?? (isMultiple ? [] : '');
+                                            if (isMultiple) {
+                                                return (
+                                                    <div key={key} className="group">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {field.options.map(opt => {
+                                                                const active = (currentVal || []).includes(opt);
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        key={opt}
+                                                                        onClick={() => {
+                                                                            let next = Array.isArray(currentVal) ? [...currentVal] : [];
+                                                                            if (active) next = next.filter(o => o !== opt); else next.push(opt);
+                                                                            handleSettingsChange(key, next);
+                                                                        }}
+                                                                        className={`px-3 py-1 rounded-full text-sm border transition ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-300'}`}
+                                                                    >
+                                                                        {opt}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
                                             return (
                                                 <div key={key} className="group">
                                                     <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {field.options.map(opt => {
-                                                            const active = (currentVal || []).includes(opt);
-                                                            return (
-                                                                <button
-                                                                    type="button"
-                                                                    key={opt}
-                                                                    onClick={() => {
-                                                                        let next = Array.isArray(currentVal) ? [...currentVal] : [];
-                                                                        if (active) next = next.filter(o => o !== opt); else next.push(opt);
-                                                                        handleSettingsChange(key, next);
-                                                                    }}
-                                                                    className={`px-3 py-1 rounded-full text-sm border transition ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-300'}`}
-                                                                >
-                                                                    {opt}
-                                                                </button>
-                                                            );
-                                                        })}
+                                                    <select
+                                                        value={currentVal}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-md focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                    >
+                                                        <option value="" disabled>Choose...</option>
+                                                        {field.options.map(opt => (
+                                                            <option key={opt} value={opt}>{opt}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            );
+                                        }
+                                        // Boolean as checkbox (general case)
+                                        if (field.type === 'boolean') {
+                                            return (
+                                                <div key={key} className="flex items-center gap-3">
+                                                    <input
+                                                        id={`settings-${key}`}
+                                                        type="checkbox"
+                                                        checked={!!settingsData[key]}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.checked)}
+                                                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                                    />
+                                                    <label htmlFor={`settings-${key}`} className="text-sm font-medium text-gray-700">
+                                                        {field.label}
+                                                    </label>
+                                                </div>
+                                            );
+                                        }
+                                        // Textarea
+                                        if (field.type === 'textarea') {
+                                            return (
+                                                <div key={key} className="group col-span-2">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <textarea
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        rows={field.rows || 4}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200 resize-y"
+                                                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        // Color picker
+                                        if (field.type === 'color') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="color"
+                                                            value={settingsData[key] || '#000000'}
+                                                            onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                            className="h-12 w-20 rounded-lg border border-gray-200 cursor-pointer"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={settingsData[key] || '#000000'}
+                                                            onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                            pattern="^#[0-9A-Fa-f]{6}$"
+                                                            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200 font-mono text-sm"
+                                                            placeholder="#000000"
+                                                        />
                                                     </div>
                                                 </div>
                                             );
                                         }
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
-                                                <select
-                                                    value={currentVal}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-md focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                >
-                                                    <option value="" disabled>Choose...</option>
-                                                    {field.options.map(opt => (
-                                                        <option key={opt} value={opt}>{opt}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        );
-                                    }
-                                    // Boolean as checkbox (general case)
-                                    if (field.type === 'boolean') {
-                                        return (
-                                            <div key={key} className="flex items-center gap-3">
-                                                <input
-                                                    id={`settings-${key}`}
-                                                    type="checkbox"
-                                                    checked={!!settingsData[key]}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.checked)}
-                                                    className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                                />
-                                                <label htmlFor={`settings-${key}`} className="text-sm font-medium text-gray-700">
-                                                    {field.label}
-                                                </label>
-                                            </div>
-                                        );
-                                    }
-                                    // Textarea
-                                    if (field.type === 'textarea') {
-                                        return (
-                                            <div key={key} className="group col-span-2">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <textarea
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    rows={field.rows || 4}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200 resize-y"
-                                                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // Color picker
-                                    if (field.type === 'color') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <div className="flex items-center gap-3">
+                                        // Range slider
+                                        if (field.type === 'range') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <div className="flex items-center gap-4">
+                                                        <input
+                                                            type="range"
+                                                            value={settingsData[key] ?? field.default ?? field.min ?? 0}
+                                                            onChange={(e) => handleSettingsChange(key, Number(e.target.value))}
+                                                            min={field.min ?? 0}
+                                                            max={field.max ?? 100}
+                                                            step={field.step ?? 1}
+                                                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-700 min-w-[3rem] text-center bg-gray-100 px-3 py-1 rounded-lg">
+                                                            {settingsData[key] ?? field.default ?? field.min ?? 0}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        // Date input
+                                        if (field.type === 'date') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
                                                     <input
-                                                        type="color"
-                                                        value={settingsData[key] || '#000000'}
+                                                        type="date"
+                                                        value={settingsData[key] ?? ''}
                                                         onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                        className="h-12 w-20 rounded-lg border border-gray-200 cursor-pointer"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={settingsData[key] || '#000000'}
-                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                        pattern="^#[0-9A-Fa-f]{6}$"
-                                                        className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200 font-mono text-sm"
-                                                        placeholder="#000000"
+                                                        required={field.required}
+                                                        min={field.min}
+                                                        max={field.max}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
                                                     />
                                                 </div>
-                                            </div>
-                                        );
-                                    }
-                                    // Range slider
-                                    if (field.type === 'range') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <div className="flex items-center gap-4">
+                                            );
+                                        }
+                                        // DateTime input
+                                        if (field.type === 'datetime-local' || field.type === 'datetime') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
                                                     <input
-                                                        type="range"
-                                                        value={settingsData[key] ?? field.default ?? field.min ?? 0}
-                                                        onChange={(e) => handleSettingsChange(key, Number(e.target.value))}
-                                                        min={field.min ?? 0}
-                                                        max={field.max ?? 100}
-                                                        step={field.step ?? 1}
-                                                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                        type="datetime-local"
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        min={field.min}
+                                                        max={field.max}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
                                                     />
-                                                    <span className="text-sm font-medium text-gray-700 min-w-[3rem] text-center bg-gray-100 px-3 py-1 rounded-lg">
-                                                        {settingsData[key] ?? field.default ?? field.min ?? 0}
-                                                    </span>
                                                 </div>
-                                            </div>
-                                        );
-                                    }
-                                    // Date input
-                                    if (field.type === 'date') {
+                                            );
+                                        }
+                                        // Time input
+                                        if (field.type === 'time') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <input
+                                                        type="time"
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        min={field.min}
+                                                        max={field.max}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        // Month input
+                                        if (field.type === 'month') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <input
+                                                        type="month"
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        min={field.min}
+                                                        max={field.max}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        // Week input
+                                        if (field.type === 'week') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <input
+                                                        type="week"
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        min={field.min}
+                                                        max={field.max}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        // URL input
+                                        if (field.type === 'url') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <input
+                                                        type="url"
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        pattern={field.pattern}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                        placeholder={field.placeholder || 'https://example.com'}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        // Email input
+                                        if (field.type === 'email') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <input
+                                                        type="email"
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        pattern={field.pattern}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                        placeholder={field.placeholder || 'example@email.com'}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        // Tel input
+                                        if (field.type === 'tel') {
+                                            return (
+                                                <div key={key} className="group">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {field.label}
+                                                    </label>
+                                                    <input
+                                                        type="tel"
+                                                        value={settingsData[key] ?? ''}
+                                                        onChange={(e) => handleSettingsChange(key, e.target.value)}
+                                                        required={field.required}
+                                                        pattern={field.pattern}
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                        placeholder={field.placeholder || '+1234567890'}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+                                        // Numbers with min/max and default text
                                         return (
                                             <div key={key} className="group">
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     {field.label}
                                                 </label>
                                                 <input
-                                                    type="date"
+                                                    type={field.type === 'number' ? 'number' : 'text'}
                                                     value={settingsData[key] ?? ''}
                                                     onChange={(e) => handleSettingsChange(key, e.target.value)}
                                                     required={field.required}
-                                                    min={field.min}
-                                                    max={field.max}
+                                                    min={field.min !== undefined ? field.min : undefined}
+                                                    max={field.max !== undefined ? field.max : undefined}
                                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
+                                                    placeholder={`Enter ${field.label.toLowerCase()}`}
                                                 />
                                             </div>
                                         );
-                                    }
-                                    // DateTime input
-                                    if (field.type === 'datetime-local' || field.type === 'datetime') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <input
-                                                    type="datetime-local"
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    min={field.min}
-                                                    max={field.max}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // Time input
-                                    if (field.type === 'time') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <input
-                                                    type="time"
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    min={field.min}
-                                                    max={field.max}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // Month input
-                                    if (field.type === 'month') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <input
-                                                    type="month"
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    min={field.min}
-                                                    max={field.max}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // Week input
-                                    if (field.type === 'week') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <input
-                                                    type="week"
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    min={field.min}
-                                                    max={field.max}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // URL input
-                                    if (field.type === 'url') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <input
-                                                    type="url"
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    pattern={field.pattern}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                    placeholder={field.placeholder || 'https://example.com'}
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // Email input
-                                    if (field.type === 'email') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    pattern={field.pattern}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                    placeholder={field.placeholder || 'example@email.com'}
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // Tel input
-                                    if (field.type === 'tel') {
-                                        return (
-                                            <div key={key} className="group">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    {field.label}
-                                                </label>
-                                                <input
-                                                    type="tel"
-                                                    value={settingsData[key] ?? ''}
-                                                    onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                    required={field.required}
-                                                    pattern={field.pattern}
-                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                    placeholder={field.placeholder || '+1234567890'}
-                                                />
-                                            </div>
-                                        );
-                                    }
-                                    // Numbers with min/max and default text
-                                    return (
-                                        <div key={key} className="group">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                {field.label}
-                                            </label>
-                                            <input
-                                                type={field.type === 'number' ? 'number' : 'text'}
-                                                value={settingsData[key] ?? ''}
-                                                onChange={(e) => handleSettingsChange(key, e.target.value)}
-                                                required={field.required}
-                                                min={field.min !== undefined ? field.min : undefined}
-                                                max={field.max !== undefined ? field.max : undefined}
-                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                placeholder={`Enter ${field.label.toLowerCase()}`}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            {template.formSchema?.settings?.autoGenerate !== undefined && (
-                                <div className="mt-4 text-xs text-gray-500 space-y-1">
-                                    <p><strong>Auto Mode:</strong> System generates math questions based on operations, max operand and question count.</p>
-                                    <p><strong>Manual Mode:</strong> Uncheck Auto Generate to enter your own questions below.</p>
+                                    })}
                                 </div>
-                            )}
+                                {template.formSchema?.settings?.autoGenerate !== undefined && (
+                                    <div className="mt-4 text-xs text-gray-500 space-y-1">
+                                        <p><strong>Auto Mode:</strong> System generates math questions based on operations, max operand and question count.</p>
+                                        <p><strong>Manual Mode:</strong> Uncheck Auto Generate to enter your own questions below.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
                     )}
 
                     {/* Content Section (Step 2) */}
@@ -672,407 +670,407 @@ const EditGame = () => {
                                         </div>
 
                                         <div className="flex flex-col gap-6">
-                                        {/* Item Fields */}
-                                        <div className="grid gap-4 md:grid-cols-2 p-4 bg-gray-50 rounded-lg">
-                                            {Object.entries(template.formSchema.content.itemSchema).map(([key, field]) => (
-                                                <div key={key}>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        {field.label}
-                                                    </label>
-                                                    {(field.type === 'enum' || field.type === 'select') && Array.isArray(field.options) ? (
-                                                        <select
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => {
-                                                                const value = e.target.value;
-                                                                const updated = { ...item, [key]: value };
-                                                                if (['operandA', 'operandB', 'operation'].includes(key)) {
-                                                                    const a = parseFloat(updated.operandA);
-                                                                    const b = parseFloat(updated.operandB);
-                                                                    const op = updated.operation;
-                                                                    if (!isNaN(a) && !isNaN(b) && ['+', '-', '*', '/'].includes(op)) {
-                                                                        let ans = '';
-                                                                        switch (op) {
-                                                                            case '+': ans = a + b; break;
-                                                                            case '-': ans = a - b; break;
-                                                                            case '*': ans = a * b; break;
-                                                                            case '/': ans = b !== 0 ? parseFloat((a / b).toFixed(2)) : ''; break;
+                                            {/* Item Fields */}
+                                            <div className="grid gap-4 md:grid-cols-2 p-4 bg-gray-50 rounded-lg">
+                                                {Object.entries(template.formSchema.content.itemSchema).map(([key, field]) => (
+                                                    <div key={key}>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            {field.label}
+                                                        </label>
+                                                        {(field.type === 'enum' || field.type === 'select') && Array.isArray(field.options) ? (
+                                                            <select
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => {
+                                                                    const value = e.target.value;
+                                                                    const updated = { ...item, [key]: value };
+                                                                    if (['operandA', 'operandB', 'operation'].includes(key)) {
+                                                                        const a = parseFloat(updated.operandA);
+                                                                        const b = parseFloat(updated.operandB);
+                                                                        const op = updated.operation;
+                                                                        if (!isNaN(a) && !isNaN(b) && ['+', '-', '*', '/'].includes(op)) {
+                                                                            let ans = '';
+                                                                            switch (op) {
+                                                                                case '+': ans = a + b; break;
+                                                                                case '-': ans = a - b; break;
+                                                                                case '*': ans = a * b; break;
+                                                                                case '/': ans = b !== 0 ? parseFloat((a / b).toFixed(2)) : ''; break;
+                                                                            }
+                                                                            updated.correctAnswer = ans;
                                                                         }
-                                                                        updated.correctAnswer = ans;
                                                                     }
-                                                                }
-                                                                handleContentChange(index, key, value);
-                                                                if (updated.correctAnswer !== item.correctAnswer) {
-                                                                    handleContentChange(index, 'correctAnswer', updated.correctAnswer);
-                                                                }
-                                                            }}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                        >
-                                                            <option value="" disabled>Choose...</option>
-                                                            {field.options.map(opt => (
-                                                                <option key={opt} value={opt}>{opt}</option>
-                                                            ))}
-                                                        </select>
-                                                    ) : field.type === 'mapPoint' ? (
-                                                        <MapPointPicker
-                                                            value={item[key]}
-                                                            onChange={(val) => handleContentChange(index, key, val)}
-                                                            uploadUrl={`/api/templates/${template._id}/media`}
-                                                            authToken={user.token}
-                                                            accept={field.accept}
-                                                            creationId={creationId}
-                                                            radiusMin={field.radiusMin}
-                                                            radiusMax={field.radiusMax}
-                                                            radiusDefault={field.radiusDefault}
-                                                        />
-                                                    ) : field.type === 'fillBlankDropdown' ? (
-                                                        <FillBlankDropdownEditor
-                                                            value={item[key] || { passageTemplate: '', blanks: [] }}
-                                                            onChange={(val) => handleContentChange(index, key, val)}
-                                                        />
-                                                    ) : field.type === 'image' ? (
-                                                        <div className="space-y-2">
-                                                            {item[key] && (
-                                                                <img src={item[key]} alt="preview" className="w-24 h-24 object-cover rounded" />
-                                                            )}
-                                                            <input
-                                                                type="file"
-                                                                accept={(field.accept || ['image/webp', 'image/png', 'image/jpeg']).join(',')}
-                                                                onChange={async (e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (!file) return;
-                                                                    if (file.size > (10 * 1024 * 1024)) {
-                                                                        return setError('Image exceeds 10MB limit.');
-                                                                    }
-                                                                    try {
-                                                                        const fd = new FormData();
-                                                                        fd.append('file', file);
-                                                                        fd.append('usage', 'content');
-                                                                        fd.append('creationId', creationId);
-                                                                        const { data } = await axios.post(`/api/templates/${template._id}/media`, fd, {
-                                                                            headers: { Authorization: `Bearer ${user.token}` }
-                                                                        });
-                                                                        handleContentChange(index, key, data.url);
-                                                                    } catch (err) {
-                                                                        setError(err.response?.data?.message || 'Upload failed');
+                                                                    handleContentChange(index, key, value);
+                                                                    if (updated.correctAnswer !== item.correctAnswer) {
+                                                                        handleContentChange(index, 'correctAnswer', updated.correctAnswer);
                                                                     }
                                                                 }}
-                                                                className="block"
-                                                            />
-                                                        </div>
-                                                    ) : field.type === 'imageArray' ? (
-                                                        <div className="space-y-2">
-                                                            <div className="flex gap-2 flex-wrap">
-                                                                {(Array.isArray(item[key]) ? item[key] : []).map((url, i2) => (
-                                                                    <div key={i2} className="relative">
-                                                                        <img src={url} alt="preview" className="w-20 h-20 object-cover rounded" />
-                                                                        <button type="button" className="absolute -top-2 -right-2 bg-white text-red-600 rounded-full shadow p-1" onClick={() => {
-                                                                            const arr = Array.isArray(item[key]) ? [...item[key]] : [];
-                                                                            arr.splice(i2, 1);
-                                                                            handleContentChange(index, key, arr);
-                                                                        }}>×</button>
-                                                                    </div>
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                            >
+                                                                <option value="" disabled>Choose...</option>
+                                                                {field.options.map(opt => (
+                                                                    <option key={opt} value={opt}>{opt}</option>
                                                                 ))}
-                                                            </div>
-                                                            <input
-                                                                type="file"
-                                                                multiple
-                                                                accept={(field.accept || ['image/webp', 'image/png', 'image/jpeg']).join(',')}
-                                                                onChange={async (e) => {
-                                                                    const files = Array.from(e.target.files || []);
-                                                                    if (!files.length) return;
-                                                                    const existing = Array.isArray(item[key]) ? item[key] : [];
-                                                                    try {
-                                                                        const uploads = [];
-                                                                        for (const f of files) {
-                                                                            if (f.size > (10 * 1024 * 1024)) throw new Error('One of images exceeds 10MB limit.');
+                                                            </select>
+                                                        ) : field.type === 'mapPoint' ? (
+                                                            <MapPointPicker
+                                                                value={item[key]}
+                                                                onChange={(val) => handleContentChange(index, key, val)}
+                                                                uploadUrl={`/api/templates/${template._id}/media`}
+                                                                authToken={user.token}
+                                                                accept={field.accept}
+                                                                creationId={creationId}
+                                                                radiusMin={field.radiusMin}
+                                                                radiusMax={field.radiusMax}
+                                                                radiusDefault={field.radiusDefault}
+                                                            />
+                                                        ) : field.type === 'fillBlankDropdown' ? (
+                                                            <FillBlankDropdownEditor
+                                                                value={item[key] || { passageTemplate: '', blanks: [] }}
+                                                                onChange={(val) => handleContentChange(index, key, val)}
+                                                            />
+                                                        ) : field.type === 'image' ? (
+                                                            <div className="space-y-2">
+                                                                {item[key] && (
+                                                                    <img src={item[key]} alt="preview" className="w-24 h-24 object-cover rounded" />
+                                                                )}
+                                                                <input
+                                                                    type="file"
+                                                                    accept={(field.accept || ['image/webp', 'image/png', 'image/jpeg']).join(',')}
+                                                                    onChange={async (e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (!file) return;
+                                                                        if (file.size > (10 * 1024 * 1024)) {
+                                                                            return setError('Image exceeds 10MB limit.');
+                                                                        }
+                                                                        try {
                                                                             const fd = new FormData();
-                                                                            fd.append('file', f);
+                                                                            fd.append('file', file);
                                                                             fd.append('usage', 'content');
                                                                             fd.append('creationId', creationId);
                                                                             const { data } = await axios.post(`/api/templates/${template._id}/media`, fd, {
                                                                                 headers: { Authorization: `Bearer ${user.token}` }
                                                                             });
-                                                                            uploads.push(data.url);
+                                                                            handleContentChange(index, key, data.url);
+                                                                        } catch (err) {
+                                                                            setError(err.response?.data?.message || 'Upload failed');
                                                                         }
-                                                                        handleContentChange(index, key, existing.concat(uploads));
-                                                                    } catch (err) {
-                                                                        setError(err.message || err.response?.data?.message || 'Upload failed');
-                                                                    }
-                                                                }}
-                                                                className="block"
-                                                            />
-                                                        </div>
-                                                    ) : field.type === 'boolean' ? (
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={!!item[key]}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.checked)}
-                                                            className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                                        />
-                                                    ) : field.type === 'textarea' ? (
-                                                        <textarea
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            rows={field.rows || 4}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors resize-y"
-                                                            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                                                        />
-                                                    ) : field.type === 'color' ? (
-                                                        <div className="flex items-center gap-3">
-                                                            <input
-                                                                type="color"
-                                                                value={item[key] || '#000000'}
-                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                                className="h-12 w-20 rounded-lg border border-gray-200 cursor-pointer"
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                value={item[key] || '#000000'}
-                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                                pattern="^#[0-9A-Fa-f]{6}$"
-                                                                className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors font-mono text-sm"
-                                                                placeholder="#000000"
-                                                            />
-                                                        </div>
-                                                    ) : field.type === 'range' ? (
-                                                        <div className="flex items-center gap-4">
-                                                            <input
-                                                                type="range"
-                                                                value={item[key] ?? field.default ?? field.min ?? 0}
-                                                                onChange={(e) => handleContentChange(index, key, Number(e.target.value))}
-                                                                min={field.min ?? 0}
-                                                                max={field.max ?? 100}
-                                                                step={field.step ?? 1}
-                                                                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                                                            />
-                                                            <span className="text-sm font-medium text-gray-700 min-w-[3rem] text-center bg-gray-100 px-3 py-1 rounded-lg">
-                                                                {item[key] ?? field.default ?? field.min ?? 0}
-                                                            </span>
-                                                        </div>
-                                                    ) : field.type === 'date' ? (
-                                                        <input
-                                                            type="date"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            min={field.min}
-                                                            max={field.max}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                        />
-                                                    ) : (field.type === 'datetime-local' || field.type === 'datetime') ? (
-                                                        <input
-                                                            type="datetime-local"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            min={field.min}
-                                                            max={field.max}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                        />
-                                                    ) : field.type === 'time' ? (
-                                                        <input
-                                                            type="time"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            min={field.min}
-                                                            max={field.max}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                        />
-                                                    ) : field.type === 'month' ? (
-                                                        <input
-                                                            type="month"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            min={field.min}
-                                                            max={field.max}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                        />
-                                                    ) : field.type === 'week' ? (
-                                                        <input
-                                                            type="week"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            min={field.min}
-                                                            max={field.max}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                        />
-                                                    ) : field.type === 'url' ? (
-                                                        <input
-                                                            type="url"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            pattern={field.pattern}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                            placeholder={field.placeholder || 'https://example.com'}
-                                                        />
-                                                    ) : field.type === 'email' ? (
-                                                        <input
-                                                            type="email"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            pattern={field.pattern}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                            placeholder={field.placeholder || 'example@email.com'}
-                                                        />
-                                                    ) : field.type === 'tel' ? (
-                                                        <input
-                                                            type="tel"
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => handleContentChange(index, key, e.target.value)}
-                                                            pattern={field.pattern}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                            placeholder={field.placeholder || '+1234567890'}
-                                                        />
-                                                    ) : field.type === 'array' ? (
-                                                        <div className="space-y-3">
-                                                            {/* Render existing array items */}
-                                                            {(Array.isArray(item[key]) ? item[key] : []).map((arrayItem, arrayIndex) => (
-                                                                <div key={arrayIndex} className="flex items-start gap-2">
-                                                                    {/* Simple itemType (text, number, etc) */}
-                                                                    {field.itemType && !field.itemSchema && (
-                                                                        field.itemType === 'textarea' ? (
-                                                                            <textarea
-                                                                                value={arrayItem || ''}
-                                                                                onChange={(e) => {
-                                                                                    const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
-                                                                                    newArray[arrayIndex] = e.target.value;
-                                                                                    handleContentChange(index, key, newArray);
-                                                                                }}
-                                                                                rows={field.rows || 3}
-                                                                                className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors resize-y"
-                                                                                placeholder={field.placeholder || `Enter ${field.label}`}
-                                                                            />
-                                                                        ) : (
-                                                                            <input
-                                                                                type={field.itemType === 'number' ? 'number' : 'text'}
-                                                                                value={arrayItem || ''}
-                                                                                onChange={(e) => {
-                                                                                    const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
-                                                                                    newArray[arrayIndex] = field.itemType === 'number' ? Number(e.target.value) : e.target.value;
-                                                                                    handleContentChange(index, key, newArray);
-                                                                                }}
-                                                                                className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                                                placeholder={field.placeholder || `Enter ${field.label}`}
-                                                                            />
-                                                                        )
-                                                                    )}
-
-                                                                    {/* Complex itemSchema (object with multiple fields) */}
-                                                                    {field.itemSchema && (
-                                                                        <div className="flex-1 grid gap-2 p-3 bg-white border border-gray-200 rounded-lg">
-                                                                            {Object.entries(field.itemSchema).map(([nestedKey, nestedField]) => (
-                                                                                <div key={nestedKey}>
-                                                                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                                                                        {nestedField.label}
-                                                                                    </label>
-                                                                                    {nestedField.type === 'textarea' ? (
-                                                                                        <textarea
-                                                                                            value={(arrayItem && arrayItem[nestedKey]) || ''}
-                                                                                            onChange={(e) => {
-                                                                                                const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
-                                                                                                newArray[arrayIndex] = {
-                                                                                                    ...(arrayItem || {}),
-                                                                                                    [nestedKey]: e.target.value
-                                                                                                };
-                                                                                                handleContentChange(index, key, newArray);
-                                                                                            }}
-                                                                                            rows={nestedField.rows || 2}
-                                                                                            className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded focus:border-indigo-400 focus:bg-white focus:outline-none resize-y"
-                                                                                            placeholder={nestedField.placeholder || nestedField.label}
-                                                                                        />
-                                                                                    ) : (
-                                                                                        <input
-                                                                                            type={nestedField.type === 'number' ? 'number' : 'text'}
-                                                                                            value={(arrayItem && arrayItem[nestedKey]) || ''}
-                                                                                            onChange={(e) => {
-                                                                                                const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
-                                                                                                newArray[arrayIndex] = {
-                                                                                                    ...(arrayItem || {}),
-                                                                                                    [nestedKey]: nestedField.type === 'number' ? Number(e.target.value) : e.target.value
-                                                                                                };
-                                                                                                handleContentChange(index, key, newArray);
-                                                                                            }}
-                                                                                            className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded focus:border-indigo-400 focus:bg-white focus:outline-none"
-                                                                                            placeholder={nestedField.placeholder || nestedField.label}
-                                                                                        />
-                                                                                    )}
-                                                                                </div>
-                                                                            ))}
+                                                                    }}
+                                                                    className="block"
+                                                                />
+                                                            </div>
+                                                        ) : field.type === 'imageArray' ? (
+                                                            <div className="space-y-2">
+                                                                <div className="flex gap-2 flex-wrap">
+                                                                    {(Array.isArray(item[key]) ? item[key] : []).map((url, i2) => (
+                                                                        <div key={i2} className="relative">
+                                                                            <img src={url} alt="preview" className="w-20 h-20 object-cover rounded" />
+                                                                            <button type="button" className="absolute -top-2 -right-2 bg-white text-red-600 rounded-full shadow p-1" onClick={() => {
+                                                                                const arr = Array.isArray(item[key]) ? [...item[key]] : [];
+                                                                                arr.splice(i2, 1);
+                                                                                handleContentChange(index, key, arr);
+                                                                            }}>×</button>
                                                                         </div>
-                                                                    )}
-
-                                                                    {/* Remove button */}
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            const newArray = (Array.isArray(item[key]) ? item[key] : []).filter((_, i) => i !== arrayIndex);
-                                                                            handleContentChange(index, key, newArray);
-                                                                        }}
-                                                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                                                                        title="Remove item"
-                                                                    >
-                                                                        🗑️
-                                                                    </button>
+                                                                    ))}
                                                                 </div>
-                                                            ))}
-
-                                                            {/* Add new item button */}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const currentArray = Array.isArray(item[key]) ? item[key] : [];
-                                                                    let newItem;
-                                                                    if (field.itemType) {
-                                                                        newItem = field.itemType === 'number' ? 0 : '';
-                                                                    } else if (field.itemSchema) {
-                                                                        newItem = {};
-                                                                        Object.keys(field.itemSchema).forEach(k => {
-                                                                            newItem[k] = field.itemSchema[k].type === 'number' ? 0 : '';
-                                                                        });
-                                                                    } else {
-                                                                        newItem = '';
-                                                                    }
-                                                                    handleContentChange(index, key, [...currentArray, newItem]);
-                                                                }}
-                                                                className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 hover:border-indigo-400 transition-colors text-sm font-medium text-gray-600"
-                                                            >
-                                                                + Add {field.label || 'Item'}
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <input
-                                                            type={field.type === 'number' ? 'number' : 'text'}
-                                                            value={item[key] || ''}
-                                                            onChange={(e) => {
-                                                                let value = e.target.value;
-                                                                const updated = { ...item, [key]: value };
-                                                                if (['operandA', 'operandB', 'operation'].includes(key)) {
-                                                                    const a = parseFloat(updated.operandA);
-                                                                    const b = parseFloat(updated.operandB);
-                                                                    const op = updated.operation;
-                                                                    if (!isNaN(a) && !isNaN(b) && ['+', '-', '*', '/'].includes(op)) {
-                                                                        let ans = '';
-                                                                        switch (op) {
-                                                                            case '+': ans = a + b; break;
-                                                                            case '-': ans = a - b; break;
-                                                                            case '*': ans = a * b; break;
-                                                                            case '/': ans = b !== 0 ? parseFloat((a / b).toFixed(2)) : ''; break;
+                                                                <input
+                                                                    type="file"
+                                                                    multiple
+                                                                    accept={(field.accept || ['image/webp', 'image/png', 'image/jpeg']).join(',')}
+                                                                    onChange={async (e) => {
+                                                                        const files = Array.from(e.target.files || []);
+                                                                        if (!files.length) return;
+                                                                        const existing = Array.isArray(item[key]) ? item[key] : [];
+                                                                        try {
+                                                                            const uploads = [];
+                                                                            for (const f of files) {
+                                                                                if (f.size > (10 * 1024 * 1024)) throw new Error('One of images exceeds 10MB limit.');
+                                                                                const fd = new FormData();
+                                                                                fd.append('file', f);
+                                                                                fd.append('usage', 'content');
+                                                                                fd.append('creationId', creationId);
+                                                                                const { data } = await axios.post(`/api/templates/${template._id}/media`, fd, {
+                                                                                    headers: { Authorization: `Bearer ${user.token}` }
+                                                                                });
+                                                                                uploads.push(data.url);
+                                                                            }
+                                                                            handleContentChange(index, key, existing.concat(uploads));
+                                                                        } catch (err) {
+                                                                            setError(err.message || err.response?.data?.message || 'Upload failed');
                                                                         }
-                                                                        updated.correctAnswer = ans;
+                                                                    }}
+                                                                    className="block"
+                                                                />
+                                                            </div>
+                                                        ) : field.type === 'boolean' ? (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!item[key]}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.checked)}
+                                                                className="h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                                            />
+                                                        ) : field.type === 'textarea' ? (
+                                                            <textarea
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                rows={field.rows || 4}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors resize-y"
+                                                                placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                                                            />
+                                                        ) : field.type === 'color' ? (
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="color"
+                                                                    value={item[key] || '#000000'}
+                                                                    onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                    className="h-12 w-20 rounded-lg border border-gray-200 cursor-pointer"
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    value={item[key] || '#000000'}
+                                                                    onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                    pattern="^#[0-9A-Fa-f]{6}$"
+                                                                    className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors font-mono text-sm"
+                                                                    placeholder="#000000"
+                                                                />
+                                                            </div>
+                                                        ) : field.type === 'range' ? (
+                                                            <div className="flex items-center gap-4">
+                                                                <input
+                                                                    type="range"
+                                                                    value={item[key] ?? field.default ?? field.min ?? 0}
+                                                                    onChange={(e) => handleContentChange(index, key, Number(e.target.value))}
+                                                                    min={field.min ?? 0}
+                                                                    max={field.max ?? 100}
+                                                                    step={field.step ?? 1}
+                                                                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                                />
+                                                                <span className="text-sm font-medium text-gray-700 min-w-[3rem] text-center bg-gray-100 px-3 py-1 rounded-lg">
+                                                                    {item[key] ?? field.default ?? field.min ?? 0}
+                                                                </span>
+                                                            </div>
+                                                        ) : field.type === 'date' ? (
+                                                            <input
+                                                                type="date"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                min={field.min}
+                                                                max={field.max}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                            />
+                                                        ) : (field.type === 'datetime-local' || field.type === 'datetime') ? (
+                                                            <input
+                                                                type="datetime-local"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                min={field.min}
+                                                                max={field.max}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                            />
+                                                        ) : field.type === 'time' ? (
+                                                            <input
+                                                                type="time"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                min={field.min}
+                                                                max={field.max}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                            />
+                                                        ) : field.type === 'month' ? (
+                                                            <input
+                                                                type="month"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                min={field.min}
+                                                                max={field.max}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                            />
+                                                        ) : field.type === 'week' ? (
+                                                            <input
+                                                                type="week"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                min={field.min}
+                                                                max={field.max}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                            />
+                                                        ) : field.type === 'url' ? (
+                                                            <input
+                                                                type="url"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                pattern={field.pattern}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                                placeholder={field.placeholder || 'https://example.com'}
+                                                            />
+                                                        ) : field.type === 'email' ? (
+                                                            <input
+                                                                type="email"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                pattern={field.pattern}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                                placeholder={field.placeholder || 'example@email.com'}
+                                                            />
+                                                        ) : field.type === 'tel' ? (
+                                                            <input
+                                                                type="tel"
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => handleContentChange(index, key, e.target.value)}
+                                                                pattern={field.pattern}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                                placeholder={field.placeholder || '+1234567890'}
+                                                            />
+                                                        ) : field.type === 'array' ? (
+                                                            <div className="space-y-3">
+                                                                {/* Render existing array items */}
+                                                                {(Array.isArray(item[key]) ? item[key] : []).map((arrayItem, arrayIndex) => (
+                                                                    <div key={arrayIndex} className="flex items-start gap-2">
+                                                                        {/* Simple itemType (text, number, etc) */}
+                                                                        {field.itemType && !field.itemSchema && (
+                                                                            field.itemType === 'textarea' ? (
+                                                                                <textarea
+                                                                                    value={arrayItem || ''}
+                                                                                    onChange={(e) => {
+                                                                                        const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
+                                                                                        newArray[arrayIndex] = e.target.value;
+                                                                                        handleContentChange(index, key, newArray);
+                                                                                    }}
+                                                                                    rows={field.rows || 3}
+                                                                                    className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors resize-y"
+                                                                                    placeholder={field.placeholder || `Enter ${field.label}`}
+                                                                                />
+                                                                            ) : (
+                                                                                <input
+                                                                                    type={field.itemType === 'number' ? 'number' : 'text'}
+                                                                                    value={arrayItem || ''}
+                                                                                    onChange={(e) => {
+                                                                                        const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
+                                                                                        newArray[arrayIndex] = field.itemType === 'number' ? Number(e.target.value) : e.target.value;
+                                                                                        handleContentChange(index, key, newArray);
+                                                                                    }}
+                                                                                    className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                                                    placeholder={field.placeholder || `Enter ${field.label}`}
+                                                                                />
+                                                                            )
+                                                                        )}
+
+                                                                        {/* Complex itemSchema (object with multiple fields) */}
+                                                                        {field.itemSchema && (
+                                                                            <div className="flex-1 grid gap-2 p-3 bg-white border border-gray-200 rounded-lg">
+                                                                                {Object.entries(field.itemSchema).map(([nestedKey, nestedField]) => (
+                                                                                    <div key={nestedKey}>
+                                                                                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                                                            {nestedField.label}
+                                                                                        </label>
+                                                                                        {nestedField.type === 'textarea' ? (
+                                                                                            <textarea
+                                                                                                value={(arrayItem && arrayItem[nestedKey]) || ''}
+                                                                                                onChange={(e) => {
+                                                                                                    const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
+                                                                                                    newArray[arrayIndex] = {
+                                                                                                        ...(arrayItem || {}),
+                                                                                                        [nestedKey]: e.target.value
+                                                                                                    };
+                                                                                                    handleContentChange(index, key, newArray);
+                                                                                                }}
+                                                                                                rows={nestedField.rows || 2}
+                                                                                                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded focus:border-indigo-400 focus:bg-white focus:outline-none resize-y"
+                                                                                                placeholder={nestedField.placeholder || nestedField.label}
+                                                                                            />
+                                                                                        ) : (
+                                                                                            <input
+                                                                                                type={nestedField.type === 'number' ? 'number' : 'text'}
+                                                                                                value={(arrayItem && arrayItem[nestedKey]) || ''}
+                                                                                                onChange={(e) => {
+                                                                                                    const newArray = [...(Array.isArray(item[key]) ? item[key] : [])];
+                                                                                                    newArray[arrayIndex] = {
+                                                                                                        ...(arrayItem || {}),
+                                                                                                        [nestedKey]: nestedField.type === 'number' ? Number(e.target.value) : e.target.value
+                                                                                                    };
+                                                                                                    handleContentChange(index, key, newArray);
+                                                                                                }}
+                                                                                                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded focus:border-indigo-400 focus:bg-white focus:outline-none"
+                                                                                                placeholder={nestedField.placeholder || nestedField.label}
+                                                                                            />
+                                                                                        )}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Remove button */}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const newArray = (Array.isArray(item[key]) ? item[key] : []).filter((_, i) => i !== arrayIndex);
+                                                                                handleContentChange(index, key, newArray);
+                                                                            }}
+                                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                                                                            title="Remove item"
+                                                                        >
+                                                                            🗑️
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+
+                                                                {/* Add new item button */}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const currentArray = Array.isArray(item[key]) ? item[key] : [];
+                                                                        let newItem;
+                                                                        if (field.itemType) {
+                                                                            newItem = field.itemType === 'number' ? 0 : '';
+                                                                        } else if (field.itemSchema) {
+                                                                            newItem = {};
+                                                                            Object.keys(field.itemSchema).forEach(k => {
+                                                                                newItem[k] = field.itemSchema[k].type === 'number' ? 0 : '';
+                                                                            });
+                                                                        } else {
+                                                                            newItem = '';
+                                                                        }
+                                                                        handleContentChange(index, key, [...currentArray, newItem]);
+                                                                    }}
+                                                                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 hover:border-indigo-400 transition-colors text-sm font-medium text-gray-600"
+                                                                >
+                                                                    + Add {field.label || 'Item'}
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <input
+                                                                type={field.type === 'number' ? 'number' : 'text'}
+                                                                value={item[key] || ''}
+                                                                onChange={(e) => {
+                                                                    let value = e.target.value;
+                                                                    const updated = { ...item, [key]: value };
+                                                                    if (['operandA', 'operandB', 'operation'].includes(key)) {
+                                                                        const a = parseFloat(updated.operandA);
+                                                                        const b = parseFloat(updated.operandB);
+                                                                        const op = updated.operation;
+                                                                        if (!isNaN(a) && !isNaN(b) && ['+', '-', '*', '/'].includes(op)) {
+                                                                            let ans = '';
+                                                                            switch (op) {
+                                                                                case '+': ans = a + b; break;
+                                                                                case '-': ans = a - b; break;
+                                                                                case '*': ans = a * b; break;
+                                                                                case '/': ans = b !== 0 ? parseFloat((a / b).toFixed(2)) : ''; break;
+                                                                            }
+                                                                            updated.correctAnswer = ans;
+                                                                        }
                                                                     }
-                                                                }
-                                                                handleContentChange(index, key, value);
-                                                                if (updated.correctAnswer !== item.correctAnswer) {
-                                                                    handleContentChange(index, 'correctAnswer', updated.correctAnswer);
-                                                                }
-                                                            }}
-                                                            min={field.min !== undefined ? field.min : undefined}
-                                                            max={field.max !== undefined ? field.max : undefined}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
-                                                            placeholder={`Enter ${field.label.toLowerCase()}`}
-                                                        />
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
+                                                                    handleContentChange(index, key, value);
+                                                                    if (updated.correctAnswer !== item.correctAnswer) {
+                                                                        handleContentChange(index, 'correctAnswer', updated.correctAnswer);
+                                                                    }
+                                                                }}
+                                                                min={field.min !== undefined ? field.min : undefined}
+                                                                max={field.max !== undefined ? field.max : undefined}
+                                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg focus:border-indigo-400 focus:outline-none transition-colors"
+                                                                placeholder={`Enter ${field.label.toLowerCase()}`}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div> {/* Close flex container */}
                                     </div>
                                 ))}

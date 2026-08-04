@@ -20,45 +20,35 @@ const normalizeAttemptPolicy = (value) => {
 };
 
 const validateFillBlankDropdown = (itemVal, key, itemIndex) => {
-  if (!itemVal) return { valid: false, message: `Item ${itemIndex + 1}: Missing fillBlankDropdown data for ${key}` };
-  if (!itemVal.passageTemplate || typeof itemVal.passageTemplate !== 'string') {
-    return { valid: false, message: `Item ${itemIndex + 1}: Passage template must be a non-empty string.` };
-  }
-  const blanks = Array.isArray(itemVal.blanks) ? itemVal.blanks : [];
+  if (!itemVal || typeof itemVal !== 'object') return { valid: false, message: `Item ${itemIndex + 1}: Missing fillBlankDropdown data for ${key}` };
   
-  // Extract tokens from passage
-  const regex = /\[\[(.*?)\]\]/g;
-  let match;
-  const detectedIds = new Set();
-  while ((match = regex.exec(itemVal.passageTemplate)) !== null) {
-    detectedIds.add(match[1]);
+  const segments = Array.isArray(itemVal.segments) ? itemVal.segments : [];
+  if (segments.length === 0) {
+    return { valid: false, message: `Item ${itemIndex + 1}: Passage must contain at least one segment.` };
   }
 
-  // Check orphaned blanks and missing blanks
-  const blankIds = new Set(blanks.map(b => b.id));
-  for (const id of detectedIds) {
-    if (!blankIds.has(id)) {
-      return { valid: false, message: `Item ${itemIndex + 1}: Blank token '[[${id}]]' in passage has no matching options configured.` };
-    }
-  }
-  for (const id of blankIds) {
-    if (!detectedIds.has(id)) {
-      return { valid: false, message: `Item ${itemIndex + 1}: Options configured for blank '${id}', but '[[${id}]]' is missing from the passage.` };
-    }
-  }
-
-  // Check options length and correctIndex
-  for (const blank of blanks) {
-    if (!Array.isArray(blank.options) || blank.options.length < 2) {
-      return { valid: false, message: `Item ${itemIndex + 1}: Blank '${blank.id}' must have at least 2 options.` };
-    }
-    if (typeof blank.correctIndex !== 'number' || blank.correctIndex < 0 || blank.correctIndex >= blank.options.length) {
-      return { valid: false, message: `Item ${itemIndex + 1}: Blank '${blank.id}' has an invalid correct answer selection.` };
-    }
-    for (let i = 0; i < blank.options.length; i++) {
-      if (typeof blank.options[i] !== 'string' || blank.options[i].trim() === '') {
-        return { valid: false, message: `Item ${itemIndex + 1}: Blank '${blank.id}' has an empty option.` };
+  let hasBlank = false;
+  for (let s = 0; s < segments.length; s++) {
+    const seg = segments[s];
+    if (seg.type === 'text') {
+      if (typeof seg.value !== 'string') {
+        return { valid: false, message: `Item ${itemIndex + 1}: Text block ${s + 1} is invalid.` };
       }
+    } else if (seg.type === 'blank') {
+      hasBlank = true;
+      if (!Array.isArray(seg.options) || seg.options.length < 2) {
+        return { valid: false, message: `Item ${itemIndex + 1}: Blank block ${s + 1} must have at least 2 options.` };
+      }
+      if (typeof seg.correctIndex !== 'number' || seg.correctIndex < 0 || seg.correctIndex >= seg.options.length) {
+        return { valid: false, message: `Item ${itemIndex + 1}: Blank block ${s + 1} has an invalid correct answer selection.` };
+      }
+      for (let i = 0; i < seg.options.length; i++) {
+        if (typeof seg.options[i] !== 'string' || seg.options[i].trim() === '') {
+          return { valid: false, message: `Item ${itemIndex + 1}: Blank block ${s + 1} has an empty option.` };
+        }
+      }
+    } else {
+      return { valid: false, message: `Item ${itemIndex + 1}: Unknown block type '${seg.type}'.` };
     }
   }
 

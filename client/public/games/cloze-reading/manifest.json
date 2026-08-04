@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "name": "Cloze Reading",
+  "description": "Test reading comprehension by filling in missing words in a passage.",
+  "attemptPolicy": "all",
+  "xp": {
+    "assignment": {
+      "enabled": true,
+      "amount": 100,
+      "firstAttemptOnly": true
+    },
+    "online": {
+      "enabled": false,
+      "amount": 0
+    }
+  },
+  "limits": {
+    "maxCreationsPerTeacher": 0
+  },
+  "assets": {
+    "maxImagesPerCreation": 10
+  },
+  "category": "reading",
+  "tags": [
+    "reading",
+    "cloze",
+    "fill-blank"
+  ]
+}

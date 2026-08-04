@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "pointsPerBlank": {
+      "label": "Points per correct blank",
+      "type": "number",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "required": true
+    },
+    "shuffleOptions": {
+      "label": "Shuffle dropdown options",
+      "type": "boolean",
+      "default": true
+    },
+    "timeLimitSeconds": {
+      "label": "Time limit per passage (0 = no limit)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 600,
+      "required": true
+    }
+  },
+  "content": {
+    "label": "Passages",
+    "minItems": 1,
+    "itemSchema": {
+      "passage": {
+        "type": "fillBlankDropdown",
+        "label": "Sentence / Passage with Blanks"
+      }
+    }
+  }
+}

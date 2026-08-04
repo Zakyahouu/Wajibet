@@ -111,26 +111,8 @@
         btn.onclick = () => selectAnswer(btn, choice);
         optionsContainer.appendChild(btn);
       });
-      
-      if (!confirmBtn) {
-        confirmBtn = document.createElement('button');
-        confirmBtn.className = 'btn confirm-btn hidden';
-        confirmBtn.textContent = 'Confirm';
-        confirmBtn.onclick = confirmAnswer;
-        optionsContainer.parentElement.appendChild(confirmBtn);
-      }
-      
-      if (!nextBtn) {
-        nextBtn = document.createElement('button');
-        nextBtn.className = 'btn next-btn hidden';
-        nextBtn.textContent = 'Next →';
-        nextBtn.onclick = () => { idx++; render(); };
-        optionsContainer.parentElement.appendChild(nextBtn);
-      }
-      
-      confirmBtn.classList.remove('hidden');
-      confirmBtn.disabled = true;
-      nextBtn.classList.add('hidden');
+
+      qStartMs = Date.now();
 
       qStartMs = Date.now();
       qWrapper.style.opacity = '1';
@@ -143,16 +125,16 @@
     var children = optionsContainer.children;
     for (var i = 0; i < children.length; i++) {
         children[i].classList.remove('selected');
+        children[i].disabled = true;
     }
     btn.classList.add('selected');
     selectedChoice = choice;
     
-    confirmBtn.disabled = false;
+    confirmAnswer();
   }
 
   function confirmAnswer() {
     if (selectedChoice === null) return;
-    confirmBtn.classList.add('hidden');
     
     const q = pool[idx];
     const correctAnswer = q.answer;
@@ -161,17 +143,13 @@
     const pointsPerCorrect = Number(settings.pointsPerCorrect ?? 1);
     const penaltyPerWrong  = Number(settings.penaltyPerWrong  ?? 0);
     
-    // FIX: scoreDelta is positive for correct, negative for wrong (when penalty configured)
-    // so the sum of per-item scores equals the final score passed to finishGame().
     var scoreDelta;
     if (ok) {
       scoreDelta = pointsPerCorrect;
     } else {
-      // Penalty is a negative delta; clamp so it can't take score below 0 in aggregate
       scoreDelta = penaltyPerWrong > 0 ? -penaltyPerWrong : 0;
     }
     
-    // FIX: Speed bonus is cosmetic only — label it clearly, do NOT add to score
     if (ok && deltaMs <= 2000) {
       showBonus('⚡ Fast Answer!', 'speed');
     }
@@ -224,12 +202,14 @@
       }
     });
 
-    nextBtn.classList.remove('hidden');
-    if (idx + 1 >= pool.length) {
-        nextBtn.textContent = 'Finish';
-    } else {
-        nextBtn.textContent = 'Next →';
-    }
+    setTimeout(() => {
+        idx++;
+        if (idx >= pool.length) {
+            finish();
+        } else {
+            render();
+        }
+    }, 1000);
   }
 
   function start(resumeState){

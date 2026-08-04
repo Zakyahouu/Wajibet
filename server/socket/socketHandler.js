@@ -801,7 +801,41 @@ async function ensureRoomLoaded(roomCode) {
         }
       } catch (e) { console.error('disconnect cleanup failed', e); }
     });
-    
+    socket.on('leave-game', async ({ roomCode }) => {
+      try {
+        if (!roomCode) return;
+        const room = liveGames[roomCode];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+          if (player.stats && player.stats.status === 'active') {
+            player.stats.status = 'disconnected';
+            const startedAt = player.stats.currentItemStartedAt ? new Date(player.stats.currentItemStartedAt).getTime() : Date.now();
+            const elapsed = Date.now() - startedAt;
+            player.stats.pausedRemainingMs = elapsed; 
+            player.stats.disconnectedAt = new Date();
+            
+            if (room.sessionId) {
+              await LiveParticipant.findOneAndUpdate(
+                { sessionId: room.sessionId, studentId: player.userId },
+                { $set: { 
+                  status: 'disconnected', 
+                  pausedRemainingMs: elapsed,
+                  accumulatedPauseMs: player.stats.accumulatedPauseMs,
+                  score: player.stats.score,
+                  currentItemIndex: player.stats.currentItemIndex,
+                  currentItemStartedAt: player.stats.currentItemStartedAt,
+                  leftAt: new Date()
+                } }
+              ).catch(e => console.error(e));
+            }
+          }
+          io.to(roomCode).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
+        }
+        socket.leave(roomCode);
+      } catch (e) { console.error('leave-game cleanup failed', e); }
+    });
+
     socket.on('rejoin-game', async ({ roomCode, userId }, cb) => {
       try {
         const room = await ensureRoomLoaded(roomCode);

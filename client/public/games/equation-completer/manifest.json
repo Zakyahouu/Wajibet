@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "name": "Equation Completer",
+  "description": "Complete mathematical equations by filling in the missing operators or operands.",
+  "attemptPolicy": "all",
+  "xp": {
+    "assignment": {
+      "enabled": true,
+      "amount": 100,
+      "firstAttemptOnly": true
+    },
+    "online": {
+      "enabled": false,
+      "amount": 0
+    }
+  },
+  "limits": {
+    "maxCreationsPerTeacher": 0
+  },
+  "assets": {
+    "maxImagesPerCreation": 10
+  },
+  "category": "math",
+  "tags": [
+    "math",
+    "equations",
+    "fill-blank"
+  ]
+}

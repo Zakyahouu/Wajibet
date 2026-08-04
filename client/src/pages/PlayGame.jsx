@@ -113,6 +113,9 @@ const PlayGame = () => {
         const res = await axios.get(`/api/game-progress/${assignmentId}/${gameCreation._id}`);
         if (mounted && res.data?.progress) {
           setResumeState(res.data.progress);
+          if (Array.isArray(res.data.progress.answers)) {
+            checkpointBufferRef.current = res.data.progress.answers;
+          }
         }
       } catch (e) {
         // No checkpoint yet, or fetch failed — that's fine, just start fresh.
@@ -147,14 +150,7 @@ const PlayGame = () => {
       if (liveInfo?.roomCode && socket && event.data?.type === 'LIVE_ANSWER') {
         try {
           const p = event.data.payload || {};
-          const answers = [{
-            isCorrect: !!p.isCorrect,
-            timeMs: Number.isFinite(Number(p.timeMs)) ? Number(p.timeMs) : 0,
-            score: Number.isFinite(Number(p.score)) ? Number(p.score) : 0,
-            itemId: p.itemId,
-            itemIndex: p.itemIndex,
-            type: p.type
-          }];
+          const answers = [p];
           try { 
             GameLogger.log('PlayGame', 'Emitting live:answer (iframe)', { answers });
             socket.emit('live:answer', { roomCode: liveInfo.roomCode, answers }); 
@@ -353,8 +349,11 @@ const PlayGame = () => {
 
     return () => {
       socket.off('connect', rejoinRoom);
+      if (liveInfo?.roomCode && !liveEnded) {
+        socket.emit('leave-game', { roomCode: liveInfo.roomCode });
+      }
     };
-  }, [socket, liveInfo?.roomCode, user?.role, user?._id, user?.firstName, user?.lastName, user?.name]);
+  }, [socket, liveInfo?.roomCode, user?.role, user?._id, user?.firstName, user?.lastName, user?.name, liveEnded]);
 
   // Offline assignment checkpoint: flush on tab hide (visibilitychange)
   useEffect(() => {
