@@ -11,14 +11,34 @@ const getUser = () => {
 };
 const authConfig = () => ({ headers: { Authorization: `Bearer ${getUser()?.token}` } });
 
+const ACTIVITY_TYPE_KEYS = [
+  'supportLessons',
+  'reviewCourses',
+  'vocationalTrainings',
+  'languages',
+  'otherActivities',
+];
+
 const deriveActivityTypes = (catalog, t) => {
   const types = [];
   if (!catalog) return types;
-  if (Array.isArray(catalog.supportLessons) && catalog.supportLessons.length) types.push(t.supportLessons);
-  if (Array.isArray(catalog.reviewCourses) && catalog.reviewCourses.length) types.push(t.reviewCourses);
-  if (Array.isArray(catalog.vocationalTrainings) && catalog.vocationalTrainings.length) types.push(t.vocationalTrainings);
-  if (Array.isArray(catalog.languages) && catalog.languages.length) types.push(t.languages);
-  if (Array.isArray(catalog.otherActivities) && catalog.otherActivities.length) types.push(t.otherActivities);
+
+  if (Array.isArray(catalog.supportLessons) && catalog.supportLessons.length) {
+    types.push({ key: 'supportLessons', label: t.supportLessons });
+  }
+  if (Array.isArray(catalog.reviewCourses) && catalog.reviewCourses.length) {
+    types.push({ key: 'reviewCourses', label: t.reviewCourses });
+  }
+  if (Array.isArray(catalog.vocationalTrainings) && catalog.vocationalTrainings.length) {
+    types.push({ key: 'vocationalTrainings', label: t.vocationalTrainings });
+  }
+  if (Array.isArray(catalog.languages) && catalog.languages.length) {
+    types.push({ key: 'languages', label: t.languages });
+  }
+  if (Array.isArray(catalog.otherActivities) && catalog.otherActivities.length) {
+    types.push({ key: 'otherActivities', label: t.otherActivities });
+  }
+
   return types;
 };
 
@@ -437,15 +457,15 @@ const RoomModal = ({ mode, data, onClose, onSave, activityOptions, existingRooms
   const [form, setForm] = useState({
     name: data?.name || (mode === 'create' ? generateNextRoomName(existingRooms, t) : ''),
     capacity: data?.capacity || 1,
-    activityTypes: data?.activityTypes || [],
+    activityTypes: Array.isArray(data?.activityTypes) ? data.activityTypes : [],
   });
 
-  const toggleActivity = (t) => {
+  const toggleActivity = (key) => {
     setForm(prev => ({
       ...prev,
-      activityTypes: prev.activityTypes.includes(t)
-        ? prev.activityTypes.filter(x => x !== t)
-        : [...prev.activityTypes, t]
+      activityTypes: prev.activityTypes.includes(key)
+        ? prev.activityTypes.filter(x => x !== key)
+        : [...prev.activityTypes, key]
     }));
   };
 
@@ -533,20 +553,20 @@ const RoomModal = ({ mode, data, onClose, onSave, activityOptions, existingRooms
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {activityOptions.map(t => (
+                {activityOptions.map(option => (
                   <button
                     type="button"
-                    key={t}
-                    onClick={() => toggleActivity(t)}
+                    key={option.key}
+                    onClick={() => toggleActivity(option.key)}
                     className={`
                       px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200
-                      ${form.activityTypes.includes(t)
+                      ${form.activityTypes.includes(option.key)
                         ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
                       }
                     `}
                   >
-                    {t}
+                    {option.label}
                   </button>
                 ))}
               </div>
