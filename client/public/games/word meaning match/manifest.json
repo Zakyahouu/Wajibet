@@ -1,0 +1,11 @@
+{
+  "name": "Word Meaning Match",
+  "description": "Students drag or tap vocabulary words onto their correct definitions. Each round presents a set of word-definition pairs to match; the teacher sets how many pairs per round and the points per correct match. Works for any language direction.",
+  "version": "1.0.0",
+  "attemptPolicy": "first_only",
+  "xp": { "assignment": { "enabled": true, "amount": 40, "firstAttemptOnly": true }, "online": { "enabled": true, "amount": 20 } },
+  "limits": { "maxCreationsPerTeacher": 100 },
+  "assets": { "maxImagesPerCreation": 0 },
+  "platformIntegration": {},
+  "gamification": {}
+}

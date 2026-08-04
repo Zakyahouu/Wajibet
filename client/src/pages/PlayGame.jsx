@@ -29,6 +29,10 @@ const PlayGame = () => {
 
   const [resumeState, setResumeState] = useState(null);
   const [joinConfirmed, setJoinConfirmed] = useState(!liveInfo?.roomCode || user?.role !== 'student');
+  const joinConfirmedRef = useRef(joinConfirmed);
+  useEffect(() => {
+    joinConfirmedRef.current = joinConfirmed;
+  }, [joinConfirmed]);
   // True once the engine has announced GAME_INIT via the SDK handshake.
   const engineReady = useRef(false);
   const [engineFailed, setEngineFailed] = useState(false);
@@ -326,19 +330,39 @@ const PlayGame = () => {
 
   useEffect(() => {
     if (!socket || !liveInfo?.roomCode || user?.role !== 'student') return;
+    
+    let joinTimeout;
+    
+    const handleJoinError = (msg) => {
+      setError(msg || 'Could not join live game.');
+      clearTimeout(joinTimeout);
+    };
+    
     const rejoinRoom = () => {
       const playerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'Player';
       if (user?._id) {
         try { 
-          const isRejoin = location.state?.isRejoin || joinConfirmed;
+          const isRejoin = location.state?.isRejoin || joinConfirmedRef.current;
           const eventName = isRejoin ? 'rejoin-game' : 'join-game';
           GameLogger.log('PlayGame', `Emitting ${eventName}`, { roomCode: liveInfo.roomCode, userId: user._id });
+          
+          clearTimeout(joinTimeout);
+          joinTimeout = setTimeout(() => {
+            setError('Connection timed out. Please refresh to try again.');
+          }, 8000);
+          
           socket.emit(eventName, { roomCode: liveInfo.roomCode, playerName, userId: user._id }, (response) => {
             GameLogger.log('PlayGame', `${eventName} Ack Received`, response);
-            if (response && response.resumeState) {
-              setResumeState(response.resumeState);
+            clearTimeout(joinTimeout);
+            
+            if (response && response.success) {
+              if (response.resumeState) {
+                setResumeState(response.resumeState);
+              }
+              setJoinConfirmed(true);
+            } else {
+              setError(response?.reason || 'Failed to join game.');
             }
-            setJoinConfirmed(true);
           }); 
         } catch {}
       }
@@ -346,9 +370,12 @@ const PlayGame = () => {
 
     rejoinRoom();
     socket.on('connect', rejoinRoom);
+    socket.on('join-error', handleJoinError);
 
     return () => {
+      clearTimeout(joinTimeout);
       socket.off('connect', rejoinRoom);
+      socket.off('join-error', handleJoinError);
       if (liveInfo?.roomCode && !liveEnded) {
         socket.emit('leave-game', { roomCode: liveInfo.roomCode });
       }

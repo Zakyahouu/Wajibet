@@ -1,0 +1,21 @@
+{
+  "settings": {
+    "categoryA": { "label": "Category A name", "type": "text", "required": true, "placeholder": "e.g. Mammal" },
+    "categoryB": { "label": "Category B name", "type": "text", "required": true, "placeholder": "e.g. Reptile" },
+    "categoryC": { "label": "Category C name (leave blank if unused)", "type": "text", "required": false, "placeholder": "Optional third category" },
+    "categoryD": { "label": "Category D name (leave blank if unused)", "type": "text", "required": false, "placeholder": "Optional fourth category" },
+    "pointsPerQuestion": { "label": "Points per Question", "type": "number", "default": 10, "min": 1, "max": 100, "required": true },
+    "timeLimitSeconds": { "label": "Time Limit per Question (0 = no limit)", "type": "number", "default": 20, "min": 0, "max": 300, "required": true },
+    "shuffle": { "label": "Shuffle Question Order", "type": "boolean", "default": true },
+    "themeColor": { "label": "Accent Color", "type": "color", "default": "#6B4E9B" }
+  },
+  "content": {
+    "label": "Items to Sort",
+    "minItems": 1,
+    "itemSchema": {
+      "itemText": { "label": "Item", "type": "textarea", "rows": 2, "required": true, "placeholder": "The thing the student must classify" },
+      "category": { "label": "Which category does it belong to?", "type": "enum", "options": ["A", "B", "C", "D"], "default": "A", "required": true },
+      "explanation": { "label": "Explanation shown on review (optional)", "type": "text", "required": false, "placeholder": "Why it belongs there" }
+    }
+  }
+}

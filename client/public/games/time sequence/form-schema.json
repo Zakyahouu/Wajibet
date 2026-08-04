@@ -1,0 +1,64 @@
+{
+  "settings": {
+    "pointsPerTimeline": {
+      "label": "Points per completed Timeline",
+      "type": "number",
+      "default": 50,
+      "min": 1,
+      "max": 500,
+      "required": true
+    },
+    "timeLimitSeconds": {
+      "label": "Time Limit per Timeline (0 = no limit)",
+      "type": "number",
+      "default": 120,
+      "min": 0,
+      "max": 600,
+      "required": true
+    },
+    "themeColor": {
+      "label": "Accent Color",
+      "type": "color",
+      "default": "#0284C7"
+    }
+  },
+  "content": {
+    "label": "Timelines / Eras",
+    "minItems": 1,
+    "itemSchema": {
+      "timelineTitle": {
+        "label": "Title of this Timeline",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g., The French Revolution"
+      },
+      "events": {
+        "label": "Events (Add them in the CORRECT chronological order)",
+        "type": "array",
+        "minItems": 3,
+        "itemSchema": {
+          "eventText": {
+            "label": "Event Description",
+            "type": "textarea",
+            "rows": 2,
+            "required": true,
+            "placeholder": "e.g., Storming of the Bastille"
+          },
+          "detail": {
+            "label": "Detail shown on review (optional)",
+            "type": "text",
+            "required": false,
+            "placeholder": "e.g., July 14, 1789"
+          }
+        }
+      }
+    }
+  },
+  "metaStatsSchema": [
+    {
+      "key": "correctlyPlaced",
+      "label": "Average Events Placed Correctly",
+      "aggregation": "average"
+    }
+  ]
+}

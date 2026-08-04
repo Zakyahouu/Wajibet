@@ -20,8 +20,7 @@
   const progressBar = byId('progress-bar');
   const streakCounter = byId('streak-counter');
   
-  let confirmBtn = null;
-  let nextBtn = null;
+
 
   const show = (id) => { Object.values(screens).forEach(s => s.classList.add('hidden')); screens[id].classList.remove('hidden'); };
   
@@ -89,8 +88,7 @@
     qWrapper.style.opacity = '0';
     selectedChoice = null;
     
-    if (confirmBtn) { confirmBtn.classList.add('hidden'); confirmBtn.disabled = true; }
-    if (nextBtn) nextBtn.classList.add('hidden');
+    
     
     setTimeout(() => {
       const q = pool[idx]; 
@@ -209,7 +207,7 @@
         } else {
             render();
         }
-    }, 1000);
+    }, 800);
   }
 
   function start(resumeState){

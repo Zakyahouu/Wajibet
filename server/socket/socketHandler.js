@@ -332,19 +332,20 @@ async function ensureRoomLoaded(roomCode) {
     socket.on('join-game', async ({ roomCode, playerName, userId } = {}, cb) => {
       try {
         const room = await ensureRoomLoaded(roomCode);
-        if (!room) { socket.emit('join-error', 'Room not found'); return; }
-        if (socket.user?.role !== 'student') { socket.emit('join-error', 'Only students can join as players.'); return; }
+        if (!room) { socket.emit('join-error', 'Room not found'); if (typeof cb === 'function') cb({ success: false, reason: 'Room not found' }); return; }
+        if (socket.user?.role !== 'student') { socket.emit('join-error', 'Only students can join as players.'); if (typeof cb === 'function') cb({ success: false, reason: 'Only students can join as players.' }); return; }
         const verifiedUserId = socket.user._id;
-        if (userId && String(userId) !== String(verifiedUserId)) { socket.emit('join-error', 'Invalid player identity.'); return; }
+        if (userId && String(userId) !== String(verifiedUserId)) { socket.emit('join-error', 'Invalid player identity.'); if (typeof cb === 'function') cb({ success: false, reason: 'Invalid player identity.' }); return; }
 
         let studentClassId = null;
         let session = null;
         if (room.sessionId) {
           session = await LiveSession.findById(room.sessionId).select('classes status allowLateJoin').lean();
-          if (!session || session.status === 'ended') { socket.emit('join-error', 'This live session has ended.'); return; }
+          if (!session || session.status === 'ended') { socket.emit('join-error', 'This live session has ended.'); if (typeof cb === 'function') cb({ success: false, reason: 'This live session has ended.' }); return; }
           const alreadyInRoom = room.players.some(p => String(p.userId) === String(verifiedUserId));
           if (session.status === 'running' && session.allowLateJoin === false && !alreadyInRoom) {
             socket.emit('join-error', 'Late joining is not allowed for this session.');
+            if (typeof cb === 'function') cb({ success: false, reason: 'Late joining is not allowed for this session.' });
             return;
           }
           if (Array.isArray(session.classes) && session.classes.length > 0) {
@@ -361,6 +362,7 @@ async function ensureRoomLoaded(roomCode) {
 
             if (!enrollment && !embeddedClass) {
               socket.emit('join-error', 'You are not enrolled in a class for this live session.');
+              if (typeof cb === 'function') cb({ success: false, reason: 'You are not enrolled in a class for this live session.' });
               return;
             }
             studentClassId = enrollment?.classId || embeddedClass?._id;
@@ -388,6 +390,7 @@ async function ensureRoomLoaded(roomCode) {
           
           if (existing.stats && existing.stats.status === 'disconnected') {
             socket.emit('join-error', 'You are already in this room. Please use the Rejoin button.');
+            if (typeof cb === 'function') cb({ success: false, reason: 'You are already in this room. Please use the Rejoin button.' });
             return;
           } else if (!existing.stats) {
             existing.stats = {
@@ -441,7 +444,9 @@ async function ensureRoomLoaded(roomCode) {
         if (typeof cb === 'function') {
            cb({ success: true, resumeState });
         }
-      } catch (e) { console.error('join-game handler failed', e); }
+      } catch (e) { console.error('join-game handler failed', e);
+        if (typeof cb === 'function') cb({ success: false, reason: 'server_error' });
+      }
     });
 
     socket.on('start-game', async (roomCode) => {
@@ -629,46 +634,7 @@ async function ensureRoomLoaded(roomCode) {
       }
     });
 
-    socket.on('live:finish', async ({ roomCode, userId }) => {
-      try {
-        const room = liveGames[roomCode];
-        if (!room || !room.sessionId) return;
-        
-        const player = room.players.find(p => String(p.userId) === String(userId));
-        if (player && player.stats) {
-          player.stats.finishedAt = new Date();
-          
-          if (room.sessionId) {
-            await LiveParticipant.findOneAndUpdate(
-              { sessionId: room.sessionId, studentId: userId },
-              { $set: { finishedAt: player.stats.finishedAt } }
-            ).catch(e => console.error('[WAJIBET_V2] [socket] finish write failed', e));
-          }
-          
-          const ranks = room.players
-            .filter(p => p.stats)
-            .map(p => ({
-              userId: String(p.userId),
-              name: p.name || 'Unknown',
-              score: p.stats.score || 0,
-              correct: p.stats.correct || 0,
-              wrong: p.stats.wrong || 0,
-              effectiveTimeMs: p.stats.effectiveTimeMs || 0,
-              finishedAt: p.stats.finishedAt
-            }))
-            .sort((a, b) => {
-              if (b.score !== a.score) return b.score - a.score;
-              if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
-              return (a.wrong || 0) - (b.wrong || 0);
-            });
 
-          io.to(roomCode).emit('live:scoreboard', { ranks });
-          console.log(`[WAJIBET_V2] [socket] Player Finished -> room: ${roomCode}, user: ${userId}`);
-        }
-      } catch (e) {
-        console.error('live:finish handler failed', e);
-      }
-    });
 
     socket.on('live:finish', async ({ roomCode, userId, totalTimeMs, score, correct, wrong } = {}) => {
       try {
@@ -839,8 +805,11 @@ async function ensureRoomLoaded(roomCode) {
     socket.on('rejoin-game', async ({ roomCode, userId }, cb) => {
       try {
         const room = await ensureRoomLoaded(roomCode);
-        if (!room) { socket.emit('join-error', 'Room not found'); return; }
-        if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) return;
+        if (!room) { socket.emit('join-error', 'Room not found'); if (typeof cb === 'function') cb({ success: false, reason: 'Room not found' }); return; }
+        if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) {
+          if (typeof cb === 'function') cb({ success: false, reason: 'Invalid player identity.' });
+          return;
+        }
 
         const player = room.players.find(p => String(p.userId) === String(userId));
         if (player && player.stats && (player.stats.status === 'disconnected' || player.stats.status === 'active')) {
@@ -890,8 +859,11 @@ async function ensureRoomLoaded(roomCode) {
         } else {
           console.warn(`[WAJIBET_V2] [socket] REJOIN REJECTED -> user: ${userId}, room: ${roomCode} - Invalid Status: ${player?.stats?.status}`);
           socket.emit('join-error', 'Cannot rejoin. Invalid game state.');
+          if (typeof cb === 'function') cb({ success: false, reason: 'Cannot rejoin. Invalid game state.' });
         }
-      } catch (e) { console.error('rejoin-game handler failed', e); }
+      } catch (e) { console.error('rejoin-game handler failed', e);
+        if (typeof cb === 'function') cb({ success: false, reason: 'server_error' });
+      }
     });
 
     socket.on('leave-room', (code) => {

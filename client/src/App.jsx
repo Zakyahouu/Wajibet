@@ -231,6 +231,16 @@ function App() {
                 }
               />
 
+              {/* Assignment Analytics */}
+              <Route
+                path="/analytics/assignment/:assignmentId"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher']}>
+                    <GameAnalyticsDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Route 13: The Host Lobby Page */}
               <Route
                 path="/teacher/host-lobby/:gameCreationId"
