@@ -3600,6 +3600,8 @@ export const translations = {
         noEquipmentFound: "لم يتم العثور على معدات", noAdsFound: "لم يتم العثور على إعلانات",
         addEmployee: "إضافة موظف", searchByNameRolePhone: "البحث بالاسم، الدور أو الهاتف...",
         updateEmployee: "تحديث الموظف", searchRooms: "البحث عن قاعات...", addRoom: "إضافة قاعة",
+        generateRoomName: "توليد اسم القاعة التالي",
+        roomNumbered: "قاعة {number}",
         noRoomsMatchSearch: "لا توجد قاعات تطابق معايير البحث.",
         getStartedCreateFirstRoom: "ابدأ بإنشاء قاعتك الأولى.",
         searchEquipment: "البحث عن معدات...", addEquipment: "إضافة معدات",
