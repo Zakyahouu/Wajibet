@@ -24,8 +24,10 @@ const deriveActivityTypes = (catalog, t) => {
 
 // Smart room name generation based on existing room patterns
 const generateNextRoomName = (existingRooms, t) => {
+  const roomNumberedTemplate = t?.roomNumbered || 'Room {number}';
+
   if (!existingRooms || existingRooms.length === 0) {
-    return t.roomNumbered.replace('{number}', 1);
+    return roomNumberedTemplate.replace('{number}', 1);
   }
 
   // Extract all room names and sort them
@@ -43,7 +45,7 @@ const generateNextRoomName = (existingRooms, t) => {
 
   if (numberedRooms.length > 0) {
     const nextNumber = Math.max(...numberedRooms) + 1;
-    return t.roomNumbered.replace('{number}', nextNumber);
+    return roomNumberedTemplate.replace('{number}', nextNumber);
   }
 
   // Pattern 2: Check for room with numbers at the end (Classroom 101, Lab 2, etc.)
