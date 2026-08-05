@@ -326,7 +326,9 @@ async function ensureRoomLoaded(roomCode) {
         }
         
         console.log('[socket] host-game -> created/rejoined room', code, room.status);
-      } catch (e) { console.error('host-game handler failed', e); }
+      } catch (e) { console.error('host-game handler failed', e);
+        socket.emit('host-error', 'Something went wrong while starting the lobby. Please try again.');
+      }
     });
 
     socket.on('join-game', async ({ roomCode, playerName, userId } = {}, cb) => {
@@ -445,6 +447,7 @@ async function ensureRoomLoaded(roomCode) {
            cb({ success: true, resumeState });
         }
       } catch (e) { console.error('join-game handler failed', e);
+        socket.emit('join-error', 'Something went wrong while joining. Please try again.');
         if (typeof cb === 'function') cb({ success: false, reason: 'server_error' });
       }
     });
@@ -469,7 +472,10 @@ async function ensureRoomLoaded(roomCode) {
         }
         io.to(roomCode).emit('game-started', { gameCreationId: room.gameCreationId, sessionId: room.sessionId });
         console.log('[socket] start-game ->', roomCode);
-      } catch (e) { console.error('start-game handler failed', e); }
+      } catch (e) {
+        console.error('start-game handler failed', e);
+        socket.emit('host-error', 'Failed to start the game. Please try again.');
+      }
     });
 
     socket.on('end-game', async (roomCode) => {
@@ -530,10 +536,13 @@ async function ensureRoomLoaded(roomCode) {
         io.to(roomCode).emit('game-ended', { sessionId: room.sessionId, ranks: finalRanks });
         try { delete liveGames[roomCode]; } catch { }
         console.log('[socket] end-game ->', roomCode);
-      } catch (e) { console.error('end-game handler failed', e); }
+      } catch (e) {
+        console.error('end-game handler failed', e);
+        socket.emit('host-error', 'Failed to end the game properly. Please check the session status.');
+      }
     });
 
-    socket.on('live:answer', async ({ roomCode, answers } = {}) => {
+    socket.on('live:answer', async ({ roomCode, answers } = {}, cb) => {
       try {
         const room = liveGames[roomCode];
         if (!room || !room.sessionId) return;
@@ -602,7 +611,10 @@ async function ensureRoomLoaded(roomCode) {
                     answers: { $each: answers }
                   }
                 }
-              ).catch(e => console.error('[WAJIBET_V2] [socket] DB write failed', e));
+              ).catch(e => {
+                console.error('[WAJIBET_V2] [socket] DB write failed', e);
+                throw e;
+              });
             }
 
             const ranks = room.players
@@ -628,9 +640,12 @@ async function ensureRoomLoaded(roomCode) {
           }
         } catch (e) {
           console.error('[socket] Failed to update participant in memory:', e);
+          throw e; // Bubble up to outer catch for cb(false)
         }
+        if (typeof cb === 'function') cb({ success: true });
       } catch (e) {
         console.error('live:answer handler failed', e);
+        if (typeof cb === 'function') cb({ success: false });
       }
     });
 
@@ -807,6 +822,7 @@ async function ensureRoomLoaded(roomCode) {
         const room = await ensureRoomLoaded(roomCode);
         if (!room) { socket.emit('join-error', 'Room not found'); if (typeof cb === 'function') cb({ success: false, reason: 'Room not found' }); return; }
         if (socket.user?.role !== 'student' || String(socket.user._id) !== String(userId)) {
+          socket.emit('join-error', 'Invalid player identity.');
           if (typeof cb === 'function') cb({ success: false, reason: 'Invalid player identity.' });
           return;
         }
@@ -862,6 +878,7 @@ async function ensureRoomLoaded(roomCode) {
           if (typeof cb === 'function') cb({ success: false, reason: 'Cannot rejoin. Invalid game state.' });
         }
       } catch (e) { console.error('rejoin-game handler failed', e);
+        socket.emit('join-error', 'Something went wrong while rejoining. Please try again.');
         if (typeof cb === 'function') cb({ success: false, reason: 'server_error' });
       }
     });

@@ -21,9 +21,37 @@ const PlayerLobby = () => {
     // Attempt to join the game room with full name from profile once socket is present
     const playerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'Player';
     const userId = user?._id;
+    let joinTimeout;
+
+    const handleGameStarted = ({ gameCreationId }) => {
+      clearTimeout(joinTimeout);
+      GameLogger.log('PlayerLobby', 'Received game-started', { gameCreationId });
+      console.log(`Player Lobby: Game starting! Navigating to play game: ${gameCreationId}`);
+      navigate(`/student/play-game/${gameCreationId}`, { state: { live: { roomCode } } });
+    };
+
+    const handleScoreboard = ({ ranks }) => {
+      clearTimeout(joinTimeout);
+      console.log('Live scoreboard update (player):', ranks?.slice(0,5));
+    };
+
+    const handleJoinError = (msg) => {
+      clearTimeout(joinTimeout);
+      setError(msg || 'Could not join this room.');
+    };
+
+    const handlePlayerJoined = () => {
+      clearTimeout(joinTimeout);
+    };
+
     const doJoin = () => {
       if (roomCode && userId && socket) {
         try { 
+          clearTimeout(joinTimeout);
+          joinTimeout = setTimeout(() => {
+            setError('Connection timed out. Please refresh to try again.');
+          }, 8000);
+          
           if (isRejoin) {
              GameLogger.log('PlayerLobby', 'Emitting rejoin-game', { roomCode, userId });
              socket.emit('rejoin-game', { roomCode, userId });
@@ -38,35 +66,20 @@ const PlayerLobby = () => {
     if (socket) {
       doJoin();
       socket.on('connect', doJoin);
-    }
-
-    // Listen for server events
-    const handleGameStarted = ({ gameCreationId }) => {
-      GameLogger.log('PlayerLobby', 'Received game-started', { gameCreationId });
-      console.log(`Player Lobby: Game starting! Navigating to play game: ${gameCreationId}`);
-      navigate(`/student/play-game/${gameCreationId}`, { state: { live: { roomCode } } });
-    };
-
-    const handleScoreboard = ({ ranks }) => {
-      console.log('Live scoreboard update (player):', ranks?.slice(0,5));
-    };
-
-    const handleJoinError = (msg) => {
-      setError(msg || 'Could not join this room.');
-    };
-
-    if (socket) {
       socket.on('game-started', handleGameStarted);
       socket.on('live:scoreboard', handleScoreboard);
       socket.on('join-error', handleJoinError);
+      socket.on('player-joined', handlePlayerJoined);
     }
 
     return () => {
+      clearTimeout(joinTimeout);
       if (socket) {
         socket.off('connect', doJoin);
         socket.off('game-started', handleGameStarted);
         socket.off('live:scoreboard', handleScoreboard);
         socket.off('join-error', handleJoinError);
+        socket.off('player-joined', handlePlayerJoined);
       }
     };
   }, [socket, socketContext, roomCode, user?._id, navigate]);

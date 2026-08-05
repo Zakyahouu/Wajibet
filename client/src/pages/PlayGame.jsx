@@ -42,6 +42,9 @@ const PlayGame = () => {
   const iframeRef = useRef(null);
   const checkpointBufferRef = useRef([]);
   const checkpointCounterRef = useRef(0);
+  const gameCompleteHandledRef = useRef(false);
+  const consecutiveAnswerFailures = useRef(0);
+  const [syncWarning, setSyncWarning] = useState(false);
 
   const resolveEngineSrc = (enginePath) => {
     if (!enginePath) return '';
@@ -157,7 +160,17 @@ const PlayGame = () => {
           const answers = [p];
           try { 
             GameLogger.log('PlayGame', 'Emitting live:answer (iframe)', { answers });
-            socket.emit('live:answer', { roomCode: liveInfo.roomCode, answers }); 
+            socket.timeout(5000).emit('live:answer', { roomCode: liveInfo.roomCode, answers }, (err, response) => {
+              if (err || (response && !response.success)) {
+                consecutiveAnswerFailures.current++;
+                if (consecutiveAnswerFailures.current >= 3) {
+                  setSyncWarning(true);
+                }
+              } else {
+                consecutiveAnswerFailures.current = 0;
+                setSyncWarning(false);
+              }
+            });
           } catch {}
         } catch {}
       }
@@ -179,6 +192,11 @@ const PlayGame = () => {
         }
       }
       if (event.data?.type === 'GAME_COMPLETE') {
+        if (gameCompleteHandledRef.current) {
+          console.warn('[PlayGame] Duplicate GAME_COMPLETE received, ignoring.');
+          return;
+        }
+        gameCompleteHandledRef.current = true;
         try {
           const raw = event.data.payload || {};
           // SDK v2 payload: { finalScore, totalTimeMs, answers[], statsSchemaVersion }.
@@ -569,6 +587,11 @@ const PlayGame = () => {
       {liveEnded && liveInfo?.roomCode && (
         <div className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm px-6 py-2">
           This live session has ended. Returning to your dashboard.
+        </div>
+      )}
+      {syncWarning && (
+        <div className="bg-amber-500 text-white text-sm font-semibold px-6 py-2 text-center animate-pulse">
+          ⚠️ Connection unstable: your progress may not be saving
         </div>
       )}
 

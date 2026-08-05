@@ -22,6 +22,7 @@ const HostLobby = () => {
   const [awaitingCreate, setAwaitingCreate] = useState(false);
   const [sessionTitle, setSessionTitle] = useState('');
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+  const [hostError, setHostError] = useState(null);
   const { toast } = useToast();
 
   const emitHostGame = (code, currentSessionId, creationId) => {
@@ -49,11 +50,18 @@ const HostLobby = () => {
 
   useEffect(() => {
     let mounted = true;
+    let hostTimeout;
     if (!socket) return () => { mounted = false; };
 
     const handleRoomCreated = (newRoomCode) => {
+      clearTimeout(hostTimeout);
       console.log(`Lobby: Room created with code: ${newRoomCode}`);
       setRoomCode(newRoomCode);
+    };
+
+    const handleHostError = (msg) => {
+      clearTimeout(hostTimeout);
+      setHostError(msg);
     };
 
     const handlePlayerJoined = (updatedPlayerList) => {
@@ -92,6 +100,9 @@ const HostLobby = () => {
           const creation = s.data?.session?.gameCreationId || gameCreationId;
           setSessionInfo(s.data?.session || null);
           if (!code || !creation) { navigate('/teacher/dashboard'); return; }
+          hostTimeout = setTimeout(() => {
+            setHostError('Connection timed out. Please refresh to try again.');
+          }, 8000);
           emitHostGame(code, sessionId, creation);
         } else {
           // Fresh session: wait for user to confirm and optionally set a title
@@ -103,6 +114,7 @@ const HostLobby = () => {
     })();
 
     socket.on('room-created', handleRoomCreated);
+    socket.on('host-error', handleHostError);
     socket.on('player-joined', handlePlayerJoined);
     socket.on('game-started', handleGameStarted);
     socket.on('game-ended', handleGameEnded);
@@ -110,8 +122,10 @@ const HostLobby = () => {
 
     return () => {
       mounted = false;
+      clearTimeout(hostTimeout);
       if (socket) {
         socket.off('room-created', handleRoomCreated);
+        socket.off('host-error', handleHostError);
         socket.off('player-joined', handlePlayerJoined);
         socket.off('game-started', handleGameStarted);
         socket.off('game-ended', handleGameEnded);
@@ -130,6 +144,14 @@ const HostLobby = () => {
       socket.off('connect', handleReconnect);
     };
   }, [socket, roomCode, sessionInfo?._id, sessionInfo?.gameCreationId, sessionId, gameCreationId, socketConnected]);
+
+  // --- NEW: Handle host errors that occur after the room is live ---
+  useEffect(() => {
+    if (hostError && roomCode) {
+      toast(hostError);
+      setHostError(null);
+    }
+  }, [hostError, roomCode, toast]);
 
   // --- NEW: Function to handle starting the game ---
   const handleStartGame = () => {
@@ -186,13 +208,24 @@ const HostLobby = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-8">
-      <h1 className="text-4xl font-bold mb-4">Game Lobby</h1>
-      {sessionInfo && (
-        <div className="mb-4 text-sm text-gray-300">
-          <span className="mr-2">Registered as session</span>
-          <Link to={`/teacher/live-sessions/${sessionInfo._id}`} className="text-indigo-300 underline">{sessionInfo._id}</Link>
-        </div>
-      )}
+      {hostError && !roomCode ? (
+        <>
+          <h1 className="text-3xl font-bold mb-3">Join Failed</h1>
+          <p className="text-sm text-red-300 mb-6">{hostError}</p>
+          <button
+            onClick={() => navigate('/teacher/dashboard')}
+            className="px-4 py-2 rounded-md bg-white text-gray-900 hover:bg-gray-100"
+          >Back to Dashboard</button>
+        </>
+      ) : (
+        <>
+          <h1 className="text-4xl font-bold mb-4">Game Lobby</h1>
+          {sessionInfo && (
+            <div className="mb-4 text-sm text-gray-300">
+              <span className="mr-2">Registered as session</span>
+              <Link to={`/teacher/live-sessions/${sessionInfo._id}`} className="text-indigo-300 underline">{sessionInfo._id}</Link>
+            </div>
+          )}
       
       {/* Fresh creation gate: let teacher set title before creating */}
     {!sessionInfo && awaitingCreate && (
@@ -365,6 +398,8 @@ const HostLobby = () => {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
