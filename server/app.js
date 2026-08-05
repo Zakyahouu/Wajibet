@@ -76,14 +76,7 @@ console.log('  Allowed origins:', allowedOrigins);
 console.log('  NODE_ENV:', process.env.NODE_ENV);
 
 app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || isDevNetworkOrigin(origin)) {
-      return callback(null, true);
-    }
-    const error = new Error(`CORS origin not allowed: ${origin}`);
-    error.statusCode = 403;
-    return callback(error);
-  },
+  origin: (origin, callback) => callback(null, true),
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true
 }));
