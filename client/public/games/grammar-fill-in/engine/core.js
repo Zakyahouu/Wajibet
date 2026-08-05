@@ -28,6 +28,7 @@ window.WG = (function () {
   var correctCount = 0;
   var attemptedCount = 0;
   var timerId = null;
+  var gameFinished = false;
 
   function cacheEls() {
     ['startScreen', 'playScreen', 'endScreen', 'emptyScreen', 'startBtn', 'gameTitle',
@@ -110,9 +111,9 @@ window.WG = (function () {
     updateHud();
 
     WajibetSDK.recordInteraction({
-      itemId: q.itemId,
+      itemId: q.itemId || ('item_' + idx),
       itemIndex: idx,
-      type: cfg.type,
+      type: cfg.type || 'unknown',
       isCorrect: !!r.isCorrect,
       userAnswer: String(r.userAnswer === undefined || r.userAnswer === null ? '' : r.userAnswer),
       correctAnswer: String(r.correctAnswer === undefined || r.correctAnswer === null ? '' : r.correctAnswer),
@@ -149,6 +150,8 @@ window.WG = (function () {
   }
 
   function finish() {
+    if (gameFinished) return;
+    gameFinished = true;
     stopTimer();
     var total = scoreBaseline + earned;
     var timeMs = elapsedBaseline + (Date.now() - sessionStart);

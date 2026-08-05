@@ -20,6 +20,8 @@
   var score = 0;
   var questionStartMs = 0;
   var selectedKey = null;
+  var resumeElapsedMs = 0;
+  var gameStartTime = null;
 
   function showScreen(id) {
     var screens = document.querySelectorAll('.screen');
@@ -170,7 +172,7 @@
     byId('final-score').textContent = String(score);
     byId('final-max').textContent = String(totalMax);
 
-    var totalTimeMs = 0;
+    var totalTimeMs = (gameStartTime ? (Date.now() - gameStartTime) : 0) + resumeElapsedMs;
     WajibetSDK.finishGame(score, totalTimeMs);
   }
 
@@ -199,6 +201,7 @@
       if (resumeState) {
         index = resumeState.currentItemIndex || 0;
         score = resumeState.currentScore || 0;
+        resumeElapsedMs = Number(resumeState.elapsedMs) || 0;
         // Show Continue screen
         byId('start-title').textContent = 'Continue where you left off?';
         byId('start-lede').textContent =
@@ -210,6 +213,7 @@
       showScreen('screen-start');
 
       byId('start-btn').onclick = function () {
+        gameStartTime = Date.now();
         showScreen('screen-play');
         renderQuestion();
       };
