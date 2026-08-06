@@ -1,5 +1,5 @@
 // client/src/pages/PlayerLobby.jsx
-import React, { useEffect, useContext, useState } from 'react';
+import React, { useEffect, useContext, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { SocketContext } from '../context/SocketContext';
 import { AuthContext } from '../context/AuthContext';
@@ -15,6 +15,8 @@ const PlayerLobby = () => {
   const location = useLocation();
   const isRejoin = location.state?.isRejoin;
   const [error, setError] = useState('');
+  const hasJoinedRef = useRef(false);
+  const joinInFlightRef = useRef(false);
 
   // This useEffect hook listens for the game starting
   useEffect(() => {
@@ -27,7 +29,7 @@ const PlayerLobby = () => {
       clearTimeout(joinTimeout);
       GameLogger.log('PlayerLobby', 'Received game-started', { gameCreationId });
       console.log(`Player Lobby: Game starting! Navigating to play game: ${gameCreationId}`);
-      navigate(`/student/play-game/${gameCreationId}`, { state: { live: { roomCode } } });
+      navigate(`/student/play-game/${gameCreationId}`, { state: { live: { roomCode }, isRejoin: true } });
     };
 
     const handleScoreboard = ({ ranks }) => {
@@ -44,22 +46,38 @@ const PlayerLobby = () => {
       clearTimeout(joinTimeout);
     };
 
+    const handleGameEnded = () => {
+      clearTimeout(joinTimeout);
+      setError('This live session has ended.');
+    };
+
     const doJoin = () => {
+      if (joinInFlightRef.current) return;
       if (roomCode && userId && socket) {
         try { 
+          joinInFlightRef.current = true;
           clearTimeout(joinTimeout);
           joinTimeout = setTimeout(() => {
+            joinInFlightRef.current = false;
             setError('Connection timed out. Please refresh to try again.');
           }, 8000);
           
-          if (isRejoin) {
-             GameLogger.log('PlayerLobby', 'Emitting rejoin-game', { roomCode, userId });
-             socket.emit('rejoin-game', { roomCode, userId });
-          } else {
-             GameLogger.log('PlayerLobby', 'Emitting join-game', { roomCode, playerName, userId });
-             socket.emit('join-game', { roomCode, playerName, userId }); 
-          }
-        } catch {}
+          const actualIsRejoin = isRejoin || hasJoinedRef.current;
+          const eventName = actualIsRejoin ? 'rejoin-game' : 'join-game';
+          GameLogger.log('PlayerLobby', `Emitting ${eventName}`, { roomCode, playerName, userId });
+          
+          socket.emit(eventName, { roomCode, playerName, userId }, (response) => {
+            joinInFlightRef.current = false;
+            clearTimeout(joinTimeout);
+            if (response && response.success) {
+              hasJoinedRef.current = true;
+            } else {
+              setError(response?.reason || 'Failed to join game.');
+            }
+          });
+        } catch {
+          joinInFlightRef.current = false;
+        }
       }
     };
 
@@ -70,6 +88,7 @@ const PlayerLobby = () => {
       socket.on('live:scoreboard', handleScoreboard);
       socket.on('join-error', handleJoinError);
       socket.on('player-joined', handlePlayerJoined);
+      socket.on('game-ended', handleGameEnded);
     }
 
     return () => {
@@ -80,6 +99,7 @@ const PlayerLobby = () => {
         socket.off('live:scoreboard', handleScoreboard);
         socket.off('join-error', handleJoinError);
         socket.off('player-joined', handlePlayerJoined);
+        socket.off('game-ended', handleGameEnded);
       }
     };
   }, [socket, socketContext, roomCode, user?._id, navigate]);

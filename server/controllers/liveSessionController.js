@@ -126,6 +126,7 @@ exports.listStudentActiveSessions = async (req, res) => {
     const myDisconnectedSessionIds = myParticipants.map(p => String(p.sessionId));
 
     const sessions = await LiveSession.find({
+      status: { $ne: 'ended' },
       $or: [
         { 
           classes: { $in: classIds },

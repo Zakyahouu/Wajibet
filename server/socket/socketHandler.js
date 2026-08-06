@@ -9,6 +9,41 @@ const { awardOnlineXpForSession } = require('../services/onlineXpService');
 module.exports = function (io) {
   if (!io) return;
 
+  const broadcastScoreboard = (code, force = false) => {
+    const room = liveGames[code];
+    if (!room) return;
+    const now = Date.now();
+    const ranks = room.players
+      .filter(p => p.stats)
+      .map(p => {
+        let liveTime = p.stats.effectiveTimeMs || 0;
+        // Add real-time ticking if they are active on a question
+        if (p.stats.status === 'active' && p.stats.currentItemStartedAt) {
+          const elapsed = now - new Date(p.stats.currentItemStartedAt).getTime();
+          if (elapsed > 0) {
+            liveTime += elapsed;
+          }
+        }
+        return {
+          userId: String(p.userId),
+          name: p.name || 'Unknown',
+          score: p.stats.score || 0,
+          correct: p.stats.correct || 0,
+          wrong: p.stats.wrong || 0,
+          effectiveTimeMs: liveTime,
+          finishedAt: p.stats.finishedAt,
+          status: p.stats.status || 'active',
+          currentItemIndex: p.stats.currentItemIndex || 0
+        };
+      })
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
+        return (a.wrong || 0) - (b.wrong || 0);
+      });
+    io.to(code).emit('live:scoreboard', { ranks });
+  };
+
 // Rebuilds an in-memory liveGames[roomCode] entry from persisted DB records
 // if the process restarted and lost it. Returns the room object, or null if
 // there genuinely is no such active session (not a restart-recovery case).
@@ -558,6 +593,12 @@ async function ensureRoomLoaded(roomCode) {
           const player = room.players.find(p => String(p.userId) === String(userId));
           if (player && player.stats) {
             
+            // Failsafe: if a player is submitting answers, they are definitely active.
+            // This prevents edge cases where a brief disconnect leaves them stuck as 'disconnected' on the dashboard.
+            if (player.stats.status !== 'active') {
+              player.stats.status = 'active';
+            }
+            
             let totalCorrect = 0;
             let totalWrong = 0;
             let totalTimeMs = 0;
@@ -778,6 +819,8 @@ async function ensureRoomLoaded(roomCode) {
               }
             }
             io.to(code).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
+            io.to(code).emit('player-joined', room.players.slice());
+            broadcastScoreboard(code, true);
           }
         }
       } catch (e) { console.error('disconnect cleanup failed', e); }
@@ -812,6 +855,8 @@ async function ensureRoomLoaded(roomCode) {
             }
           }
           io.to(roomCode).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
+          io.to(roomCode).emit('player-joined', room.players.slice());
+          broadcastScoreboard(roomCode, true);
         }
         socket.leave(roomCode);
       } catch (e) { console.error('leave-game cleanup failed', e); }
@@ -872,6 +917,10 @@ async function ensureRoomLoaded(roomCode) {
           if (typeof cb === 'function') {
             cb({ success: true, resumeState });
           }
+          
+          // Broadcast updated player status to teacher lobby/dashboard
+          io.to(roomCode).emit('player-joined', room.players.slice());
+          broadcastScoreboard(roomCode, true);
         } else {
           console.warn(`[WAJIBET_V2] [socket] REJOIN REJECTED -> user: ${userId}, room: ${roomCode} - Invalid Status: ${player?.stats?.status}`);
           socket.emit('join-error', 'Cannot rejoin. Invalid game state.');

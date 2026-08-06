@@ -44,6 +44,7 @@ const PlayGame = () => {
   const checkpointCounterRef = useRef(0);
   const gameCompleteHandledRef = useRef(false);
   const consecutiveAnswerFailures = useRef(0);
+  const joinInFlightRef = useRef(false);
   const [syncWarning, setSyncWarning] = useState(false);
 
   const resolveEngineSrc = (enginePath) => {
@@ -357,19 +358,23 @@ const PlayGame = () => {
     };
     
     const rejoinRoom = () => {
+      if (joinInFlightRef.current) return;
       const playerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name || 'Player';
       if (user?._id) {
         try { 
+          joinInFlightRef.current = true;
           const isRejoin = location.state?.isRejoin || joinConfirmedRef.current;
           const eventName = isRejoin ? 'rejoin-game' : 'join-game';
           GameLogger.log('PlayGame', `Emitting ${eventName}`, { roomCode: liveInfo.roomCode, userId: user._id });
           
           clearTimeout(joinTimeout);
           joinTimeout = setTimeout(() => {
+            joinInFlightRef.current = false;
             setError('Connection timed out. Please refresh to try again.');
           }, 8000);
           
           socket.emit(eventName, { roomCode: liveInfo.roomCode, playerName, userId: user._id }, (response) => {
+            joinInFlightRef.current = false;
             GameLogger.log('PlayGame', `${eventName} Ack Received`, response);
             clearTimeout(joinTimeout);
             
@@ -382,7 +387,9 @@ const PlayGame = () => {
               setError(response?.reason || 'Failed to join game.');
             }
           }); 
-        } catch {}
+        } catch {
+          joinInFlightRef.current = false;
+        }
       }
     };
 
