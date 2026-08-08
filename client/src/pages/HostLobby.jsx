@@ -40,13 +40,7 @@ const HostLobby = () => {
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (socket && roomCode) {
-        socket.emit('leave-room', roomCode);
-      }
-    };
-  }, [socket, roomCode]);
+
 
   useEffect(() => {
     let mounted = true;

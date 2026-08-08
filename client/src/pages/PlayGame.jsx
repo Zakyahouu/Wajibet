@@ -59,13 +59,7 @@ const PlayGame = () => {
     return liveInfo?.sessionId || liveInfo?.id || gameCreation?.liveSessionId || gameCreation?.sessionId || null;
   };
 
-  useEffect(() => {
-    return () => {
-      if (socket && liveInfo?.roomCode) {
-        socket.emit('leave-room', liveInfo.roomCode);
-      }
-    };
-  }, [socket, liveInfo?.roomCode]);
+
 
   useEffect(() => {
     const fetchGameCreation = async () => {
@@ -401,11 +395,19 @@ const PlayGame = () => {
       clearTimeout(joinTimeout);
       socket.off('connect', rejoinRoom);
       socket.off('join-error', handleJoinError);
-      if (liveInfo?.roomCode && !liveEnded) {
+    };
+  }, [socket, liveInfo?.roomCode, user?.role, user?._id, user?.firstName, user?.lastName, user?.name, liveEnded]);
+
+  useEffect(() => {
+    if (!liveInfo?.roomCode) return;
+    const handlePageHide = () => {
+      if (socket && !liveEnded) {
         socket.emit('leave-game', { roomCode: liveInfo.roomCode });
       }
     };
-  }, [socket, liveInfo?.roomCode, user?.role, user?._id, user?.firstName, user?.lastName, user?.name, liveEnded]);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+  }, [socket, liveInfo?.roomCode, liveEnded]);
 
   // Offline assignment checkpoint: flush on tab hide (visibilitychange)
   useEffect(() => {
@@ -537,6 +539,11 @@ const PlayGame = () => {
           <div className="flex items-center gap-4">
             <Link 
               to={getDashboardPath()}
+              onClick={() => {
+                if (socket && liveInfo?.roomCode && !liveEnded) {
+                  socket.emit('leave-game', { roomCode: liveInfo.roomCode });
+                }
+              }}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-gray-700"
               title="Exit Game"
             >
@@ -574,6 +581,11 @@ const PlayGame = () => {
             </button>
             <Link 
               to={getDashboardPath()}
+              onClick={() => {
+                if (socket && liveInfo?.roomCode && !liveEnded) {
+                  socket.emit('leave-game', { roomCode: liveInfo.roomCode });
+                }
+              }}
               className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
             >
               Exit

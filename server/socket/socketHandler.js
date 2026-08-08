@@ -150,10 +150,10 @@ async function ensureRoomLoaded(roomCode) {
         }
 
         // 2. Ghost eviction
-        if (!hasActive && hasDisconnected && allFinishedOrDisconnected) {
+        if (room.players.length === 0 || (!hasActive && hasDisconnected && allFinishedOrDisconnected)) {
           if (!room.emptySince) {
             room.emptySince = Date.now();
-          } else if (Date.now() - room.emptySince > 60000) {
+          } else if (Date.now() - room.emptySince > (room.config?.rejoinWindowMs || 600000)) {
             console.log(`[socket] Room ${code} ghost eviction triggered. Finishing disconnected players.`);
             for (const player of room.players) {
               if (player.stats && player.stats.status === 'disconnected') {
@@ -248,13 +248,16 @@ async function ensureRoomLoaded(roomCode) {
     console.log('[socket] SIGTERM/SIGINT received, flushing sockets...');
     clearInterval(flusherInterval);
     clearInterval(tickerInterval);
+    
+    const flushPromises = [];
+    
     // Flush all players immediately
     for (const code of Object.keys(liveGames)) {
       const room = liveGames[code];
       if (!room || !room.sessionId) continue;
       for (const player of room.players) {
         if (player.stats && player.stats.status === 'active') {
-          await LiveParticipant.findOneAndUpdate(
+          flushPromises.push(LiveParticipant.findOneAndUpdate(
             { sessionId: room.sessionId, studentId: player.userId },
             { $set: { 
               status: 'disconnected', 
@@ -264,9 +267,9 @@ async function ensureRoomLoaded(roomCode) {
               currentItemIndex: player.stats.currentItemIndex,
               leftAt: new Date()
             } }
-          );
+          ));
         } else if (player.stats && player.stats.dirty) {
-          await LiveParticipant.findOneAndUpdate(
+          flushPromises.push(LiveParticipant.findOneAndUpdate(
             { sessionId: room.sessionId, studentId: player.userId },
             { $set: { 
               status: player.stats.status, 
@@ -275,10 +278,17 @@ async function ensureRoomLoaded(roomCode) {
               score: player.stats.score,
               currentItemIndex: player.stats.currentItemIndex,
             } }
-          );
+          ));
         }
       }
     }
+    
+    try {
+      await Promise.all(flushPromises);
+    } catch (err) {
+      console.error('[socket] shutdown flush error:', err);
+    }
+    
     process.exit(0);
   };
   process.on('SIGTERM', shutdown);
@@ -474,6 +484,10 @@ async function ensureRoomLoaded(roomCode) {
           }
         }
 
+        if (room.status === 'running') {
+          socket.emit('game-started', { gameCreationId: room.gameCreationId, sessionId: room.sessionId });
+        }
+
         io.to(roomCode).emit('player-joined', room.players.slice());
         io.to(roomCode).emit('live:session-count', { sessionId: room.sessionId, participantsCount: room.players.length });
         console.log('[socket] player joined', playerName, '->', roomCode);
@@ -493,6 +507,12 @@ async function ensureRoomLoaded(roomCode) {
         if (!room) return;
         if (String(room.hostUserId || '') !== String(socket.user?._id || '')) return;
         room.status = 'running';
+        const now = new Date();
+        for (const player of room.players) {
+          if (player.stats && player.stats.status === 'active') {
+            player.stats.currentItemStartedAt = now;
+          }
+        }
         if (room.sessionId) {
           try {
             const session = await LiveSession.findById(room.sessionId);
@@ -658,26 +678,7 @@ async function ensureRoomLoaded(roomCode) {
               });
             }
 
-            const ranks = room.players
-              .filter(p => p.stats)
-              .map(p => ({
-                userId: String(p.userId),
-                name: p.name || 'Unknown',
-                score: p.stats.score || 0,
-                correct: p.stats.correct || 0,
-                wrong: p.stats.wrong || 0,
-                effectiveTimeMs: p.stats.effectiveTimeMs || 0,
-                finishedAt: p.stats.finishedAt,
-                status: p.stats.status || 'active',
-                currentItemIndex: p.stats.currentItemIndex || 0
-              }))
-              .sort((a, b) => {
-                if (b.score !== a.score) return b.score - a.score;
-                if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
-                return (a.wrong || 0) - (b.wrong || 0);
-              });
 
-            io.to(roomCode).emit('live:scoreboard', { ranks });
           }
         } catch (e) {
           console.error('[socket] Failed to update participant in memory:', e);
@@ -858,7 +859,9 @@ async function ensureRoomLoaded(roomCode) {
           io.to(roomCode).emit('player-joined', room.players.slice());
           broadcastScoreboard(roomCode, true);
         }
+        
         socket.leave(roomCode);
+        console.log(`[socket] left room: ${roomCode}`);
       } catch (e) { console.error('leave-game cleanup failed', e); }
     });
 
@@ -932,12 +935,7 @@ async function ensureRoomLoaded(roomCode) {
       }
     });
 
-    socket.on('leave-room', (code) => {
-      if (code) {
-        socket.leave(code);
-        console.log(`[socket] left room: ${code}`);
-      }
-    });
+
 
   });
 
