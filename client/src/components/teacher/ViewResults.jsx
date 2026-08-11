@@ -577,11 +577,52 @@ const ViewResults = () => {
                 </div>
               </div>
 
+              {(() => {
+                const categoryGroups = {};
+                (selectedStudent.answers || []).forEach((ans) => {
+                  const pm = typeof ans.meta === 'string'
+                    ? (() => { try { return JSON.parse(ans.meta); } catch { return {}; } })()
+                    : (ans.meta || {});
+                  const cat = pm.category;
+                  if (!cat) return;
+                  if (!categoryGroups[cat]) categoryGroups[cat] = { correct: 0, total: 0 };
+                  categoryGroups[cat].total++;
+                  if (ans.isCorrect) categoryGroups[cat].correct++;
+                });
+                const categories = Object.keys(categoryGroups);
+                if (categories.length === 0) return null;
+                return (
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                    <h3 className="text-xs uppercase tracking-wider text-slate-400 font-bold mb-3">Breakdown by Type</h3>
+                    <div className="space-y-1.5">
+                      {categories.map((cat) => {
+                        const g = categoryGroups[cat];
+                        const pct = Math.round((g.correct / g.total) * 100);
+                        return (
+                          <div key={cat} className="flex justify-between items-center text-xs">
+                            <span className="font-semibold text-slate-700">{cat}</span>
+                            <span className="text-slate-500">{g.correct}/{g.total} ({pct}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div>
                 <h3 className="text-xs uppercase tracking-wider text-slate-400 font-bold mb-4">Detailed Answers</h3>
                 {selectedStudent.answers && selectedStudent.answers.length > 0 ? (
                   <div className="space-y-3">
-                    {selectedStudent.answers.map((ans, idx) => (
+                    {selectedStudent.answers.map((ans, idx) => {
+                      const parsedMeta = typeof ans.meta === 'string'
+                        ? (() => { try { return JSON.parse(ans.meta); } catch { return {}; } })()
+                        : (ans.meta || {});
+                      const questionText = parsedMeta.question || parsedMeta.itemText || parsedMeta.prompt || parsedMeta.targetWord || parsedMeta.timelineTitle || null;
+                      const options = Array.isArray(parsedMeta.options) ? parsedMeta.options
+                        : Array.isArray(parsedMeta.allCategories) ? parsedMeta.allCategories
+                        : null;
+                      return (
                       <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 hover:border-teal-300 transition-colors">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-bold text-slate-800 text-sm">Question {ans.itemIndex + 1}</span>
@@ -593,11 +634,33 @@ const ViewResults = () => {
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 uppercase">Wrong</span>
                           )}
                         </div>
+                        {questionText && (
+                          <div className="text-sm text-slate-700 mb-2 font-medium">{String(questionText)}</div>
+                        )}
+                        {options && (
+                          <div className="text-xs text-slate-500 mb-2">Options shown: {options.map(o => (typeof o === 'string' ? o : o.label)).join(', ')}</div>
+                        )}
+                        <div className="text-xs text-slate-600 flex flex-col gap-0.5 mb-2">
+                          <span>Student's answer: <span className="font-semibold">{String(ans.userAnswer ?? '—')}</span></span>
+                          {!ans.isCorrect && !ans.skipped && (
+                            <span>Correct answer: <span className="font-semibold text-emerald-700">{String(ans.correctAnswer ?? '—')}</span></span>
+                          )}
+                        </div>
+                        {Array.isArray(parsedMeta.attemptHistory) && parsedMeta.attemptHistory.length > 1 && (
+                          <div className="text-xs text-slate-500 mt-1">
+                            All attempts: {parsedMeta.attemptHistory.map((a, i) => (
+                              <span key={i} className={a.isCorrect ? 'text-emerald-600 font-semibold' : 'text-red-500'}>
+                                {a.value}{i < parsedMeta.attemptHistory.length - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="text-xs text-slate-500 flex justify-between">
                           <span>Time: {ans.timeMs ? `${(ans.timeMs / 1000).toFixed(1)}s` : 'N/A'}</span>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500 text-center py-4 italic">No detailed answers available.</p>

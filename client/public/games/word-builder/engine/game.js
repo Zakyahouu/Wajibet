@@ -16,6 +16,7 @@
     var score = 0;
     var currentAttempts = 0;
     var itemAttemptCount = 0; // tracks attempts for the current item (for Tier 0)
+    var attemptHistory = []; // full log of every guess for the current item
     var timerInterval = null;
     var gameStartTime = null;
     var puzzleStartTime = null;
@@ -114,6 +115,7 @@
 
         stopTimer();
         itemAttemptCount = 0; // reset per-item attempt counter
+        attemptHistory = [];
         container.classList.remove('correct-state');
         buildArea.classList.remove('wrong-state');
         buildArea.innerHTML = '<span class="placeholder">Drop letters here to build your world . . .</span>';
@@ -232,7 +234,8 @@
                 builtWord:   builtWord || '',
                 timedOut:    !!timedOut,
                 hint:        (settings.showHints !== false && puzzle.hint) ? puzzle.hint : null,
-                hintVisible: !!(settings.showHints !== false && puzzle.hint)
+                hintVisible: !!(settings.showHints !== false && puzzle.hint),
+                attemptHistory: attemptHistory.slice()
             }
         });
     }
@@ -280,6 +283,7 @@
         var normalize = function (s) {
             return (s || '').normalize ? (s || '').normalize('NFC') : (s || '');
         };
+        attemptHistory.push({ value: builtWord || '', isCorrect: normalize(builtWord) === normalize(puzzle.word || '') });
         if (normalize(builtWord) === normalize(puzzle.word || '')) {
             // CORRECT
             stopTimer();

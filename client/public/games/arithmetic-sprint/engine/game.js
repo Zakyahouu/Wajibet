@@ -4,6 +4,7 @@
   let qStartMs = 0;
   let gameStartMs = 0;
   let resumeElapsedMs = 0;
+  let gameFinished = false;
   
   let selectedChoice = null;
   
@@ -196,7 +197,8 @@
         question: q.question,
         correctAnswer: correctAnswer,
         selectedAnswer: selectedChoice,
-        penaltyApplied: !ok && penaltyPerWrong > 0 ? penaltyPerWrong : 0
+        penaltyApplied: !ok && penaltyPerWrong > 0 ? penaltyPerWrong : 0,
+        category: q.operation || null
       }
     });
 
@@ -263,6 +265,8 @@
   }
 
   function finish(){
+    if (gameFinished) return;
+    gameFinished = true;
     if (timerIv) clearInterval(timerIv);
     timerEl.parentElement.classList.remove('urgent-timer');
     show('done');
@@ -341,7 +345,8 @@
                 itemId: 'gen-' + i,
                 question: question,
                 answer: answer,
-                choices: buildChoices(answer)
+                choices: buildChoices(answer),
+                operation: op
               });
             }
           } else if (creation.content && Array.isArray(creation.content)) {
@@ -363,15 +368,15 @@
                   }
                 }
                 if (!Number.isFinite(answer) || answer < 0) return null;
-                return { itemId: itemId, question: a + ' ' + op + ' ' + b, answer: answer, choices: buildChoices(answer) };
+                return { itemId: itemId, question: a + ' ' + op + ' ' + b, answer: answer, choices: buildChoices(answer), operation: op };
               } else if (typeof item.expression === 'string') {
                 const answer = parseFloat(item.correctAnswer);
-                return { itemId: itemId, question: item.expression, answer: answer, choices: buildChoices(answer) };
+                return { itemId: itemId, question: item.expression, answer: answer, choices: buildChoices(answer), operation: null };
               } else if (item.a !== undefined && item.op !== undefined && item.b !== undefined) {
                 const answer = calc(item.a, item.op, item.b);
                 const wrong1 = item.wrong1 ?? answer + rnd(1,5);
                 const wrong2 = item.wrong2 ?? answer - rnd(1,5);
-                return { itemId: itemId, question: item.a + ' ' + item.op + ' ' + item.b, answer: answer, choices: shuffle([answer, wrong1, wrong2]) };
+                return { itemId: itemId, question: item.a + ' ' + item.op + ' ' + item.b, answer: answer, choices: shuffle([answer, wrong1, wrong2]), operation: item.op };
               }
             }).filter(Boolean);
           }

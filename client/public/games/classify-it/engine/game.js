@@ -220,7 +220,8 @@
           correctCategory: q.correctName,
           chosenCategory: selected ? q.cats[selected] : null,
           allCategories: q.keys.map(function (k) { return q.cats[k]; }),
-          explanation: q.explanation
+          explanation: q.explanation,
+          category: q.correctName
         }
       };
     },

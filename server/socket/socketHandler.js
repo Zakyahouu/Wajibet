@@ -9,7 +9,7 @@ const { awardOnlineXpForSession } = require('../services/onlineXpService');
 module.exports = function (io) {
   if (!io) return;
 
-  const broadcastScoreboard = (code, force = false) => {
+  const broadcastScoreboard = (code, force = false, targetSocketId = null) => {
     const room = liveGames[code];
     if (!room) return;
     const now = Date.now();
@@ -41,7 +41,9 @@ module.exports = function (io) {
         if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
         return (a.wrong || 0) - (b.wrong || 0);
       });
-    io.to(code).emit('live:scoreboard', { ranks });
+    const target = targetSocketId ? io.to(targetSocketId) : io.to(code);
+    target.emit('live:scoreboard', { ranks });
+    return ranks;
   };
 
 // Rebuilds an in-memory liveGames[roomCode] entry from persisted DB records
@@ -114,6 +116,11 @@ async function ensureRoomLoaded(roomCode) {
     try {
       for (const code of Object.keys(liveGames)) {
         const room = liveGames[code];
+        // Note: We skip rooms without a sessionId. This is currently safe because
+        // every code path in the client (HostLobby.jsx) explicitly provides a sessionId
+        // when emitting 'host-game'. If session-less rooms are ever introduced as a feature,
+        // this skip MUST be handled differently or those rooms will leak in memory forever,
+        // immune to this background ghost eviction.
         if (!room || !room.sessionId) continue;
         
         let hasActive = false;
@@ -283,10 +290,10 @@ async function ensureRoomLoaded(roomCode) {
       }
     }
     
-    try {
-      await Promise.all(flushPromises);
-    } catch (err) {
-      console.error('[socket] shutdown flush error:', err);
+    const results = await Promise.allSettled(flushPromises);
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+      console.error(`[socket] shutdown flush: ${failures.length}/${flushPromises.length} writes failed:`, failures.map(f => f.reason));
     }
     
     process.exit(0);
@@ -348,26 +355,7 @@ async function ensureRoomLoaded(roomCode) {
         
         if (room.status === 'running') {
           io.to(socket.id).emit('game-started', { gameCreationId: room.gameCreationId });
-          
-          const ranks = room.players
-            .filter(p => p.stats)
-            .map(p => ({
-              userId: String(p.userId),
-              name: p.name || 'Unknown',
-              score: p.stats.score || 0,
-              correct: p.stats.correct || 0,
-              wrong: p.stats.wrong || 0,
-              effectiveTimeMs: p.stats.effectiveTimeMs || 0,
-              finishedAt: p.stats.finishedAt,
-              status: p.stats.status || 'active',
-              currentItemIndex: p.stats.currentItemIndex || 0
-            }))
-            .sort((a, b) => {
-              if (b.score !== a.score) return b.score - a.score;
-              if (a.effectiveTimeMs !== b.effectiveTimeMs) return a.effectiveTimeMs - b.effectiveTimeMs;
-              return (a.wrong || 0) - (b.wrong || 0);
-            });
-          io.to(socket.id).emit('live:scoreboard', { ranks });
+          broadcastScoreboard(code, true, socket.id);
         }
         
         console.log('[socket] host-game -> created/rejoined room', code, room.status);
