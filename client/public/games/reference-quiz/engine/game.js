@@ -191,8 +191,6 @@
       items = Array.isArray(creation.content) ? creation.content : [];
       pointsPerQuestion = Number(settings.pointsPerQuestion) || 10;
 
-      if (settings.shuffle && !resumeState) items = shuffle(items);
-
       if (items.length === 0) {
         byId('screen-loading').innerHTML = '<p class="muted">No questions provided.</p>';
         return;

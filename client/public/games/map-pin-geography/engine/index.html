@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Map Pin Geography</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+
+    <header class="hud hidden" id="hud">
+      <div class="hud-row">
+        <span class="hud-title" id="gameTitle">Map&nbsp;Pin&nbsp;Geography</span>
+        <span class="hud-progress" id="progress" aria-live="polite">–</span>
+        <span class="hud-score" id="scoreDisplay" aria-live="polite">Score 0</span>
+      </div>
+      <div class="timer-track" id="timerTrack" hidden>
+        <div class="timer-fill" id="timerFill"></div>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="card center-card" id="startScreen">
+        <p class="eyebrow">Geography</p>
+        <h1 class="game-title" id="mainTitle">Map Pin Geography</h1>
+        <p class="lede" id="lede">Pin the correct locations on the map.</p>
+        <button type="button" class="btn btn-primary" id="startBtn">Start</button>
+      </section>
+
+      <section class="card hidden" id="card">
+        <div class="compass" id="compass" aria-hidden="true">
+          <svg viewBox="0 0 100 100" class="compass-svg" id="compassSvg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <polygon points="50,7 57,50 50,50 43,50" fill="currentColor"/>
+            <polygon points="50,93 57,50 50,50 43,50" fill="currentColor" opacity="0.55"/>
+            <polygon points="7,50 50,57 50,50 50,43" fill="currentColor" opacity="0.55"/>
+            <polygon points="93,50 50,57 50,50 50,43" fill="currentColor" opacity="0.55"/>
+            <circle cx="50" cy="50" r="3" fill="currentColor"/>
+          </svg>
+        </div>
+
+        <p class="prompt" id="prompt">Loading map…</p>
+
+        <div class="map-frame" id="mapFrame">
+          <img id="mapImage" class="map-image" alt="" draggable="false" />
+          <button type="button" class="map-click-layer" id="clickLayer" aria-label="Click the map to answer"></button>
+          <div class="marker marker--target" id="markerTarget" hidden></div>
+          <div class="marker marker--click" id="markerClick" hidden></div>
+        </div>
+
+        <div class="feedback" id="feedback" hidden>
+          <p class="feedback-headline" id="feedbackHeadline"></p>
+          <p class="feedback-detail" id="feedbackDetail"></p>
+          <button type="button" class="btn btn-primary" id="nextBtn">Next</button>
+        </div>
+      </section>
+
+      <section class="card card--empty" id="emptyState" hidden>
+        <p class="eyebrow">Nothing to play yet</p>
+        <p>This game has no locations configured. Ask your teacher to add at least one map location.</p>
+      </section>
+    </main>
+
+    <section class="card end-card" id="endScreen" hidden>
+      <p class="eyebrow">Finished</p>
+      <h1 class="end-score" id="endScore"></h1>
+      <p class="end-detail" id="endDetail"></p>
+    </section>
+
+  </div>
+
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{
+  "settings": {
+    "pointsPerQuestion": {
+      "label": "Points per Question",
+      "type": "number",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "required": true
+    },
+    "timeLimitSeconds": {
+      "label": "Time Limit per Question (seconds)",
+      "type": "number",
+      "default": 20,
+      "min": 0,
+      "max": 120,
+      "required": true,
+      "placeholder": "Set to 0 for no time limit"
+    },
+    "shuffle": {
+      "label": "Shuffle Question Order",
+      "type": "boolean",
+      "default": true
+    },
+    "showCorrectLocationOnMiss": {
+      "label": "Reveal Correct Location After a Wrong Click",
+      "type": "boolean",
+      "default": true
+    },
+    "themeColor": {
+      "label": "Accent Color",
+      "type": "color",
+      "default": "#B8863B"
+    }
+  },
+  "content": {
+    "label": "Locations",
+    "minItems": 1,
+    "itemSchema": {
+      "prompt": {
+        "label": "Prompt shown to the student",
+        "type": "textarea",
+        "rows": 2,
+        "required": true,
+        "placeholder": "e.g. Click on the capital of Japan"
+      },
+      "locationLabel": {
+        "label": "Correct Location Name (shown on review)",
+        "type": "text",
+        "required": true,
+        "placeholder": "e.g. Tokyo"
+      },
+      "targetLocation": {
+        "label": "Map & Correct Location",
+        "type": "mapPoint",
+        "accept": ["image/png", "image/jpeg"],
+        "radiusMin": 1,
+        "radiusMax": 40,
+        "radiusDefault": 6,
+        "required": true
+      }
+    }
+  }
+}

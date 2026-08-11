@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <style>
+    /* Review-specific overrides */
+    body { background: var(--paper); }
+    .stage { align-items: flex-start; padding: 1.5rem 1rem 3rem; }
+
+    /* Status badge */
+    .r-status {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .5rem 1.1rem;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: .05em;
+      margin-bottom: 1.4rem;
+    }
+    .r-status.perfect   { background: rgba(16,185,129,.14); color: var(--correct); }
+    .r-status.partial   { background: rgba(245,158,11,.12);  color: #B8863B; }
+    .r-status.none      { background: rgba(239,68,68,.10);   color: var(--incorrect); }
+    .r-status.skipped   { background: rgba(100,116,139,.12); color: var(--ink-soft); }
+
+    /* Pair rows */
+    .review-container {
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+      margin-bottom: 1.8rem;
+    }
+
+    .r-pair {
+      border: 2px solid var(--edge);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .r-pair.is-match  { border-color: var(--correct); }
+    .r-pair.is-wrong  { border-color: var(--incorrect); }
+    .r-pair.is-empty  { border-color: #CBD5E1; border-style: dashed; }
+
+    .r-definition {
+      padding: .8rem 1rem;
+      font-size: .9rem;
+      line-height: 1.5;
+      color: var(--ink);
+      background: var(--paper);
+      border-bottom: 1px solid var(--edge);
+    }
+
+    .r-answers {
+      display: flex;
+      align-items: stretch;
+      min-height: 48px;
+    }
+
+    .r-cell {
+      flex: 1;
+      padding: .7rem 1rem;
+      font-size: .88rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .r-cell-label {
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      opacity: .7;
+      display: block;
+      margin-bottom: .15rem;
+    }
+
+    .r-cell.student-cell {
+      background: rgba(16,185,129,.08);
+      color: var(--correct);
+      border-right: 1px solid var(--edge);
+    }
+    .r-cell.student-cell.is-wrong-cell {
+      background: rgba(239,68,68,.07);
+      color: var(--incorrect);
+      text-decoration: line-through;
+    }
+    .r-cell.student-cell.is-empty-cell {
+      background: rgba(100,116,139,.06);
+      color: var(--ink-soft);
+      font-weight: 400;
+      font-style: italic;
+    }
+    .r-cell.correct-cell {
+      background: rgba(16,185,129,.05);
+      color: var(--ink);
+    }
+    .r-cell.correct-cell.is-match-hidden { display: none; }
+
+    /* Summary stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem .5rem;
+      margin-top: 1rem;
+    }
+    .stat-box {
+      background: var(--paper);
+      border: 1px solid var(--edge);
+      border-radius: 8px;
+      padding: .7rem 1rem;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--ink-soft);
+      margin-bottom: .3rem;
+    }
+    .stat-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.correct { color: var(--correct); }
+    .stat-value.wrong   { color: var(--incorrect); }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <section class="card" style="max-width: 700px; margin: auto; width: 100%;">
+
+      <!-- Status badge -->
+      <span class="r-status" id="rStatus">Reviewing</span>
+
+      <!-- Per-pair breakdown -->
+      <div class="review-container" id="reviewContainer"></div>
+
+      <!-- Summary stats -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <p class="stat-label">Correct matches</p>
+          <p class="stat-value correct" id="sHits">–</p>
+        </div>
+        <div class="stat-box">
+          <p class="stat-label">Accuracy</p>
+          <p class="stat-value accent" id="sAccuracy">–</p>
+        </div>
+        <div class="stat-box">
+          <p class="stat-label">Score</p>
+          <p class="stat-value" id="sPts">–</p>
+        </div>
+        <div class="stat-box">
+          <p class="stat-label">Time taken</p>
+          <p class="stat-value" id="sTime">–</p>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      if (typeof WajibetSDK === 'undefined') {
+        document.body.innerHTML = '<p>SDK missing.</p>';
+        return;
+      }
+
+      // Safe HTML escape — all teacher/student content must go through this
+      function esc(str) {
+        var d = document.createElement('div');
+        d.textContent = String(str == null ? '' : str);
+        return d.innerHTML;
+      }
+
+      WajibetSDK.onReviewData(function (it) {
+        document.documentElement.dir = WajibetSDK.getDirection();
+        var m = it.meta || {};
+        var isSkipped  = !!it.skipped;
+        var isCorrect  = !!it.isCorrect;
+        var score      = Number(it.score)    || 0;
+        var maxScore   = Number(it.maxScore) || 0;
+        var hits       = Number(m.hits)  || 0;
+        var total      = Number(m.total) || 0;
+        var timeMs     = Number(it.timeMs) || 0;
+        var report     = Array.isArray(m.report) ? m.report : [];
+
+        // --- Status badge ---
+        var statusEl = document.getElementById('rStatus');
+        if (isSkipped) {
+          statusEl.textContent = '⏱ Timed Out';
+          statusEl.className = 'r-status skipped';
+        } else if (isCorrect) {
+          statusEl.textContent = '✓ Perfect Match';
+          statusEl.className = 'r-status perfect';
+        } else if (hits > 0) {
+          statusEl.textContent = '◑ Partial — ' + hits + ' of ' + total + ' correct';
+          statusEl.className = 'r-status partial';
+        } else {
+          statusEl.textContent = '✗ No Correct Matches';
+          statusEl.className = 'r-status none';
+        }
+
+        // --- Per-pair rows ---
+        var rc = document.getElementById('reviewContainer');
+
+        if (!report.length) {
+          rc.innerHTML = '<p style="color:var(--ink-soft);text-align:center;">No answer data available.</p>';
+        } else {
+          report.forEach(function (item) {
+            var isEmpty   = item.isEmpty || (item.studentWord === null || item.studentWord === undefined);
+            var isMatch   = !!item.isMatch;
+            var pairClass = isMatch ? 'is-match' : (isEmpty ? 'is-empty' : 'is-wrong');
+
+            var studentDisplay = isEmpty ? '(left empty)' : String(item.studentWord);
+            var studentCellClass = isMatch
+              ? 'student-cell'
+              : (isEmpty ? 'student-cell is-empty-cell' : 'student-cell is-wrong-cell');
+
+            // Only show the "correct word" column when the student got it wrong
+            var correctColHtml = isMatch
+              ? ''
+              : '<div class="r-cell correct-cell">' +
+                  '<div>' +
+                    '<span class="r-cell-label">Correct word</span>' +
+                    '<span>' + esc(item.correctWord) + '</span>' +
+                  '</div>' +
+                '</div>';
+
+            var iconHtml = isMatch
+              ? '<span style="color:var(--correct);font-size:1.1rem;">✓</span>'
+              : (isEmpty
+                  ? '<span style="color:var(--ink-soft);">–</span>'
+                  : '<span style="color:var(--incorrect);font-size:1.1rem;">✗</span>');
+
+            var html =
+              '<div class="r-pair ' + pairClass + '">' +
+                '<div class="r-definition">' + esc(item.definition) + '</div>' +
+                '<div class="r-answers">' +
+                  '<div class="r-cell ' + studentCellClass + '">' +
+                    iconHtml +
+                    '<div>' +
+                      '<span class="r-cell-label">Student placed</span>' +
+                      '<span>' + esc(studentDisplay) + '</span>' +
+                    '</div>' +
+                  '</div>' +
+                  correctColHtml +
+                '</div>' +
+              '</div>';
+
+            rc.insertAdjacentHTML('beforeend', html);
+          });
+        }
+
+        // --- Stats ---
+        var accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
+        document.getElementById('sHits').textContent     = hits + ' / ' + total;
+        document.getElementById('sAccuracy').textContent = accuracy + '%';
+        document.getElementById('sPts').textContent      = score + ' / ' + maxScore + ' pts';
+        document.getElementById('sTime').textContent     = (timeMs / 1000).toFixed(1) + 's';
+      });
+    })();
+  </script>
+</body>
+
+</html>

@@ -295,16 +295,11 @@ body {
 }
 
 .word-card.is-dragging {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
   opacity: 0.9;
-  box-shadow: 0 20px 35px rgba(0, 0, 0, 0.25);
-  transform: rotate(2deg) scale(1.04);
-  cursor: grabbing;
-}
-
-/* Visual placeholder when a card is being dragged from a slot */
-.def-slot.drag-placeholder {
-  border: 2px dashed var(--accent);
-  opacity: 0.5;
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
 }
 
 /* Slotted Card */

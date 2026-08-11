@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <style>
+    body { background: #f3f4f6; padding: 2rem 1rem; }
+    .card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 2rem; max-width: 800px; margin: 0 auto; }
+    
+    .r-status {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .5rem 1.1rem; border-radius: 9999px;
+      font-size: .875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 2rem;
+    }
+    .r-status.perfect { background: #d1fae5; color: #065f46; }
+    .r-status.partial { background: #fef3c7; color: #92400e; }
+    .r-status.none    { background: #fee2e2; color: #991b1b; }
+    
+    .passage-container {
+      font-size: 1.25rem; line-height: 2.5; color: #1f2937; margin-bottom: 2rem;
+      padding: 1.5rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem;
+    }
+    
+    .r-blank {
+      display: inline-block; padding: 0.25rem 0.5rem; border-radius: 0.25rem;
+      font-weight: 500; border: 1px solid transparent;
+      margin: 0 0.25rem;
+    }
+    .r-blank.correct { background: #d1fae5; border-color: #10b981; color: #065f46; }
+    .r-blank.wrong   { background: #fee2e2; border-color: #f87171; color: #991b1b; text-decoration: line-through; }
+    .r-blank.empty   { background: #e5e7eb; border-color: #9ca3af; color: #4b5563; font-style: italic; }
+    
+    .r-correction {
+      display: inline-block; padding: 0.25rem 0.5rem; border-radius: 0.25rem;
+      background: #d1fae5; border: 1px solid #10b981; color: #065f46;
+      font-weight: 500; margin-left: 0.25rem; font-size: 0.875rem; vertical-align: middle;
+    }
+
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 2rem; }
+    .stat-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; }
+    .stat-label { font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: #111827; }
+    .stat-value.correct { color: #10b981; }
+    .stat-value.wrong { color: #ef4444; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div id="rStatus" class="r-status">Reviewing</div>
+    <div id="reviewContainer"></div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Score Earned</div>
+        <div class="stat-value" id="sScore">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Time Spent</div>
+        <div class="stat-value" id="sTime">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Blanks Correct</div>
+        <div class="stat-value correct" id="sCorrect">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Blanks Wrong</div>
+        <div class="stat-value wrong" id="sWrong">—</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    WajibetSDK.onReviewData(function (itemData) {
+      var score = itemData.score || 0;
+      var maxScore = itemData.maxScore || 1;
+      var timeMs = itemData.timeMs || 0;
+
+      var meta = {};
+      try { meta = JSON.parse(itemData.meta); } catch (e) { }
+
+      var blanksResult = meta.blanksResult || [];
+      var segments = meta.segments || [];
+      
+      var correctCount = blanksResult.filter(function(b) { return b.isCorrect; }).length;
+      var wrongCount = blanksResult.length - correctCount;
+
+      var pct = (score / maxScore) * 100;
+      var elStatus = document.getElementById('rStatus');
+      if (pct === 100) {
+        elStatus.className = 'r-status perfect';
+        elStatus.innerHTML = '✓ Perfect Score';
+      } else if (pct > 0) {
+        elStatus.className = 'r-status partial';
+        elStatus.innerHTML = '● Partial Credit';
+      } else {
+        elStatus.className = 'r-status none';
+        elStatus.innerHTML = '✗ Needs Review';
+      }
+
+      var sec = Math.floor(timeMs / 1000);
+      var mm = Math.floor(sec / 60);
+      var ss = sec % 60;
+      var timeStr = mm > 0 ? mm + 'm ' + ss + 's' : ss + 's';
+
+      document.getElementById('sScore').textContent = score + ' / ' + maxScore;
+      document.getElementById('sTime').textContent = timeStr;
+      document.getElementById('sCorrect').textContent = correctCount;
+      document.getElementById('sWrong').textContent = wrongCount;
+
+      var container = document.getElementById('reviewContainer');
+      var passageDiv = document.createElement('div');
+      passageDiv.className = 'passage-container';
+
+      segments.forEach(function (seg) {
+          if (seg.type === 'text') {
+              var spanText = document.createElement('span');
+              spanText.style.whiteSpace = 'pre-wrap';
+              spanText.textContent = seg.value;
+              passageDiv.appendChild(spanText);
+          } else if (seg.type === 'blank') {
+              var blankResult = blanksResult.find(function(b) { return b.id === seg.id; });
+              
+              if (blankResult) {
+                  var span = document.createElement('span');
+                  if (!blankResult.studentAnswer || blankResult.studentAnswer === '') {
+                      span.className = 'r-blank empty';
+                      span.textContent = '(skipped)';
+                  } else if (blankResult.isCorrect) {
+                      span.className = 'r-blank correct';
+                      span.textContent = blankResult.studentAnswer;
+                  } else {
+                      span.className = 'r-blank wrong';
+                      span.textContent = blankResult.studentAnswer;
+                  }
+                  passageDiv.appendChild(span);
+
+                  if (!blankResult.isCorrect && blankResult.correctAnswer) {
+                      var correction = document.createElement('span');
+                      correction.className = 'r-correction';
+                      correction.textContent = blankResult.correctAnswer;
+                      passageDiv.appendChild(correction);
+                  }
+              }
+          }
+      });
+
+      container.appendChild(passageDiv);
+    });
+  </script>
+</body>
+</html>

@@ -296,7 +296,6 @@
 			const creation = WajibetSDK.getGameCreation() || {};
 			settings = creation.config || {};
 			items = Array.isArray(creation.content) ? creation.content : [];
-			if (settings.shuffleQuestions) items = shuffle(items);
 			
 			if (items.length === 0) { 
 				byId('ready-screen').innerHTML = '<h2>Error: No questions provided.</h2>'; 

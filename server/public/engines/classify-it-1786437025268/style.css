@@ -326,21 +326,7 @@ body {
   justify-content: center;
   margin-bottom: 1rem;
   z-index: 5;
-  overflow: hidden;
 }
-
-/* Card placed inside a zone — scale down to fit zone width */
-.drop-zone .slot-container .drag-card {
-  padding: 0.55rem 0.7rem;
-  font-size: 0.9rem;
-  max-width: 100%;
-  width: 100%;
-  text-align: center;
-  word-break: break-word;
-  white-space: normal;
-  cursor: default;
-}
-
 
 .drop-zone-title {
   font-size: 0.85rem;

@@ -1,8 +1,8 @@
 /* global WG */
 (function () {
     WG.run({
-        type: 'grammar-fill-in',
-        title: 'Grammar Fill-In',
+        type: 'fill-blank-dropdown',
+        title: 'Fill-in-the-Blanks',
 
         buildQuestions: function (settings, content) {
             var questions = [];
@@ -22,7 +22,6 @@
                     itemId: item.itemId || ('item_' + index),
                     index: index,
                     segments: segments,
-                    ruleLabel: item.ruleLabel || item.grammarRule || null,
                     pointsPerBlank: pointsPerBlank,
                     shuffleOptions: shuffleOptions,
                     maxScore: blankCount * pointsPerBlank
@@ -33,14 +32,7 @@
 
         render: function (q, ctx) {
             var container = document.createElement('div');
-            container.className = 'passage-container grammar-document';
-
-            if (q.ruleLabel) {
-                var ruleBadge = document.createElement('div');
-                ruleBadge.className = 'grammar-rule-badge';
-                ruleBadge.innerHTML = '<span class="rule-label">Rule:</span> <span class="rule-value">' + q.ruleLabel + '</span>';
-                container.appendChild(ruleBadge);
-            }
+            container.className = 'passage-container';
 
             var selects = [];
 

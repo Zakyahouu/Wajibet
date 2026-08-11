@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .review-container {
+      padding: 1rem 0;
+    }
+
+    /* Vertical Comparative Timeline */
+    .rt-node {
+      position: relative;
+      padding-left: 3.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* The connecting line */
+    .rt-node::before {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: 35px;
+      bottom: -1.5rem;
+      width: 2px;
+      background: var(--edge);
+    }
+
+    .rt-node:last-child::before {
+      display: none;
+    }
+
+    /* The Node Dot */
+    .rt-dot {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 3px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--accent);
+      z-index: 2;
+    }
+
+    .rt-dot.dot-correct {
+      border-color: var(--correct);
+      color: var(--correct);
+      background: #ECFDF5;
+    }
+
+    .rt-dot.dot-wrong {
+      border-color: var(--incorrect);
+      color: var(--incorrect);
+      background: #FEF2F2;
+    }
+
+    /* The Content Card */
+    .rt-card {
+      background: var(--card);
+      border: 1px solid var(--edge);
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+    }
+
+    .rt-card.is-correct {
+      border-left: 5px solid var(--correct);
+    }
+
+    .rt-card.is-wrong {
+      border-left: 5px solid var(--incorrect);
+    }
+
+    .rt-row {
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .rt-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .rt-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-soft);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .rt-text {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .text-correct {
+      color: var(--correct);
+    }
+
+    .text-wrong {
+      color: var(--incorrect);
+    }
+
+    .text-empty {
+      color: var(--ink-soft);
+      font-style: italic;
+    }
+
+    .rt-detail {
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed var(--edge);
+      font-size: 0.8rem;
+      color: var(--ink-soft);
+    }
+
+    /* RTL Support */
+    [dir="rtl"] .rt-node {
+      padding-left: 0;
+      padding-right: 3.5rem;
+    }
+
+    [dir="rtl"] .rt-node::before {
+      left: auto;
+      right: 17px;
+    }
+
+    [dir="rtl"] .rt-dot {
+      left: auto;
+      right: 0;
+    }
+
+    [dir="rtl"] .rt-card.is-correct {
+      border-left: none;
+      border-right: 5px solid var(--correct);
+    }
+
+    [dir="rtl"] .rt-card.is-wrong {
+      border-left: none;
+      border-right: 5px solid var(--incorrect);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <section class="card" style="max-width: 800px; padding: 1.5rem;">
+      <div
+        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--edge); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div>
+          <p class="eyebrow" id="status" style="margin-bottom: 0.2rem;">Reviewing Timeline</p>
+          <h2 style="margin: 0; font-size: 1.2rem; color: var(--ink);" id="rHeadline">Timeline Sequence</h2>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent);" id="rPts"></div>
+          <div style="font-size: 0.8rem; color: var(--ink-soft);" id="rHits"></div>
+        </div>
+      </div>
+
+      <!-- The Dynamic Timeline Map -->
+      <div class="review-container" id="timelineContainer">
+        <!-- Injected by JS -->
+      </div>
+
+      <div
+        style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--edge); text-align: center; color: var(--ink-soft); font-size: 0.85rem;">
+        Time spent: <strong id="rTime" style="color: var(--ink);"></strong>
+      </div>
+    </section>
+  </div>
+
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <script>
+    WajibetSDK.onReviewData(function (it) {
+      document.documentElement.dir = WajibetSDK.getDirection();
+      var m = it.meta || {};
+
+      document.getElementById('status').textContent = it.skipped ? 'Skipped / Not finished' : 'Submitted Sequence';
+      // Use the timeline title passed in meta; fall back to the headline field, then generic text
+      document.getElementById('rHeadline').textContent = (m.timelineTitle || it.headline || 'Timeline Review');
+
+      document.getElementById('rPts').textContent = (it.score || 0) + ' / ' + (it.maxScore || 0) + ' Pts';
+      document.getElementById('rHits').textContent = (m.correctlyPlaced || 0) + ' of ' + (m.totalEvents || 0) + ' correct';
+      document.getElementById('rTime').textContent = (((it.timeMs || 0) / 1000).toFixed(1)) + 's';
+
+      var correct = Array.isArray(m.correctOrder) ? m.correctOrder : [];
+      var student = Array.isArray(m.studentOrder) ? m.studentOrder : [];
+
+      var container = document.getElementById('timelineContainer');
+      container.innerHTML = '';
+
+      if (!student.length) {
+        container.innerHTML = '<p style="text-align:center; color: var(--ink-soft);">No answer submitted.</p>';
+        return;
+      }
+
+      // Loop through and build a highly readable comparative timeline node for each slot
+      correct.forEach(function (c, i) {
+        var s = student[i];
+        var isRight = (c.text === s);
+        var isEmpty = (s === 'Empty');
+
+        var studentDisplayClass = isRight ? 'text-correct' : (isEmpty ? 'text-empty' : 'text-wrong');
+        var studentDisplayText = isEmpty ? '(Left Blank)' : s;
+
+        var html = '<div class="rt-node">';
+        html += '<div class="rt-dot ' + (isRight ? 'dot-correct' : 'dot-wrong') + '">' + (i + 1) + '</div>';
+        html += '<div class="rt-card ' + (isRight ? 'is-correct' : 'is-wrong') + '">';
+
+        // Always show what the student put
+        html += '<div class="rt-row">';
+        html += '<span class="rt-label">Student placed:</span>';
+        html += '<strong class="rt-text ' + studentDisplayClass + '">' + studentDisplayText + '</strong>';
+        html += '</div>';
+
+        // If they got it wrong, show what the correct event SHOULD have been
+        if (!isRight) {
+          html += '<div class="rt-row" style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed var(--edge);">';
+          html += '<span class="rt-label">Correct event:</span>';
+          html += '<strong class="rt-text">' + c.text + '</strong>';
+          html += '</div>';
+        }
+
+        // If the teacher provided a "detail" (like a date), show it
+        if (c.detail) {
+          html += '<div class="rt-detail">' + c.detail + '</div>';
+        }
+
+        html += '</div></div>';
+
+        container.insertAdjacentHTML('beforeend', html);
+      });
+    });
+  </script>
+</body>
+
+</html>

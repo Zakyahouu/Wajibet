@@ -38,10 +38,11 @@
 
       if (validPairs.length < 2) return [];
 
+      var shuffledPairs = shuffle(validPairs);
       var rounds = [];
 
-      for (var i = 0; i < validPairs.length; i += maxPairs) {
-        var chunk = validPairs.slice(i, i + maxPairs);
+      for (var i = 0; i < shuffledPairs.length; i += maxPairs) {
+        var chunk = shuffledPairs.slice(i, i + maxPairs);
 
         // BUG FIX: Never merge a lone pair into the previous round using the raw
         // content object (it has `definition` not `def` and no `id`). Instead,
@@ -192,116 +193,8 @@
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
 
-        // --- Pointer-based drag (desktop + touch) ---
-        var dragStartX = 0, dragStartY = 0;
-        var dragOffsetX = 0, dragOffsetY = 0;
-        var isDragging = false;
-        var dragMoved = false;
-        var originalParent = null;
-
-        card.addEventListener('pointerdown', function (e) {
-          if (card.classList.contains('is-locked')) return;
-          isDragging = true;
-          dragMoved = false;
-          dragStartX = e.clientX;
-          dragStartY = e.clientY;
-          // Offset from card top-left so the card doesn't jump to cursor centre
-          var r = card.getBoundingClientRect();
-          dragOffsetX = e.clientX - r.left;
-          dragOffsetY = e.clientY - r.top;
-          originalParent = card.parentElement;
-          card.setPointerCapture(e.pointerId);
-        });
-
-        card.addEventListener('pointermove', function (e) {
-          if (!isDragging) return;
-          var dx = e.clientX - dragStartX;
-          var dy = e.clientY - dragStartY;
-          if (!dragMoved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
-            // Crossed threshold — commit to drag mode
-            dragMoved = true;
-            // Lift card to fixed position overlay for smooth dragging
-            var r = card.getBoundingClientRect();
-            card.classList.add('is-dragging');
-            card.style.position = 'fixed';
-            card.style.zIndex = '9999';
-            card.style.width = r.width + 'px';
-            card.style.left = (r.left) + 'px';
-            card.style.top = (r.top) + 'px';
-            card.style.margin = '0';
-            // Leave a visual placeholder in the original slot
-            if (originalParent && originalParent.classList.contains('def-slot')) {
-              originalParent.classList.add('drag-placeholder');
-            }
-          }
-          if (dragMoved) {
-            card.style.left = (e.clientX - dragOffsetX) + 'px';
-            card.style.top  = (e.clientY - dragOffsetY) + 'px';
-          }
-        });
-
-        card.addEventListener('pointerup', function (e) {
-          if (!isDragging) return;
-          isDragging = false;
-
-          if (!dragMoved) {
-            // Short tap — fall through to click handler
-            return;
-          }
-
-          // Reset drag styles
-          card.classList.remove('is-dragging');
-          card.style.position = '';
-          card.style.zIndex  = '';
-          card.style.width   = '';
-          card.style.left    = '';
-          card.style.top     = '';
-          card.style.margin  = '';
-          if (originalParent && originalParent.classList.contains('def-slot')) {
-            originalParent.classList.remove('drag-placeholder');
-          }
-
-          // Hit-test against def-slots
-          var slots = document.querySelectorAll('.def-slot');
-          var hit = null;
-          for (var s = 0; s < slots.length; s++) {
-            if (slots[s].closest('.def-row').classList.contains('is-locked')) continue;
-            var sr = slots[s].getBoundingClientRect();
-            if (e.clientX >= sr.left && e.clientX <= sr.right &&
-                e.clientY >= sr.top  && e.clientY <= sr.bottom) {
-              hit = slots[s];
-              break;
-            }
-          }
-
-          clearAllSelections();
-          if (hit) {
-            moveCardToSlot(card, hit);
-          } else if (originalParent && originalParent.classList.contains('def-slot')) {
-            // Return to its previous slot if dropped on nothing
-            originalParent.appendChild(card);
-          } else {
-            // Return to word bank
-            wordBank.appendChild(card);
-          }
-          dragMoved = false;
-        });
-
-        card.addEventListener('lostpointercapture', function () {
-          // Cleanup if capture is lost unexpectedly (e.g., alert dialog)
-          if (dragMoved) {
-            card.classList.remove('is-dragging');
-            card.style.position = card.style.zIndex = card.style.width =
-              card.style.left = card.style.top = card.style.margin = '';
-            dragMoved = false;
-          }
-          isDragging = false;
-        });
-
-        // --- Tap-to-select (original behaviour, unchanged) ---
         card.addEventListener('click', function (e) {
           if (card.classList.contains('is-locked')) return;
-          if (dragMoved) return; // was a drag, not a tap
           e.stopPropagation();
           handleCardTap(card);
         });
