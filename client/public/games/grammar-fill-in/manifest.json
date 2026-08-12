@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "name": "Grammar Fill-In",
-  "description": "Test grammar skills by filling in the blanks in sentences.",
+  "description": "Test grammar skills by filling in the blanks in sentences and mastering specific grammar rules.",
   "attemptPolicy": "all",
   "xp": {
     "assignment": {

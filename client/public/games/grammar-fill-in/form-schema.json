@@ -26,6 +26,11 @@
     "label": "Passages",
     "minItems": 1,
     "itemSchema": {
+      "ruleLabel": {
+        "type": "text",
+        "label": "Grammar rule being tested (e.g. \"Present Perfect Tense\")",
+        "required": false
+      },
       "passage": {
         "type": "fillBlankDropdown",
         "label": "Sentence / Passage with Blanks"

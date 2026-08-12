@@ -89,8 +89,9 @@
       var maxScore = itemData.maxScore || 1;
       var timeMs = itemData.timeMs || 0;
 
-      var meta = {};
-      try { meta = JSON.parse(itemData.meta); } catch (e) { }
+      var meta = typeof itemData.meta === 'string'
+        ? (function () { try { return JSON.parse(itemData.meta); } catch (e) { return {}; } })()
+        : (itemData.meta || {});
 
       var blanksResult = meta.blanksResult || [];
       var segments = meta.segments || [];
