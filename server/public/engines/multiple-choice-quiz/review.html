@@ -1,77 +1,110 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Quiz Review</title>
-	<link rel="stylesheet" href="style.css">
-	<script src="/sdk/wajibet-sdk.js"></script>
-	<style>
-		body, html {
-			margin: 0; padding: 0;
-			background: transparent;
-			height: 100%;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			overflow: hidden;
-		}
-		.review-container {
-			background: white;
-			border-radius: 12px;
-			padding: 16px;
-			width: 100%;
-			max-width: 400px;
-			box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-		}
-		.options-grid {
-			pointer-events: none; /* read only */
-		}
-	</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="/sdk/wajibet-sdk.js"></script>
+  <style>
+    body { 
+        display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        background-color: #f1f5f9;
+        margin: 0;
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    #review-card {
+      background: #ffffff; color: #1e293b; padding: 30px; border-radius: 16px;
+      max-width: 500px; width: 90%; text-align: left;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      border: 1px solid #e2e8f0;
+    }
+    .review-label { font-size: 0.8em; color: #475569; margin-top: 12px; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
+    .review-question { font-size: 1.4em; margin: 8px 0 20px 0; font-weight: 700; color: #1e293b; }
+    
+    .review-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .review-option { 
+        padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; 
+        background: #f8fafc; font-size: 1em; display: flex; justify-content: space-between;
+    }
+    .review-option.correct { background: #dcfce7; border-color: #22c55e; color: #15803d; font-weight: 700; }
+    .review-option.wrong { background: #fee2e2; border-color: #ef4444; color: #b91c1c; }
+    .review-option-badge { font-weight: bold; font-size: 0.9em; }
+
+    .review-explanation { background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 0.9em; color: #475569; margin-top: 16px; border-left: 4px solid #3b82f6; }
+    
+    .review-meta { font-size: 0.85em; color: #475569; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
+    .review-badge {
+      display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 0.9em; font-weight: bold;
+    }
+    .review-badge.correct { background: #dcfce7; color: #15803d; }
+    .review-badge.wrong { background: #fee2e2; color: #b91c1c; }
+  </style>
 </head>
 <body>
-	<div class="review-container">
-		<div id="options-grid" class="options-grid"></div>
-	</div>
+  <div id="review-card">
+    <p style="color: #888; font-size: 0.9em; text-align: center;">Loading review…</p>
+  </div>
+  <script>
+    WajibetSDK.onReviewData(function (interaction) {
+      document.documentElement.dir = WajibetSDK.getDirection();
+      var card = document.getElementById('review-card');
+      var meta = interaction.meta || {};
 
-	<script>
-		WajibetSDK.onReviewData((payload) => {
-			const meta = payload.meta || {};
-			const item = payload.item || {};
-			
-			const optsGrid = document.getElementById('options-grid');
-			optsGrid.innerHTML = '';
-			
-			const rawOptions = payload.options || {};
-			const optionsList = [
-				['A', rawOptions.A || rawOptions.optionA || 'Option A'],
-				['B', rawOptions.B || rawOptions.optionB || 'Option B'],
-				['C', rawOptions.C || rawOptions.optionC || 'Option C'],
-				['D', rawOptions.D || rawOptions.optionD || 'Option D']
-			].filter(([_, val]) => val && typeof val === 'string' && val.trim() !== '');
+      var question = meta.question || '';
+      var options = meta.options || [];
+      var explanation = meta.explanation || '';
+      var studentAnswer = interaction.userAnswer;
+      var correctAnswer = interaction.correctAnswer;
+      
+      var isCorrect = interaction.isCorrect;
+      var timeMs = interaction.timeMs || 0;
+      var timeSec = (timeMs / 1000).toFixed(1);
 
-			optsGrid.className = `options-grid ${optionsList.length === 3 ? 'three-options' : ''}`;
-			
-			const optionsMap = { A: 'triangle', B: 'diamond', C: 'square', D: 'circle' };
-			const selectedKey = String(payload.userAnswer || meta.selectedOptionId || '').toUpperCase();
-			const correctKey = String(payload.correctAnswer || '').toUpperCase();
+      var optionsHtml = '';
+      if (options.length > 0) {
+          optionsHtml = '<div class="review-options">';
+          for (var i = 0; i < options.length; i++) {
+              var opt = options[i];
+              var cls = 'review-option';
+              var badge = '';
+              if (opt === correctAnswer) {
+                  cls += ' correct';
+                  badge = '✓ ' + WajibetSDK.t('correct');
+              } else if (opt === studentAnswer) {
+                  cls += ' wrong';
+                  badge = '✗ ' + WajibetSDK.t('yourAnswer');
+              }
+              optionsHtml += '<div class="' + cls + '"><span>' + escapeHtml(opt) + '</span><span class="review-option-badge">' + badge + '</span></div>';
+          }
+          optionsHtml += '</div>';
+      } else {
+          // Fallback if options array is missing
+          optionsHtml = '<p class="review-label">' + WajibetSDK.t('correctAnswer') + '</p><p>' + escapeHtml(correctAnswer) + '</p>' +
+                        '<p class="review-label">' + WajibetSDK.t('yourAnswer') + '</p><p>' + escapeHtml(studentAnswer || '(—)') + '</p>';
+      }
 
-			optionsList.forEach(([key, label]) => {
-				const btn = document.createElement('button');
-				btn.className = 'opt';
-				btn.textContent = label;
-				btn.setAttribute('data-key', key);
-				btn.setAttribute('data-shape', optionsMap[key] || 'circle');
-				
-				if (key === correctKey) {
-					btn.classList.add('correct');
-				} else if (key === selectedKey) {
-					btn.classList.add('wrong');
-				}
-				
-				optsGrid.appendChild(btn);
-			});
-		});
-	</script>
+      var explanationHtml = '';
+      if (explanation) {
+          explanationHtml = '<div class="review-explanation"><strong>' + WajibetSDK.t('explanation') + ':</strong> ' + escapeHtml(explanation) + '</div>';
+      }
+
+      card.innerHTML =
+        '<p class="review-label">' + WajibetSDK.t('question') + '</p>' +
+        '<p class="review-question">' + escapeHtml(question) + '</p>' +
+        optionsHtml +
+        explanationHtml +
+        '<div class="review-meta">' +
+          '<span>' + WajibetSDK.t('time') + ': ' + timeSec + 's · ' + WajibetSDK.t('score') + ': ' + (interaction.score || 0) + '/' + (interaction.maxScore || 0) + '</span>' +
+          '<span class="review-badge ' + (isCorrect ? 'correct' : 'wrong') + '">' + (isCorrect ? ('✓ ' + WajibetSDK.t('correct')) : ('✗ ' + WajibetSDK.t('wrong'))) + '</span>' +
+        '</div>';
+    });
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
 </body>
 </html>
