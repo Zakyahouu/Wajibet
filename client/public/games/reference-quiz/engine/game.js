@@ -132,7 +132,7 @@
     }
 
     var fb = byId('feedback');
-    fb.textContent = isCorrect ? 'Correct!' : 'Not quite.';
+    fb.textContent = isCorrect ? WajibetSDK.t('correct') : WajibetSDK.t('notQuite');
     fb.classList.add(isCorrect ? 'feedback--ok' : 'feedback--bad');
 
     byId('confirm-btn').hidden = true;
@@ -162,7 +162,8 @@
 
     var nextBtn = byId('next-btn');
     nextBtn.hidden = false;
-    nextBtn.textContent = (index + 1 >= items.length) ? 'Finish' : 'Next →';
+    var arrow = WajibetSDK.getDirection() === 'rtl' ? ' ←' : ' →';
+    nextBtn.textContent = (index + 1 >= items.length) ? WajibetSDK.t('finish') : (WajibetSDK.t('next') + arrow);
     nextBtn.onclick = function () { index++; renderQuestion(); };
   }
 
@@ -196,16 +197,21 @@
         return;
       }
 
+      var confirmBtn = byId('confirm-btn');
+      if (confirmBtn) confirmBtn.textContent = WajibetSDK.t('confirm');
+
       if (resumeState) {
         index = resumeState.currentItemIndex || 0;
         score = resumeState.currentScore || 0;
         resumeElapsedMs = Number(resumeState.elapsedMs) || 0;
         // Show Continue screen
-        byId('start-title').textContent = 'Continue where you left off?';
+        byId('start-title').textContent = WajibetSDK.t('resumeMessage');
         byId('start-lede').textContent =
-          'You have answered ' + index + ' of ' + items.length + ' questions. ' +
-          'Your current score is ' + score + ' points.';
-        byId('start-btn').textContent = 'Continue';
+          WajibetSDK.t('answeredProgress', { count: index, total: items.length }) + ' · ' +
+          WajibetSDK.t('score') + ': ' + score + ' ' + WajibetSDK.t('points');
+        byId('start-btn').textContent = WajibetSDK.t('continueLabel');
+      } else {
+        byId('start-btn').textContent = WajibetSDK.t('start');
       }
 
       showScreen('screen-start');

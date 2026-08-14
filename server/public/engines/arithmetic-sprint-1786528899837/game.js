@@ -270,7 +270,7 @@
     if (timerIv) clearInterval(timerIv);
     timerEl.parentElement.classList.remove('urgent-timer');
     show('done');
-    summary.textContent = WajibetSDK.t('score') + ': ' + score;
+    summary.textContent = 'Final Score: ' + score;
     
     const totalTime = (gameStartMs ? Date.now() - gameStartMs : 0) + resumeElapsedMs;
     WajibetSDK.finishGame(score, totalTime);
@@ -389,10 +389,9 @@
           show('ready');
           
           if (resumeState) {
-              enterBtn.textContent = WajibetSDK.t('continueLabel');
+              enterBtn.textContent = 'Continue';
               enterBtn.onclick = () => start(resumeState);
           } else {
-              enterBtn.textContent = WajibetSDK.t('start');
               enterBtn.onclick = countdown;
           }
         });

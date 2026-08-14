@@ -95,7 +95,7 @@
 
       var area = document.getElementById('questionArea');
 
-      // We inject the new Central Action Dock here below the drop zones
+      var lockLabel = (ctx && ctx.t) ? ctx.t('confirm') : 'Lock In Answer';
       area.innerHTML = `
         <div class="card-dispenser" id="cardOrigin">
           <div id="dragCard" class="drag-card" touch-action="none">
@@ -104,7 +104,7 @@
         </div>
         <div id="dropZones" class="drop-zones"></div>
         <div class="central-action-dock">
-           <button type="button" id="masterLockBtn" class="master-lock-btn">✓ Lock In Answer</button>
+           <button type="button" id="masterLockBtn" class="master-lock-btn">✓ ${lockLabel}</button>
         </div>
       `;
 

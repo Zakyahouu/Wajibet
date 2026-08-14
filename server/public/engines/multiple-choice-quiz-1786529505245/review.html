@@ -69,33 +69,33 @@
               var badge = '';
               if (opt === correctAnswer) {
                   cls += ' correct';
-                  badge = '✓ ' + WajibetSDK.t('correct');
+                  badge = '✓ Correct';
               } else if (opt === studentAnswer) {
                   cls += ' wrong';
-                  badge = '✗ ' + WajibetSDK.t('yourAnswer');
+                  badge = '✗ Your Answer';
               }
               optionsHtml += '<div class="' + cls + '"><span>' + escapeHtml(opt) + '</span><span class="review-option-badge">' + badge + '</span></div>';
           }
           optionsHtml += '</div>';
       } else {
           // Fallback if options array is missing
-          optionsHtml = '<p class="review-label">' + WajibetSDK.t('correctAnswer') + '</p><p>' + escapeHtml(correctAnswer) + '</p>' +
-                        '<p class="review-label">' + WajibetSDK.t('yourAnswer') + '</p><p>' + escapeHtml(studentAnswer || '(—)') + '</p>';
+          optionsHtml = '<p class="review-label">Correct Answer</p><p>' + escapeHtml(correctAnswer) + '</p>' +
+                        '<p class="review-label">Your Answer</p><p>' + escapeHtml(studentAnswer || '(no answer)') + '</p>';
       }
 
       var explanationHtml = '';
       if (explanation) {
-          explanationHtml = '<div class="review-explanation"><strong>' + WajibetSDK.t('explanation') + ':</strong> ' + escapeHtml(explanation) + '</div>';
+          explanationHtml = '<div class="review-explanation"><strong>Explanation:</strong> ' + escapeHtml(explanation) + '</div>';
       }
 
       card.innerHTML =
-        '<p class="review-label">' + WajibetSDK.t('question') + '</p>' +
+        '<p class="review-label">Question</p>' +
         '<p class="review-question">' + escapeHtml(question) + '</p>' +
         optionsHtml +
         explanationHtml +
         '<div class="review-meta">' +
-          '<span>' + WajibetSDK.t('time') + ': ' + timeSec + 's · ' + WajibetSDK.t('score') + ': ' + (interaction.score || 0) + '/' + (interaction.maxScore || 0) + '</span>' +
-          '<span class="review-badge ' + (isCorrect ? 'correct' : 'wrong') + '">' + (isCorrect ? ('✓ ' + WajibetSDK.t('correct')) : ('✗ ' + WajibetSDK.t('wrong'))) + '</span>' +
+          '<span>Time: ' + timeSec + 's · Score: ' + interaction.score + '/' + interaction.maxScore + '</span>' +
+          '<span class="review-badge ' + (isCorrect ? 'correct' : 'wrong') + '">' + (isCorrect ? '✓ Correct' : '✗ Wrong') + '</span>' +
         '</div>';
     });
 

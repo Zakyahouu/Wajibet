@@ -59,6 +59,7 @@
 
             var masterBtn = document.getElementById('masterLockBtn');
             masterBtn.style.display = '';
+            masterBtn.textContent = '✓ ' + (ctx && ctx.t ? ctx.t('confirm') : 'Confirm Timeline');
             masterBtn.classList.remove('is-visible');
 
             deckArea.innerHTML = '';

@@ -71,9 +71,19 @@ window.WG = (function () {
     }, 100);
   }
 
+  function makeCtx() {
+    return {
+      setCanConfirm: setCanConfirm,
+      shuffle: shuffle,
+      locale: WajibetSDK.getLocale(),
+      isRTL: WajibetSDK.getDirection() === 'rtl',
+      t: WajibetSDK.t
+    };
+  }
+
   function updateHud() {
-    if (els.progress) els.progress.textContent = 'Item ' + (idx + 1) + ' / ' + questions.length;
-    if (els.scoreDisplay) els.scoreDisplay.textContent = 'Score ' + (scoreBaseline + earned);
+    if (els.progress) els.progress.textContent = WajibetSDK.t('itemProgress', { current: idx + 1, total: questions.length });
+    if (els.scoreDisplay) els.scoreDisplay.textContent = WajibetSDK.t('score') + ' ' + (scoreBaseline + earned);
   }
 
   function setCanConfirm(v) {
@@ -88,7 +98,7 @@ window.WG = (function () {
     if (els.confirmBtn) els.confirmBtn.classList.remove('hidden');
     if (els.nextBtn) els.nextBtn.classList.add('hidden');
     updateHud();
-    cfg.render(questions[idx], { setCanConfirm: setCanConfirm, shuffle: shuffle });
+    cfg.render(questions[idx], makeCtx());
     qStart = Date.now();
     startTimer(Number(settings.timeLimitSeconds));
   }
@@ -101,7 +111,8 @@ window.WG = (function () {
     setCanConfirm(false);
 
     var q = questions[idx];
-    var r = cfg.evaluate(q, !!timedOut) || {};
+    var ctx = makeCtx();
+    var r = cfg.evaluate(q, !!timedOut, ctx) || {};
     var score = Math.max(0, Number(r.score) || 0);
     var maxScore = Number(q.maxScore) || 0;
 
@@ -125,21 +136,21 @@ window.WG = (function () {
       meta: r.meta || {}
     });
 
-    if (cfg.reveal) cfg.reveal(q, r, !!timedOut);
+    if (cfg.reveal) cfg.reveal(q, r, !!timedOut, ctx);
 
     // Feedback always pairs colour with text.
     var h = els.feedbackHeadline, cls = 'feedback-headline ';
-    if (timedOut) { h.textContent = "Time's up"; cls += 'is-incorrect'; }
-    else if (r.isCorrect) { h.textContent = 'Correct'; cls += 'is-correct'; }
-    else if (score > 0) { h.textContent = r.headline || 'Close'; cls += 'is-partial'; }
-    else { h.textContent = r.headline || 'Not quite'; cls += 'is-incorrect'; }
+    if (timedOut) { h.textContent = WajibetSDK.t('timesUp'); cls += 'is-incorrect'; }
+    else if (r.isCorrect) { h.textContent = WajibetSDK.t('correct'); cls += 'is-correct'; }
+    else if (score > 0) { h.textContent = r.headline || WajibetSDK.t('close'); cls += 'is-partial'; }
+    else { h.textContent = r.headline || WajibetSDK.t('notQuite'); cls += 'is-incorrect'; }
     h.className = cls;
-    els.feedbackDetail.textContent = (score > 0 ? '+' + score + ' points' : '+0 points') + (r.detail ? ' · ' + r.detail : '');
+    els.feedbackDetail.textContent = (score > 0 ? '+' + score + ' ' + WajibetSDK.t('points') : '+0 ' + WajibetSDK.t('points')) + (r.detail ? ' · ' + r.detail : '');
 
     els.feedback.classList.remove('hidden');
     els.confirmBtn.classList.add('hidden');
     els.nextBtn.classList.remove('hidden');
-    els.nextBtn.textContent = (idx >= questions.length - 1) ? 'Finish' : 'Next';
+    els.nextBtn.textContent = (idx >= questions.length - 1) ? WajibetSDK.t('finish') : WajibetSDK.t('next');
     els.nextBtn.focus();
   }
 
@@ -159,9 +170,9 @@ window.WG = (function () {
     var pct = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
     var acc = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
 
-    els.endScore.textContent = total + ' / ' + maxTotal + ' points';
-    els.endStats.textContent = pct + '% score · ' + acc + '% exact · ' +
-      attemptedCount + ' of ' + questions.length + ' answered · ' +
+    els.endScore.textContent = total + ' / ' + maxTotal + ' ' + WajibetSDK.t('points');
+    els.endStats.textContent = pct + '% ' + WajibetSDK.t('scoreLabel') + ' · ' + acc + '% ' + WajibetSDK.t('exactLabel') + ' · ' +
+      WajibetSDK.t('answeredProgress', { count: attemptedCount, total: questions.length }) + ' · ' +
       Math.round(timeMs / 1000) + 's';
     show('endScreen');
     WajibetSDK.finishGame(total, timeMs);
@@ -185,6 +196,8 @@ window.WG = (function () {
         if (settings.themeColor) document.documentElement.style.setProperty('--accent', settings.themeColor);
         if (els.gameTitle) els.gameTitle.textContent = opts.title;
         if (els.lede) els.lede.textContent = opts.lede;
+        if (els.confirmBtn) els.confirmBtn.textContent = WajibetSDK.t('confirm');
+        if (els.startBtn) els.startBtn.textContent = WajibetSDK.t('start');
 
         questions = opts.buildQuestions(settings, content) || [];
         if (!questions.length) { show('emptyScreen'); return; }
@@ -193,8 +206,8 @@ window.WG = (function () {
           idx = Math.min(Math.max(0, Number(resumeState.currentItemIndex) || 0), questions.length - 1);
           scoreBaseline = Number(resumeState.currentScore) || 0;
           elapsedBaseline = Number(resumeState.elapsedMs) || 0;
-          els.startBtn.textContent = 'Continue';
-          els.lede.textContent = 'You have an attempt in progress. Pick up where you left off.';
+          els.startBtn.textContent = WajibetSDK.t('continueLabel');
+          els.lede.textContent = WajibetSDK.t('resumeMessage');
         }
 
         // Never auto-start: gameplay begins only on an explicit tap.

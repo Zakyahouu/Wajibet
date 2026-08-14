@@ -290,17 +290,17 @@
             score += pointsEarned;
 
             container.classList.add('correct-state');
-            wordPreview.textContent = 'Correct!!!!';
+            wordPreview.textContent = WajibetSDK.t('correct');
             checkBtn.classList.add('hidden');
             clearBtn.classList.add('hidden');
             goNextBtn.classList.remove('hidden');
-            goNextBtn.textContent = (idx + 1 >= items.length) ? 'Finish' : 'Go next';
+            goNextBtn.textContent = (idx + 1 >= items.length) ? WajibetSDK.t('finish') : WajibetSDK.t('next');
 
             // Emit ONCE on correct resolution
             emitInteraction(true, builtWord, false);
         } else {
             // WRONG
-            wordPreview.textContent = 'Wrong word';
+            wordPreview.textContent = WajibetSDK.t('wrong');
             buildArea.classList.add('wrong-state');
 
             if (settings.gameMode === 'attempts_based') {
@@ -332,12 +332,12 @@
             if (itemAttemptCount === 0) itemAttemptCount = 1;
             emitInteraction(false, builtWord, true);
         }
-        buildArea.innerHTML = '<span class="feedback-text">Word was: ' + items[idx].word.toUpperCase() + '</span>';
+        buildArea.innerHTML = '<span class="feedback-text">' + WajibetSDK.t('correctWord') + ': ' + items[idx].word.toUpperCase() + '</span>';
         letterBank.innerHTML = '';
         checkBtn.classList.add('hidden');
         clearBtn.classList.add('hidden');
         goNextBtn.classList.remove('hidden');
-        goNextBtn.textContent = (idx + 1 >= items.length) ? 'Finish' : 'Go next';
+        goNextBtn.textContent = (idx + 1 >= items.length) ? WajibetSDK.t('finish') : WajibetSDK.t('next');
     }
 
     function clearBuildArea() {
@@ -361,7 +361,7 @@
 
         document.body.classList.add('game-ended');
         container.classList.add('correct-state');
-        summaryText.textContent = 'You scored ' + score + ' out of ' + totalPossibleScore + '!';
+        summaryText.textContent = WajibetSDK.t('score') + ': ' + score + ' / ' + totalPossibleScore;
         showScreen('done');
 
         WajibetSDK.finishGame(score, totalTime);
@@ -398,6 +398,8 @@
             applyTextDirection(WajibetSDK.getDirection());
             document.documentElement.dir = WajibetSDK.getDirection();
 
+            if (checkBtn) checkBtn.textContent = WajibetSDK.t('confirm');
+
             var creation = WajibetSDK.getGameCreation() || {};
             settings = creation.config || {};
             items = Array.isArray(creation.content) ? creation.content.map(function (item) {
@@ -421,7 +423,9 @@
                 readyContent.forEach(function (el) { el.classList.remove('hidden'); });
 
                 if (resumeState) {
-                    startBtn.textContent = 'Continue';
+                    startBtn.textContent = WajibetSDK.t('continueLabel');
+                } else {
+                    startBtn.textContent = WajibetSDK.t('start');
                 }
                 startBtn.onclick = function () { start(resumeState); };
             });

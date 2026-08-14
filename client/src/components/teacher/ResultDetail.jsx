@@ -15,6 +15,7 @@ import { useLanguage } from '../../context/LanguageContext';
  *    unmounted and a styled Tier 0 fallback table is rendered instead.
  */
 const ReviewRow = ({ answer, index, reviewUrl }) => {
+  const { language, isRTL } = useLanguage();
   const iframeRef = useRef(null);
   // 'pending' -> waiting for REVIEW_READY | 'ready' -> handshake done | 'fallback'
   const [mode, setMode] = useState(reviewUrl ? 'pending' : 'fallback');
@@ -32,7 +33,7 @@ const ReviewRow = ({ answer, index, reviewUrl }) => {
         // Send the full interaction (Tier 0 + meta), not just meta.
         try {
           iframeRef.current.contentWindow.postMessage(
-            { type: 'REVIEW_INIT', payload: answer },
+            { type: 'REVIEW_INIT', payload: answer, direction: isRTL ? 'rtl' : 'ltr', locale: language || 'en' },
             '*'
           );
         } catch { /* opaque-origin post is still fine with '*' */ }
@@ -85,7 +86,7 @@ const ReviewRow = ({ answer, index, reviewUrl }) => {
 };
 
 const ResultDetail = () => {
-  const { t } = useLanguage();
+  const { t, language, isRTL } = useLanguage();
   const { resultId } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -136,12 +136,12 @@
 
       // --- Status badge ---
       var badgeClass = isCorrect ? 'correct' : isTimedOut ? 'timeout' : 'wrong';
-      var badgeText  = isCorrect ? '✓ Correct' : isTimedOut ? '⏱ Timed Out' : '✗ Wrong';
+      var badgeText  = isCorrect ? ('✓ ' + WajibetSDK.t('correct')) : isTimedOut ? ('⏱ ' + WajibetSDK.t('timesUp')) : ('✗ ' + WajibetSDK.t('wrong'));
 
       // --- Letter diff (only when wrong/timed-out, both non-empty) ---
       var diffHtml = '';
       if (!isCorrect && targetWord && builtWord) {
-        diffHtml = '<p class="section-label">Letter comparison</p><div class="diff-row">';
+        diffHtml = '<p class="section-label">' + WajibetSDK.t('letterComparison') + '</p><div class="diff-row">';
         var maxLen = Math.max(targetWord.length, builtWord.length);
         for (var i = 0; i < maxLen; i++) {
           var tLetter = targetWord[i] || '';
@@ -161,34 +161,34 @@
       // --- Timeout notice ---
       var timeoutHtml = '';
       if (isTimedOut && !isCorrect) {
-        timeoutHtml = '<div class="timeout-notice">⏱ The student ran out of time before completing this word.</div>';
+        timeoutHtml = '<div class="timeout-notice">⏱ ' + WajibetSDK.t('timesUp') + '</div>';
       }
 
       // --- Hint box ---
       var hintHtml = '';
       if (hintVisible && hint) {
-        hintHtml = '<div class="hint-box"><strong>Hint was shown</strong>' + escHtml(hint) + '</div>';
+        hintHtml = '<div class="hint-box"><strong>' + WajibetSDK.t('hint') + '</strong>' + escHtml(hint) + '</div>';
       }
 
       card.innerHTML =
         '<span class="badge ' + badgeClass + '">' + badgeText + '</span>' +
 
-        '<p class="section-label">Target word</p>' +
+        '<p class="section-label">' + WajibetSDK.t('correctWord') + '</p>' +
         '<p class="word-display word-correct">' + escHtml(targetWord) + '</p>' +
 
-        '<p class="section-label">Student\'s answer</p>' +
+        '<p class="section-label">' + WajibetSDK.t('yourAnswer') + '</p>' +
         (builtWord
           ? '<p class="word-display ' + (isCorrect ? 'word-correct' : 'word-wrong') + '">' + escHtml(builtWord) + '</p>'
-          : '<p class="word-display word-muted">(no answer entered)</p>') +
+          : '<p class="word-display word-muted">(—)</p>') +
 
         diffHtml +
         timeoutHtml +
         hintHtml +
 
         '<div class="meta-row">' +
-          '<span>Attempts: <strong>' + attempts + '</strong></span>' +
-          '<span>Time: <strong>' + timeSec + 's</strong></span>' +
-          '<span>Score: <strong>' + (interaction.score || 0) + '/' + (interaction.maxScore || 0) + '</strong></span>' +
+          '<span>' + WajibetSDK.t('attempts') + ': <strong>' + attempts + '</strong></span>' +
+          '<span>' + WajibetSDK.t('time') + ': <strong>' + timeSec + 's</strong></span>' +
+          '<span>' + WajibetSDK.t('score') + ': <strong>' + (interaction.score || 0) + '/' + (interaction.maxScore || 0) + '</strong></span>' +
         '</div>';
     });
 

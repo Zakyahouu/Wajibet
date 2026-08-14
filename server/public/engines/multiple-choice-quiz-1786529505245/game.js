@@ -197,12 +197,14 @@
 
 		const rawOptions = [['A', item.optionA], ['B', item.optionB], ['C', item.optionC], ['D', item.optionD]].filter(([_, val]) => val && val.trim());
 		let correctText = correctKey;
-		let userText = selectedKey || '';
-		for (let i = 0; i < rawOptions.length; i++) {
-			if (rawOptions[i][0] === correctKey) correctText = rawOptions[i][1];
-			if (rawOptions[i][0] === selectedKey) userText = rawOptions[i][1];
-		}
+		let userText = null;
+        for (let i = 0; i < rawOptions.length; i++) {
+            if (rawOptions[i][0] === correctKey) correctText = rawOptions[i][1];
+            if (rawOptions[i][0] === selectedKey) userText = rawOptions[i][1];
+        }
 
+		// FIX BUG 1: userAnswer must never be null (SDK throws if it is).
+		// When timed out with no selection, use the empty string.
 		const safeUserAnswer = userText !== null ? userText : (timedOut ? '' : '');
 		
 		WajibetSDK.recordInteraction({
@@ -228,15 +230,15 @@
 		});
 
 		if (item.explanation) {
-			explainEl.innerHTML = '<strong>' + WajibetSDK.t('explanation') + ':</strong> ' + item.explanation;
+			explainEl.innerHTML = '<strong>Explanation:</strong> ' + item.explanation;
 			explainEl.classList.remove('hidden');
 		}
 
 		nextBtn.classList.remove('hidden');
 		if (idx + 1 >= items.length) {
-			nextBtn.textContent = WajibetSDK.t('finishGame');
+			nextBtn.textContent = 'Finish Game';
 		} else {
-			nextBtn.textContent = WajibetSDK.t('nextQuestion');
+			nextBtn.textContent = 'Next Question';
 		}
 		
 		nextBtn.onclick = () => {
@@ -275,9 +277,11 @@
 	const finish = () => {
 		show('done');
 		stopTimer();
+		// FIX BUG 4: use answers array length * avg time (local tracking)
+		// totalTimeMs from local answers is in sync because we push BEFORE recordInteraction
 		const totalTimeMs = answers.reduce((a, b) => a + (b.timeMs || 0), 0) + resumeElapsedMs;
 		const totalPossibleScore = items.length * (Number(settings.pointsPerQuestion) || 1);
-		byId('summary-text').textContent = WajibetSDK.t('score') + ': ' + score + ' / ' + totalPossibleScore;
+		byId('summary-text').textContent = 'You scored ' + score + ' out of ' + totalPossibleScore + '!';
 		WajibetSDK.finishGame(score, totalTimeMs);
 	};
 	
@@ -302,10 +306,9 @@
 			show('ready'); 
 			
 			if (resumeState) {
-				enterBtn.textContent = WajibetSDK.t('continueLabel');
+				enterBtn.textContent = 'Continue';
 				enterBtn.onclick = () => start(resumeState);
 			} else {
-				enterBtn.textContent = WajibetSDK.t('start');
 				enterBtn.onclick = countdown;
 			}
 		});

@@ -46,6 +46,7 @@ const getAllowedOrigins = () => {
   const hostedOrigins = [
     'https://wajibet.com',
     'https://www.wajibet.com',
+    'https://api.wajibet.com',
     'http://72.60.133.119',
   ];
 
@@ -108,8 +109,8 @@ app.use('/uploads/teacher-resources', (req, res) => {
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 // Serve badge icons
 app.use('/badge-icons', express.static(path.join(__dirname, 'public', 'badge-icons')));
-// Serve general assets
-app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
+// Serve general assets (renamed from /assets to avoid Vite production build collision)
+app.use('/game-assets', express.static(path.join(__dirname, 'public', 'assets')));
 // Serve virtual lab HTML files
 app.use('/virtual-labs', express.static(path.join(__dirname, 'public', 'virtual-labs')));
 

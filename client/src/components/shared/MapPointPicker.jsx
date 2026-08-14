@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../context/LanguageContext';
 
 // A single field value looks like: { imageUrl, xPercent, yPercent, radiusPercent }
 // or null/undefined before an image has been uploaded.
@@ -7,6 +8,7 @@ export default function MapPointPicker({
   value, onChange, uploadUrl, authToken, accept, creationId,
   radiusMin = 1, radiusMax = 40, radiusDefault = 6,
 }) {
+  const { t } = useLanguage();
   const frameRef = useRef(null);
   const imgRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -17,7 +19,7 @@ export default function MapPointPicker({
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setError('Image exceeds 10MB limit.'); return; }
+    if (file.size > 10 * 1024 * 1024) { setError(t.imageExceeds10MB || 'Image exceeds 10MB limit.'); return; }
     setUploading(true);
     setError('');
     try {
@@ -30,7 +32,7 @@ export default function MapPointPicker({
       });
       onChange({ imageUrl: data.url, xPercent: 50, yPercent: 50, radiusPercent: radiusDefault });
     } catch (err) {
-      setError(err.response?.data?.message || 'Upload failed');
+      setError(err.response?.data?.message || t.uploadFailed || 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -85,7 +87,7 @@ export default function MapPointPicker({
           onChange={handleUpload}
           disabled={uploading}
         />
-        {uploading && <p className="text-xs text-gray-500">Uploading…</p>}
+        {uploading && <p className="text-xs text-gray-500">{t.uploadingDots || 'Uploading…'}</p>}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
     );
@@ -132,7 +134,7 @@ export default function MapPointPicker({
         )}
       </div>
       <label className="block text-xs text-gray-600">
-        Acceptable click radius: {point.radiusPercent}%
+        {t.acceptableClickRadius || 'Acceptable click radius:'} {point.radiusPercent}%
         <input
           type="range" min={radiusMin} max={radiusMax}
           value={point.radiusPercent} onChange={handleRadiusChange}
@@ -140,7 +142,7 @@ export default function MapPointPicker({
         />
       </label>
       <button type="button" className="text-xs text-indigo-600 underline" onClick={() => onChange(null)}>
-        Replace image
+        {t.replaceImage || 'Replace image'}
       </button>
     </div>
   );

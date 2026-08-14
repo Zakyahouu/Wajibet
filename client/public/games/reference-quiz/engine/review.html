@@ -135,7 +135,7 @@
         var isSkipped = !!a.skipped;
 
         // --- Status badge ---
-        var statusText = isSkipped ? '⏱ Timed out' : isCorrect ? '✓ Correct' : '✗ Incorrect';
+        var statusText = isSkipped ? ('⏱ ' + WajibetSDK.t('timesUp')) : isCorrect ? ('✓ ' + WajibetSDK.t('correct')) : ('✗ ' + WajibetSDK.t('wrong'));
         var statusClass = isCorrect ? 'correct' : 'wrong';
 
         // --- Build option rows ---
@@ -145,14 +145,14 @@
         var optionsHtml = '';
 
         if (optionsList.length > 0) {
-          optionsHtml = '<p class="options-label">Answer choices</p>';
+          optionsHtml = '<p class="options-label">' + WajibetSDK.t('options') + '</p>';
           for (var i = 0; i < optionsList.length; i++) {
             var opt = optionsList[i];
             var isThisCorrect = opt.key === correctKey;
             var isThisWrong   = opt.key === selectedKey && !isCorrect;
             var rowClass = isThisCorrect ? 'is-correct' : isThisWrong ? 'is-wrong' : '';
-            var badge = isThisCorrect ? '✓ Correct answer'
-                      : isThisWrong   ? '✗ Student chose this'
+            var badge = isThisCorrect ? ('✓ ' + WajibetSDK.t('correctAnswer'))
+                      : isThisWrong   ? ('✗ ' + WajibetSDK.t('yourAnswer'))
                       : '';
             optionsHtml +=
               '<div class="option-row ' + rowClass + '">' +
@@ -164,12 +164,12 @@
         } else {
           // Fallback when no full options list stored (older data)
           optionsHtml =
-            '<p class="options-label">Correct answer</p>' +
+            '<p class="options-label">' + WajibetSDK.t('correctAnswer') + '</p>' +
             '<div class="option-row is-correct"><span>' + escHtml(a.correctAnswer || '') + '</span></div>';
           if (!isCorrect) {
             optionsHtml +=
-              '<p class="options-label">Student\'s answer</p>' +
-              '<div class="option-row is-wrong"><span>' + escHtml(a.userAnswer || '(none)') + '</span></div>';
+              '<p class="options-label">' + WajibetSDK.t('yourAnswer') + '</p>' +
+              '<div class="option-row is-wrong"><span>' + escHtml(a.userAnswer || '(—)') + '</span></div>';
           }
         }
 
@@ -182,8 +182,8 @@
             : '') +
           optionsHtml +
           '<div class="meta-row">' +
-            '<span>Time: <strong>' + secs + 's</strong></span>' +
-            '<span>Score: <strong>' + (a.score || 0) + ' / ' + (a.maxScore || 0) + ' pts</strong></span>' +
+            '<span>' + WajibetSDK.t('time') + ': <strong>' + secs + 's</strong></span>' +
+            '<span>' + WajibetSDK.t('score') + ': <strong>' + (a.score || 0) + ' / ' + (a.maxScore || 0) + ' ' + WajibetSDK.t('points') + '</strong></span>' +
           '</div>';
       });
 

@@ -140,7 +140,7 @@
     <section class="card" style="max-width: 700px; margin: auto; width: 100%;">
 
       <!-- Status badge -->
-      <span class="r-status" id="rStatus">Reviewing</span>
+      <span class="r-status" id="rStatus"></span>
 
       <!-- Per-pair breakdown -->
       <div class="review-container" id="reviewContainer"></div>
@@ -148,19 +148,19 @@
       <!-- Summary stats -->
       <div class="stats-grid">
         <div class="stat-box">
-          <p class="stat-label">Correct matches</p>
+          <p class="stat-label" id="lblHits"></p>
           <p class="stat-value correct" id="sHits">–</p>
         </div>
         <div class="stat-box">
-          <p class="stat-label">Accuracy</p>
+          <p class="stat-label" id="lblAccuracy"></p>
           <p class="stat-value accent" id="sAccuracy">–</p>
         </div>
         <div class="stat-box">
-          <p class="stat-label">Score</p>
+          <p class="stat-label" id="lblScore"></p>
           <p class="stat-value" id="sPts">–</p>
         </div>
         <div class="stat-box">
-          <p class="stat-label">Time taken</p>
+          <p class="stat-label" id="lblTime"></p>
           <p class="stat-value" id="sTime">–</p>
         </div>
       </div>
@@ -184,6 +184,11 @@
 
       WajibetSDK.onReviewData(function (it) {
         document.documentElement.dir = WajibetSDK.getDirection();
+        document.getElementById('lblHits').textContent = WajibetSDK.t('correctMatches');
+        document.getElementById('lblAccuracy').textContent = WajibetSDK.t('accuracy');
+        document.getElementById('lblScore').textContent = WajibetSDK.t('score');
+        document.getElementById('lblTime').textContent = WajibetSDK.t('timeSpent');
+
         var m = it.meta || {};
         var isSkipped  = !!it.skipped;
         var isCorrect  = !!it.isCorrect;
@@ -197,16 +202,16 @@
         // --- Status badge ---
         var statusEl = document.getElementById('rStatus');
         if (isSkipped) {
-          statusEl.textContent = '⏱ Timed Out';
+          statusEl.textContent = '⏱ ' + WajibetSDK.t('timesUp');
           statusEl.className = 'r-status skipped';
         } else if (isCorrect) {
-          statusEl.textContent = '✓ Perfect Match';
+          statusEl.textContent = '✓ ' + WajibetSDK.t('correct');
           statusEl.className = 'r-status perfect';
         } else if (hits > 0) {
-          statusEl.textContent = '◑ Partial — ' + hits + ' of ' + total + ' correct';
+          statusEl.textContent = '◑ ' + WajibetSDK.t('close') + ' — ' + hits + ' / ' + total;
           statusEl.className = 'r-status partial';
         } else {
-          statusEl.textContent = '✗ No Correct Matches';
+          statusEl.textContent = '✗ ' + WajibetSDK.t('wrong');
           statusEl.className = 'r-status none';
         }
 
@@ -214,14 +219,14 @@
         var rc = document.getElementById('reviewContainer');
 
         if (!report.length) {
-          rc.innerHTML = '<p style="color:var(--ink-soft);text-align:center;">No answer data available.</p>';
+          rc.innerHTML = '<p style="color:var(--ink-soft);text-align:center;">' + WajibetSDK.t('wrong') + '</p>';
         } else {
           report.forEach(function (item) {
             var isEmpty   = item.isEmpty || (item.studentWord === null || item.studentWord === undefined);
             var isMatch   = !!item.isMatch;
             var pairClass = isMatch ? 'is-match' : (isEmpty ? 'is-empty' : 'is-wrong');
 
-            var studentDisplay = isEmpty ? '(left empty)' : String(item.studentWord);
+            var studentDisplay = isEmpty ? '(—)' : String(item.studentWord);
             var studentCellClass = isMatch
               ? 'student-cell'
               : (isEmpty ? 'student-cell is-empty-cell' : 'student-cell is-wrong-cell');
@@ -231,7 +236,7 @@
               ? ''
               : '<div class="r-cell correct-cell">' +
                   '<div>' +
-                    '<span class="r-cell-label">Correct word</span>' +
+                    '<span class="r-cell-label">' + WajibetSDK.t('correctWord') + '</span>' +
                     '<span>' + esc(item.correctWord) + '</span>' +
                   '</div>' +
                 '</div>';
@@ -249,7 +254,7 @@
                   '<div class="r-cell ' + studentCellClass + '">' +
                     iconHtml +
                     '<div>' +
-                      '<span class="r-cell-label">Student placed</span>' +
+                      '<span class="r-cell-label">' + WajibetSDK.t('studentPlaced') + '</span>' +
                       '<span>' + esc(studentDisplay) + '</span>' +
                     '</div>' +
                   '</div>' +
@@ -265,7 +270,7 @@
         var accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
         document.getElementById('sHits').textContent     = hits + ' / ' + total;
         document.getElementById('sAccuracy').textContent = accuracy + '%';
-        document.getElementById('sPts').textContent      = score + ' / ' + maxScore + ' pts';
+        document.getElementById('sPts').textContent      = score + ' / ' + maxScore + ' ' + WajibetSDK.t('points');
         document.getElementById('sTime').textContent     = (timeMs / 1000).toFixed(1) + 's';
       });
     })();

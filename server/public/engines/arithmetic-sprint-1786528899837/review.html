@@ -129,7 +129,7 @@
 
       // --- Status badge ---
       var badgeClass = isCorrect ? 'correct' : 'wrong';
-      var badgeText  = isCorrect ? ('✓ ' + WajibetSDK.t('correct')) : ('✗ ' + WajibetSDK.t('wrong'));
+      var badgeText  = isCorrect ? '✓ Correct' : '✗ Wrong';
 
       // --- Answer grid ---
       var answerGridHtml = '';
@@ -138,7 +138,7 @@
         answerGridHtml =
           '<div class="answer-grid" style="grid-template-columns: 1fr;">' +
             '<div class="answer-box correct">' +
-              '<div class="ab-label">✓ ' + WajibetSDK.t('yourAnswer') + '</div>' +
+              '<div class="ab-label">✓ Your answer</div>' +
               '<div class="ab-value">' + escHtml(String(studentAnswer)) + '</div>' +
             '</div>' +
           '</div>';
@@ -146,11 +146,11 @@
         answerGridHtml =
           '<div class="answer-grid">' +
             '<div class="answer-box wrong">' +
-              '<div class="ab-label">✗ ' + WajibetSDK.t('yourAnswer') + '</div>' +
+              '<div class="ab-label">✗ Student answered</div>' +
               '<div class="ab-value">' + escHtml(String(studentAnswer !== null && studentAnswer !== undefined ? studentAnswer : '—')) + '</div>' +
             '</div>' +
             '<div class="answer-box correct">' +
-              '<div class="ab-label">✓ ' + WajibetSDK.t('correctAnswer') + '</div>' +
+              '<div class="ab-label">✓ Correct answer</div>' +
               '<div class="ab-value">' + escHtml(String(correctAnswer)) + '</div>' +
             '</div>' +
           '</div>';
@@ -164,13 +164,13 @@
 
       card.innerHTML =
         '<span class="badge ' + badgeClass + '">' + badgeText + '</span>' +
-        '<p class="section-label">' + WajibetSDK.t('question') + '</p>' +
+        '<p class="section-label">Question</p>' +
         '<p class="equation"><span dir="ltr">' + escHtml(question) + '</span></p>' +
         answerGridHtml +
         penaltyHtml +
         '<div class="meta-row">' +
-          '<span>' + WajibetSDK.t('time') + ': <strong>' + timeSec + 's</strong></span>' +
-          '<span>' + WajibetSDK.t('score') + ': <strong>' + (interaction.score || 0) + ' / ' + (interaction.maxScore || 0) + '</strong></span>' +
+          '<span>Time: <strong>' + timeSec + 's</strong></span>' +
+          '<span>Score: <strong>' + (interaction.score || 0) + ' / ' + (interaction.maxScore || 0) + '</strong></span>' +
         '</div>';
     });
 

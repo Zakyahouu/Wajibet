@@ -59,7 +59,7 @@
 
                     var defaultOpt = document.createElement('option');
                     defaultOpt.value = '';
-                    defaultOpt.textContent = '— choose —';
+                    defaultOpt.textContent = (ctx && ctx.t) ? ctx.t('chooseBlankOption') : '— choose —';
                     defaultOpt.disabled = true;
                     defaultOpt.selected = true;
                     select.appendChild(defaultOpt);

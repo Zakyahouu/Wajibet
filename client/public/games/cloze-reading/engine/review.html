@@ -51,24 +51,24 @@
 
 <body>
   <div class="card">
-    <div id="rStatus" class="r-status">Reviewing</div>
+    <div id="rStatus" class="r-status"></div>
     <div id="reviewContainer"></div>
 
     <div class="stats-grid">
       <div class="stat-box">
-        <div class="stat-label">Score Earned</div>
+        <div class="stat-label" id="lblScore"></div>
         <div class="stat-value" id="sScore">—</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Time Spent</div>
+        <div class="stat-label" id="lblTime"></div>
         <div class="stat-value" id="sTime">—</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Blanks Correct</div>
+        <div class="stat-label" id="lblCorrect"></div>
         <div class="stat-value correct" id="sCorrect">—</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Blanks Wrong</div>
+        <div class="stat-label" id="lblWrong"></div>
         <div class="stat-value wrong" id="sWrong">—</div>
       </div>
     </div>
@@ -85,12 +85,20 @@
     }
 
     WajibetSDK.onReviewData(function (itemData) {
+      document.documentElement.dir = WajibetSDK.getDirection();
+
+      document.getElementById('lblScore').textContent = WajibetSDK.t('scoreEarned');
+      document.getElementById('lblTime').textContent = WajibetSDK.t('timeSpent');
+      document.getElementById('lblCorrect').textContent = WajibetSDK.t('blanksCorrect');
+      document.getElementById('lblWrong').textContent = WajibetSDK.t('blanksWrong');
+
       var score = itemData.score || 0;
       var maxScore = itemData.maxScore || 1;
       var timeMs = itemData.timeMs || 0;
 
-      var meta = {};
-      try { meta = JSON.parse(itemData.meta); } catch (e) { }
+      var meta = (typeof itemData.meta === 'string')
+        ? (function () { try { return JSON.parse(itemData.meta); } catch (e) { return {}; } })()
+        : (itemData.meta || {});
 
       var blanksResult = meta.blanksResult || [];
       var segments = meta.segments || [];
@@ -102,13 +110,13 @@
       var elStatus = document.getElementById('rStatus');
       if (pct === 100) {
         elStatus.className = 'r-status perfect';
-        elStatus.innerHTML = '✓ Perfect Score';
+        elStatus.textContent = '✓ ' + WajibetSDK.t('correct');
       } else if (pct > 0) {
         elStatus.className = 'r-status partial';
-        elStatus.innerHTML = '● Partial Credit';
+        elStatus.textContent = '● ' + WajibetSDK.t('close');
       } else {
         elStatus.className = 'r-status none';
-        elStatus.innerHTML = '✗ Needs Review';
+        elStatus.textContent = '✗ ' + WajibetSDK.t('wrong');
       }
 
       var sec = Math.floor(timeMs / 1000);
@@ -138,7 +146,7 @@
                   var span = document.createElement('span');
                   if (!blankResult.studentAnswer || blankResult.studentAnswer === '') {
                       span.className = 'r-blank empty';
-                      span.textContent = '(skipped)';
+                      span.textContent = '(—)';
                   } else if (blankResult.isCorrect) {
                       span.className = 'r-blank correct';
                       span.textContent = blankResult.studentAnswer;

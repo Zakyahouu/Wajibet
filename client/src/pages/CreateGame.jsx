@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -22,6 +23,7 @@ const CreateGame = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useContext(AuthContext);
+    const { t, language, isRTL } = useLanguage();
 
     const [template, setTemplate] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -67,13 +69,13 @@ const CreateGame = () => {
                 setContentItems([initialItem]);
 
             } catch (err) {
-                setError('Failed to load template');
+                setError(t.failedToLoadTemplate || 'Failed to load template');
             } finally {
                 setLoading(false);
             }
         };
         fetchTemplate();
-    }, [templateId, user.token]);
+    }, [templateId, user.token, t]);
 
 
 
@@ -127,7 +129,7 @@ const CreateGame = () => {
                 setError('');
             }
         } else {
-            setError('Please fill all required settings before proceeding.');
+            setError(t.fillRequiredSettingsError || 'Please fill all required settings before proceeding.');
         }
     };
 
@@ -148,11 +150,11 @@ const CreateGame = () => {
                 if (item.correctAnswer3) correctCount++;
                 if (item.correctAnswer4) correctCount++;
                 if (correctCount !== 1) {
-                    setError(`Question ${i + 1} must have exactly ONE correct answer flagged.`);
+                    setError(`${t.questionWord || 'Question'} ${i + 1} ${t.mustHaveOneCorrectAnswer || 'must have exactly ONE correct answer flagged.'}`);
                     return false;
                 }
                 if (!item.question || item.question.trim() === '') {
-                    setError(`Question ${i + 1} is missing the question text.`);
+                    setError(`${t.questionWord || 'Question'} ${i + 1} ${t.missingQuestionText || 'is missing the question text.'}`);
                     return false;
                 }
             }
@@ -188,7 +190,7 @@ const CreateGame = () => {
             });
             navigate(-1);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to create game');
+            setError(err.response?.data?.message || t.failedToCreateGame || 'Failed to create game');
         } finally {
             setSaving(false);
         }
@@ -206,16 +208,16 @@ const CreateGame = () => {
     };
 
     if (loading) return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
             <div className="text-center">
                 <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
-                <p className="text-gray-600">Loading template...</p>
+                <p className="text-gray-600">{t.loadingTemplate || 'Loading template...'}</p>
             </div>
         </div>
     );
 
     if (error && !template) return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
             <div className="text-center bg-white p-8 rounded-md shadow-sm border border-gray-200">
                 <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
                 <p className="text-red-600 font-medium mb-4">{error}</p>
@@ -223,7 +225,7 @@ const CreateGame = () => {
                     onClick={() => navigate(-1)}
                     className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors flex items-center gap-2 mx-auto"
                 >
-                    <ArrowLeft className="w-4 h-4" /> Go Back
+                    <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} /> {t.goBack || 'Go Back'}
                 </button>
             </div>
         </div>
@@ -232,7 +234,7 @@ const CreateGame = () => {
     if (!template) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
             {/* Header */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
                 <div className="max-w-4xl mx-auto px-6 py-4">
@@ -242,11 +244,11 @@ const CreateGame = () => {
                                 onClick={() => navigate(-1)}
                                 className="p-2 hover:bg-gray-100 rounded-md transition-colors text-gray-600"
                             >
-                                <ArrowLeft className="w-6 h-6" />
+                                <ArrowLeft className={`w-6 h-6 ${isRTL ? 'rotate-180' : ''}`} />
                             </button>
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-800">Create Game</h1>
-                                <p className="text-sm text-gray-500">Using template: {template.name}</p>
+                                <h1 className="text-2xl font-bold text-gray-800">{t.createGameTitle || t.createGame || 'Create Game'}</h1>
+                                <p className="text-sm text-gray-500">{t.usingTemplate || 'Using template:'} {template.name}</p>
                             </div>
                         </div>
                         <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-md flex items-center justify-center">
@@ -280,7 +282,7 @@ const CreateGame = () => {
                                     <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-md flex items-center justify-center">
                                         <Settings className="w-5 h-5" />
                                     </div>
-                                    <h2 className="text-xl font-bold text-gray-800">Game Settings</h2>
+                                    <h2 className="text-xl font-bold text-gray-800">{t.gameSettings || 'Game Settings'}</h2>
                                 </div>
                             </div>
 
@@ -343,7 +345,7 @@ const CreateGame = () => {
                                                         onChange={(e) => handleSettingsChange(key, e.target.value)}
                                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-md focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
                                                     >
-                                                        <option value="" disabled>Choose...</option>
+                                                        <option value="" disabled>{t.chooseOption || 'Choose...'}</option>
                                                         {field.options.map(opt => (
                                                             <option key={opt} value={opt}>{opt}</option>
                                                         ))}
@@ -382,7 +384,7 @@ const CreateGame = () => {
                                                         required={field.required}
                                                         rows={field.rows || 4}
                                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200 resize-y"
-                                                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                                                        placeholder={field.placeholder || `${t.enterPlaceholder || 'Enter'} ${field.label.toLowerCase()}`}
                                                     />
                                                 </div>
                                             );
@@ -616,7 +618,7 @@ const CreateGame = () => {
                                                     min={field.min !== undefined ? field.min : undefined}
                                                     max={field.max !== undefined ? field.max : undefined}
                                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-400 focus:bg-white focus:outline-none transition-all duration-200"
-                                                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                                                    placeholder={field.placeholder || `${t.enterPlaceholder || 'Enter'} ${field.label.toLowerCase()}`}
                                                 />
                                             </div>
                                         );
@@ -624,8 +626,8 @@ const CreateGame = () => {
                                 </div>
                                 {template.formSchema?.settings?.autoGenerate !== undefined && (
                                     <div className="mt-4 text-xs text-gray-500 space-y-1">
-                                        <p><strong>Auto Mode:</strong> System generates math questions based on operations, max operand and question count.</p>
-                                        <p><strong>Manual Mode:</strong> Uncheck Auto Generate to enter your own questions below.</p>
+                                        <p><strong>{t.autoModeLabel || 'Auto Mode:'}</strong> {t.autoModeDesc || 'System generates math questions based on operations, max operand and question count.'}</p>
+                                        <p><strong>{t.manualModeLabel || 'Manual Mode:'}</strong> {t.manualModeDesc || 'Uncheck Auto Generate to enter your own questions below.'}</p>
                                     </div>
                                 )}
                             </div>
@@ -641,7 +643,7 @@ const CreateGame = () => {
                                         <div className="w-8 h-8 bg-green-50 text-green-600 rounded-md flex items-center justify-center">
                                             <FileText className="w-5 h-5" />
                                         </div>
-                                        <h2 className="text-xl font-bold text-gray-800">{template.formSchema?.content?.label || 'Content Items'}</h2>
+                                        <h2 className="text-xl font-bold text-gray-800">{template.formSchema?.content?.label || t.contentItems || 'Content Items'}</h2>
                                         <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
                                             {contentItems.length}
                                         </span>
@@ -651,7 +653,7 @@ const CreateGame = () => {
                                         onClick={addContentItem}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100 transition-colors text-sm font-medium"
                                     >
-                                        <Plus className="w-4 h-4" /> Add Item
+                                        <Plus className="w-4 h-4" /> {t.addItem || 'Add Item'}
                                     </button>
                                 </div>
                             </div>
@@ -665,14 +667,14 @@ const CreateGame = () => {
                                                 <div className="w-6 h-6 bg-gray-100 text-gray-600 rounded flex items-center justify-center text-xs font-bold">
                                                     {index + 1}
                                                 </div>
-                                                <h3 className="font-medium text-gray-700">Item {index + 1}</h3>
+                                                <h3 className="font-medium text-gray-700">{t.itemNumber || 'Item'} {index + 1}</h3>
                                             </div>
                                             {contentItems.length > 1 && (
                                                 <button
                                                     type="button"
                                                     onClick={() => removeContentItem(index)}
                                                     className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                                                    title="Remove Item"
+                                                    title={t.removeItem || "Remove Item"}
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -696,7 +698,7 @@ const CreateGame = () => {
                                                                 }}
                                                                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md focus:border-indigo-400 focus:outline-none transition-colors"
                                                             >
-                                                                <option value="" disabled>Choose...</option>
+                                                                <option value="" disabled>{t.chooseOption || 'Choose...'}</option>
                                                                 {field.options.map(opt => (
                                                                     <option key={opt} value={opt}>{opt}</option>
                                                                 ))}
@@ -728,7 +730,7 @@ const CreateGame = () => {
                                                                         const file = e.target.files?.[0];
                                                                         if (!file) return;
                                                                         if (file.size > (10 * 1024 * 1024)) {
-                                                                            return setError('Image exceeds 10MB limit.');
+                                                                            return setError(t.imageExceeds10MB || 'Image exceeds 10MB limit.');
                                                                         }
                                                                         try {
                                                                             const fd = new FormData();
@@ -740,7 +742,7 @@ const CreateGame = () => {
                                                                             });
                                                                             handleContentChange(index, key, data.url);
                                                                         } catch (err) {
-                                                                            setError(err.response?.data?.message || 'Upload failed');
+                                                                            setError(err.response?.data?.message || t.uploadFailed || 'Upload failed');
                                                                         }
                                                                     }}
                                                                     className="block"
@@ -771,7 +773,7 @@ const CreateGame = () => {
                                                                         try {
                                                                             const uploads = [];
                                                                             for (const f of files) {
-                                                                                if (f.size > (10 * 1024 * 1024)) throw new Error('One of images exceeds 10MB limit.');
+                                                                                if (f.size > (10 * 1024 * 1024)) throw new Error(t.oneImageExceeds10MB || 'One of images exceeds 10MB limit.');
                                                                                 const fd = new FormData();
                                                                                 fd.append('file', f);
                                                                                 fd.append('usage', 'content');
@@ -783,7 +785,7 @@ const CreateGame = () => {
                                                                             }
                                                                             handleContentChange(index, key, existing.concat(uploads));
                                                                         } catch (err) {
-                                                                            setError(err.message || err.response?.data?.message || 'Upload failed');
+                                                                            setError(err.message || err.response?.data?.message || t.uploadFailed || 'Upload failed');
                                                                         }
                                                                     }}
                                                                     className="block"
@@ -802,7 +804,7 @@ const CreateGame = () => {
                                                                 onChange={(e) => handleContentChange(index, key, e.target.value)}
                                                                 rows={field.rows || 4}
                                                                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md focus:border-indigo-400 focus:outline-none transition-colors resize-y"
-                                                                placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                                                                placeholder={field.placeholder || `${t.enterPlaceholder || 'Enter'} ${field.label.toLowerCase()}`}
                                                             />
                                                         ) : field.type === 'color' ? (
                                                             <div className="flex items-center gap-3">
@@ -925,7 +927,7 @@ const CreateGame = () => {
                                                                                     }}
                                                                                     rows={field.rows || 3}
                                                                                     className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-md focus:border-indigo-400 focus:outline-none transition-colors resize-y"
-                                                                                    placeholder={field.placeholder || `Enter ${field.label}`}
+                                                                                    placeholder={field.placeholder || `${t.enterPlaceholder || 'Enter'} ${field.label}`}
                                                                                 />
                                                                             ) : (
                                                                                 <input
@@ -937,7 +939,7 @@ const CreateGame = () => {
                                                                                         handleContentChange(index, key, newArray);
                                                                                     }}
                                                                                     className="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-md focus:border-indigo-400 focus:outline-none transition-colors"
-                                                                                    placeholder={field.placeholder || `Enter ${field.label}`}
+                                                                                    placeholder={field.placeholder || `${t.enterPlaceholder || 'Enter'} ${field.label}`}
                                                                                 />
                                                                             )
                                                                         )}
@@ -993,7 +995,7 @@ const CreateGame = () => {
                                                                                 handleContentChange(index, key, newArray);
                                                                             }}
                                                                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
-                                                                            title="Remove item"
+                                                                            title={t.removeItem || "Remove item"}
                                                                         >
                                                                             <Trash2 className="w-4 h-4" />
                                                                         </button>
@@ -1020,7 +1022,7 @@ const CreateGame = () => {
                                                                     }}
                                                                     className="w-full py-3 border-2 border-dashed border-gray-300 rounded-md hover:bg-gray-50 hover:border-indigo-400 transition-colors text-sm font-medium text-gray-600"
                                                                 >
-                                                                    + Add {field.label || 'Item'}
+                                                                    + {t.addItem || 'Add'} {field.label || t.itemNumber || 'Item'}
                                                                 </button>
                                                             </div>
                                                         ) : (
@@ -1034,7 +1036,7 @@ const CreateGame = () => {
                                                                 min={field.min !== undefined ? field.min : undefined}
                                                                 max={field.max !== undefined ? field.max : undefined}
                                                                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md focus:border-indigo-400 focus:outline-none transition-colors"
-                                                                placeholder={`Enter ${field.label.toLowerCase()}`}
+                                                                placeholder={field.placeholder || `${t.enterPlaceholder || 'Enter'} ${field.label.toLowerCase()}`}
                                                             />
                                                         )}
                                                     </div>
@@ -1051,7 +1053,7 @@ const CreateGame = () => {
                                     className="w-full py-4 border-2 border-dashed border-gray-200 rounded-lg hover:border-indigo-400 hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-2 text-gray-500 hover:text-indigo-600"
                                 >
                                     <Plus className="w-5 h-5" />
-                                    <span className="font-medium">Add Content Item</span>
+                                    <span className="font-medium">{t.addContentItem || 'Add Content Item'}</span>
                                 </button>
                             </div>
                         </div>
@@ -1066,14 +1068,14 @@ const CreateGame = () => {
                                     onClick={() => navigate(-1)}
                                     className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
                                 >
-                                    Cancel
+                                    {t.cancel || 'Cancel'}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleNextStep}
                                     className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
                                 >
-                                    {autoMode ? (saving ? 'Creating...' : 'Create Game') : 'Next: Content Builder'}
+                                    {autoMode ? (saving ? (t.creatingDots || 'Creating...') : (t.createGameTitle || t.createGame || 'Create Game')) : (t.nextContentBuilder || 'Next: Content Builder')}
                                 </button>
                             </>
                         )}
@@ -1084,7 +1086,7 @@ const CreateGame = () => {
                                     onClick={handleBackStep}
                                     className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors"
                                 >
-                                    Back
+                                    {t.back || 'Back'}
                                 </button>
                                 <button
                                     type="submit"
@@ -1094,12 +1096,12 @@ const CreateGame = () => {
                                     {saving ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            <span>Saving...</span>
+                                            <span>{t.savingDots || 'Saving...'}</span>
                                         </>
                                     ) : (
                                         <>
                                             <Save className="w-4 h-4" />
-                                            <span>Save Game</span>
+                                            <span>{t.saveGame || 'Save Game'}</span>
                                         </>
                                     )}
                                 </button>

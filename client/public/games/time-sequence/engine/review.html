@@ -161,8 +161,8 @@
       <div
         style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--edge); padding-bottom: 1rem; margin-bottom: 1.5rem;">
         <div>
-          <p class="eyebrow" id="status" style="margin-bottom: 0.2rem;">Reviewing Timeline</p>
-          <h2 style="margin: 0; font-size: 1.2rem; color: var(--ink);" id="rHeadline">Timeline Sequence</h2>
+          <p class="eyebrow" id="status" style="margin-bottom: 0.2rem;"></p>
+          <h2 style="margin: 0; font-size: 1.2rem; color: var(--ink);" id="rHeadline"></h2>
         </div>
         <div style="text-align: right;">
           <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent);" id="rPts"></div>
@@ -177,7 +177,7 @@
 
       <div
         style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--edge); text-align: center; color: var(--ink-soft); font-size: 0.85rem;">
-        Time spent: <strong id="rTime" style="color: var(--ink);"></strong>
+        <span id="lblTimeSpent"></span>: <strong id="rTime" style="color: var(--ink);"></strong>
       </div>
     </section>
   </div>
@@ -186,14 +186,16 @@
   <script>
     WajibetSDK.onReviewData(function (it) {
       document.documentElement.dir = WajibetSDK.getDirection();
+      document.getElementById('lblTimeSpent').textContent = WajibetSDK.t('timeSpent');
+
       var m = it.meta || {};
 
-      document.getElementById('status').textContent = it.skipped ? 'Skipped / Not finished' : 'Submitted Sequence';
+      document.getElementById('status').textContent = it.skipped ? WajibetSDK.t('timesUp') : WajibetSDK.t('reviewingTimeline');
       // Use the timeline title passed in meta; fall back to the headline field, then generic text
-      document.getElementById('rHeadline').textContent = (m.timelineTitle || it.headline || 'Timeline Review');
+      document.getElementById('rHeadline').textContent = (m.timelineTitle || it.headline || WajibetSDK.t('timelineSequence'));
 
-      document.getElementById('rPts').textContent = (it.score || 0) + ' / ' + (it.maxScore || 0) + ' Pts';
-      document.getElementById('rHits').textContent = (m.correctlyPlaced || 0) + ' of ' + (m.totalEvents || 0) + ' correct';
+      document.getElementById('rPts').textContent = (it.score || 0) + ' / ' + (it.maxScore || 0) + ' ' + WajibetSDK.t('points');
+      document.getElementById('rHits').textContent = (m.correctlyPlaced || 0) + ' / ' + (m.totalEvents || 0) + ' ' + WajibetSDK.t('correct');
       document.getElementById('rTime').textContent = (((it.timeMs || 0) / 1000).toFixed(1)) + 's';
 
       var correct = Array.isArray(m.correctOrder) ? m.correctOrder : [];
@@ -203,7 +205,7 @@
       container.innerHTML = '';
 
       if (!student.length) {
-        container.innerHTML = '<p style="text-align:center; color: var(--ink-soft);">No answer submitted.</p>';
+        container.innerHTML = '<p style="text-align:center; color: var(--ink-soft);">' + WajibetSDK.t('wrong') + '</p>';
         return;
       }
 
@@ -214,7 +216,7 @@
         var isEmpty = (s === 'Empty');
 
         var studentDisplayClass = isRight ? 'text-correct' : (isEmpty ? 'text-empty' : 'text-wrong');
-        var studentDisplayText = isEmpty ? '(Left Blank)' : s;
+        var studentDisplayText = isEmpty ? '(—)' : s;
 
         var html = '<div class="rt-node">';
         html += '<div class="rt-dot ' + (isRight ? 'dot-correct' : 'dot-wrong') + '">' + (i + 1) + '</div>';
@@ -222,14 +224,14 @@
 
         // Always show what the student put
         html += '<div class="rt-row">';
-        html += '<span class="rt-label">Student placed:</span>';
+        html += '<span class="rt-label">' + WajibetSDK.t('studentPlaced') + ':</span>';
         html += '<strong class="rt-text ' + studentDisplayClass + '">' + studentDisplayText + '</strong>';
         html += '</div>';
 
         // If they got it wrong, show what the correct event SHOULD have been
         if (!isRight) {
           html += '<div class="rt-row" style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed var(--edge);">';
-          html += '<span class="rt-label">Correct event:</span>';
+          html += '<span class="rt-label">' + WajibetSDK.t('correctEvent') + ':</span>';
           html += '<strong class="rt-text">' + c.text + '</strong>';
           html += '</div>';
         }

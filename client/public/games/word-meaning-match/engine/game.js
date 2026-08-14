@@ -334,7 +334,7 @@
       }, { once: false });
     },
 
-    evaluate: function (q, timedOut) {
+    evaluate: function (q, timedOut, ctx) {
       var total = q.pairs.length;
       var hits = 0;
       var report = [];
@@ -374,14 +374,16 @@
 
       var isCorrect = !timedOut && hits === total;
       var score = timedOut ? 0 : Math.round(q.maxScore * (hits / total));
+      var headline = isCorrect ? (ctx && ctx.t ? ctx.t('correct') : 'Perfect match!') : (hits > 0 ? (ctx && ctx.t ? ctx.t('close') : 'Close') : (ctx && ctx.t ? ctx.t('notQuite') : 'No correct matches'));
+      var detail = hits + ' / ' + total + (ctx && ctx.t ? ' ' + ctx.t('correctMatches') : ' correct matches');
 
       return {
         isCorrect: isCorrect,
         score: score,
         userAnswer: hits + '/' + total + ' matched',
         correctAnswer: total + ' pairs',
-        headline: isCorrect ? 'Perfect match!' : (hits > 0 ? hits + ' of ' + total + ' correct' : 'No correct matches'),
-        detail: hits + ' of ' + total + ' definitions matched correctly.',
+        headline: headline,
+        detail: detail,
         meta: {
           report: report,
           hits: hits,
