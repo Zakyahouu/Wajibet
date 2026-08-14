@@ -122,7 +122,7 @@
                 if (q.ruleTip) {
                     var tipBox = document.createElement('div');
                     tipBox.className = 'grammar-rule-tip';
-                    tipBox.innerHTML = '<span class="tip-icon">💡</span> <span class="tip-text">' + q.ruleTip + '</span>';
+                    tipBox.innerHTML = '<svg class="tip-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> <span class="tip-text">' + q.ruleTip + '</span>';
                     ruleBanner.appendChild(tipBox);
                 }
 

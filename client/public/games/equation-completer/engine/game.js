@@ -82,7 +82,7 @@
             if (q.hint) {
                 var hintEl = document.createElement('div');
                 hintEl.className = 'eq-hint-banner';
-                hintEl.innerHTML = '<span class="eq-hint-icon">💡</span> <span class="eq-hint-text">' + q.hint + '</span>';
+                hintEl.innerHTML = '<svg class="eq-hint-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> <span class="eq-hint-text">' + q.hint + '</span>';
                 wrapper.appendChild(hintEl);
             }
 
@@ -145,7 +145,7 @@
             var toggleBtn = document.createElement('button');
             toggleBtn.type = 'button';
             toggleBtn.className = 'keypad-toggle-btn';
-            toggleBtn.innerHTML = '<span class="keypad-toggle-icon">⌨️</span> <span class="keypad-toggle-text">On-Screen Keypad</span>';
+            toggleBtn.innerHTML = '<svg class="keypad-toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="6" x2="6.01" y1="9" y2="9"/><line x1="10" x2="10.01" y1="9" y2="9"/><line x1="14" x2="14.01" y1="9" y2="9"/><line x1="18" x2="18.01" y1="9" y2="9"/><line x1="8" x2="16" y1="13" y2="13"/></svg> <span class="keypad-toggle-text">On-Screen Keypad</span>';
 
             var keypad = document.createElement('div');
             keypad.className = 'student-keypad hidden';
@@ -153,7 +153,7 @@
             toggleBtn.addEventListener('click', function () {
                 var isHidden = keypad.classList.toggle('hidden');
                 toggleBtn.classList.toggle('active', !isHidden);
-                toggleBtn.querySelector('.keypad-toggle-text').textContent = isHidden ? 'On-Screen Keypad' : 'Hide Keypad ✕';
+                toggleBtn.querySelector('.keypad-toggle-text').textContent = isHidden ? 'On-Screen Keypad' : 'Hide Keypad';
             });
 
             var keyRows = [

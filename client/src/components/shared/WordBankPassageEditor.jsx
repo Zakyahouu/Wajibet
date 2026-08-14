@@ -107,7 +107,7 @@ const WordBankPassageEditor = ({ value, onChange }) => {
 
     const initialExtraDistractors = Array.isArray(value?.extraDistractors)
         ? value.extraDistractors
-        : ['galaxy', 'satellite'];
+        : [];
 
     // Clean plain text without brackets
     const cleanInitialText = initialPassageText.replace(/\[(.*?)\]/g, '$1');
@@ -187,11 +187,10 @@ const WordBankPassageEditor = ({ value, onChange }) => {
     const handleLoadSampleStory = () => {
         const sample = 'The astronomer looked through the telescope and discovered a new planet orbiting the distant star.';
         const sampleBlanks = ['telescope', 'planet', 'star'];
-        const sampleDistractors = ['galaxy', 'satellite', 'comet'];
         setPlainText(sample);
         setSelectedWords(sampleBlanks);
-        setExtraDistractors(sampleDistractors);
-        emitUpdate(sample, sampleBlanks, sampleDistractors);
+        setExtraDistractors([]);
+        emitUpdate(sample, sampleBlanks, []);
     };
 
     const tokens = tokenizePassage(plainText);
@@ -225,7 +224,7 @@ const WordBankPassageEditor = ({ value, onChange }) => {
                         <span>Shared Word Bank Pool ({allBankWords.length} words)</span>
                     </span>
                     <span className="text-[11px] text-purple-700 font-medium">
-                        {selectedWords.length} from story + {extraDistractors.length} extra distractors
+                        {selectedWords.length} from story{extraDistractors.length > 0 ? ` + ${extraDistractors.length} extra distractors` : ''}
                     </span>
                 </div>
 
@@ -282,7 +281,7 @@ const WordBankPassageEditor = ({ value, onChange }) => {
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <span>👉 2. Click any words in your passage to put them into the Word Bank:</span>
+                        <span>2. Click any words in your passage to put them into the Word Bank:</span>
                     </span>
                     <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
                         {selectedWords.length} {selectedWords.length === 1 ? 'word' : 'words'} banked
