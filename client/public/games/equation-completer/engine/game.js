@@ -108,7 +108,8 @@
                 } else if (seg.type === 'blank') {
                     var input = document.createElement('input');
                     input.type = 'text';
-                    input.inputMode = 'decimal';
+                    input.inputMode = 'decimal'; // Triggers native phone/tablet numeric keypad
+                    input.pattern = '[0-9.-/]*';
                     input.className = 'eq-input';
                     input.placeholder = '?';
                     input.dataset.segIndex = segIndex;
@@ -137,9 +138,23 @@
 
             wrapper.appendChild(container);
 
-            // On-screen student math keypad (especially great for phones, tablets & touchscreen devices)
+            // Optional On-Screen Keypad Widget (can be toggled on/off)
+            var keypadWrapper = document.createElement('div');
+            keypadWrapper.className = 'student-keypad-wrapper';
+
+            var toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'keypad-toggle-btn';
+            toggleBtn.innerHTML = '<span class="keypad-toggle-icon">⌨️</span> <span class="keypad-toggle-text">On-Screen Keypad</span>';
+
             var keypad = document.createElement('div');
-            keypad.className = 'student-keypad';
+            keypad.className = 'student-keypad hidden';
+
+            toggleBtn.addEventListener('click', function () {
+                var isHidden = keypad.classList.toggle('hidden');
+                toggleBtn.classList.toggle('active', !isHidden);
+                toggleBtn.querySelector('.keypad-toggle-text').textContent = isHidden ? 'On-Screen Keypad' : 'Hide Keypad ✕';
+            });
 
             var keyRows = [
                 ['1', '2', '3', '4', '5'],
@@ -189,7 +204,9 @@
                 keypad.appendChild(rowDiv);
             });
 
-            wrapper.appendChild(keypad);
+            keypadWrapper.appendChild(toggleBtn);
+            keypadWrapper.appendChild(keypad);
+            wrapper.appendChild(keypadWrapper);
 
             var qa = document.getElementById('questionArea');
             if (qa) { qa.innerHTML = ''; qa.appendChild(wrapper); }
@@ -207,6 +224,7 @@
             }
 
             q._inputs = inputs;
+            q._keypadWrapper = keypadWrapper;
             q._keypadButtons = keypadButtons;
         },
 
@@ -269,12 +287,9 @@
                 }
             });
 
-            if (Array.isArray(q._keypadButtons)) {
-                q._keypadButtons.forEach(function (btn) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                    btn.style.pointerEvents = 'none';
-                });
+            if (q._keypadWrapper) {
+                q._keypadWrapper.style.opacity = '0.5';
+                q._keypadWrapper.style.pointerEvents = 'none';
             }
         }
     });
