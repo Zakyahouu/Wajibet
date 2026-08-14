@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Plus, X, HelpCircle, AlertCircle, BookOpen } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Plus, X, HelpCircle, AlertCircle, BookOpen, Check, Layers } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
+/**
+ * Parses passage string into text and blank segments.
+ */
 export const parseWordBankPassage = (str) => {
     if (!str || typeof str !== 'string') return [];
     const segments = [];
@@ -33,128 +36,300 @@ export const parseWordBankPassage = (str) => {
     return segments;
 };
 
+/**
+ * Splits plain passage text into clickable word tokens while preserving punctuation.
+ */
+const tokenizePassage = (plainText) => {
+    if (!plainText) return [];
+    const tokens = [];
+    // Matches words (including contractions/hyphens) or whitespace/punctuation
+    const regex = /([a-zA-Z0-9_\u0600-\u06FF\u00C0-\u024F]+)|([^\s\w\u0600-\u06FF\u00C0-\u024F]+|\s+)/gu;
+    let match;
+    let wordIndex = 0;
+
+    while ((match = regex.exec(plainText)) !== null) {
+        if (match[1] !== undefined) {
+            tokens.push({
+                id: 'tok_' + wordIndex,
+                wordIndex: wordIndex++,
+                isWord: true,
+                value: match[1],
+                raw: match[1]
+            });
+        } else if (match[2] !== undefined) {
+            tokens.push({
+                id: 'sym_' + Math.random().toString(36).substr(2, 6),
+                isWord: false,
+                value: match[2],
+                raw: match[2]
+            });
+        }
+    }
+
+    return tokens;
+};
+
+/**
+ * Reconstructs bracketed passage string from plain tokens and selected blank words
+ */
+const reconstructPassageString = (rawText, selectedWords) => {
+    if (!rawText) return '';
+    if (!selectedWords || selectedWords.length === 0) return rawText;
+
+    let result = rawText;
+    // Sort words by length descending so longer words are bracketed first without partial collisions
+    const sorted = [...selectedWords].sort((a, b) => b.length - a.length);
+
+    sorted.forEach((w) => {
+        if (w && result.includes(w) && !result.includes(`[${w}]`)) {
+            // Replace exact word boundary if possible, or direct occurrence
+            const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const wordRegex = new RegExp(`(?<!\\[)\\b${escaped}\\b(?!\\])`, 'g');
+            if (wordRegex.test(result)) {
+                result = result.replace(wordRegex, `[${w}]`);
+            } else {
+                result = result.replace(w, `[${w}]`);
+            }
+        }
+    });
+
+    return result;
+};
+
 const WordBankPassageEditor = ({ value, onChange }) => {
     const { t } = useLanguage();
-    const textareaRef = useRef(null);
 
     const initialPassageText = typeof value === 'string'
         ? value
         : value?.passageText || (Array.isArray(value?.segments)
             ? value.segments.map(s => s.type === 'blank' ? `[${s.options?.[s.correctIndex] || ''}]` : s.value).join('')
-            : '');
+            : 'The astronomer looked through the [telescope] and discovered a new [planet] orbiting the distant [star].');
 
     const initialExtraDistractors = Array.isArray(value?.extraDistractors)
         ? value.extraDistractors
-        : [];
+        : ['galaxy', 'satellite'];
 
-    const [passageText, setPassageText] = useState(initialPassageText);
+    // Clean plain text without brackets
+    const cleanInitialText = initialPassageText.replace(/\[(.*?)\]/g, '$1');
+    const initialSegments = parseWordBankPassage(initialPassageText);
+    const initialBlanks = initialSegments.filter(s => s.type === 'blank').map(s => s.value);
+
+    const [plainText, setPlainText] = useState(cleanInitialText);
+    const [selectedWords, setSelectedWords] = useState(initialBlanks);
     const [extraDistractors, setExtraDistractors] = useState(initialExtraDistractors);
     const [distractorInput, setDistractorInput] = useState('');
 
     useEffect(() => {
-        if (typeof value === 'string' && value !== passageText) {
-            setPassageText(value);
+        if (typeof value === 'string') {
+            const clean = value.replace(/\[(.*?)\]/g, '$1');
+            const segs = parseWordBankPassage(value);
+            const blanks = segs.filter(s => s.type === 'blank').map(s => s.value);
+            setPlainText(clean);
+            setSelectedWords(blanks);
         } else if (value && typeof value === 'object') {
-            if (value.passageText !== undefined && value.passageText !== passageText) {
-                setPassageText(value.passageText || '');
+            if (value.passageText !== undefined) {
+                const clean = (value.passageText || '').replace(/\[(.*?)\]/g, '$1');
+                const segs = parseWordBankPassage(value.passageText || '');
+                const blanks = segs.filter(s => s.type === 'blank').map(s => s.value);
+                setPlainText(clean);
+                setSelectedWords(blanks);
             }
-            if (Array.isArray(value.extraDistractors) && JSON.stringify(value.extraDistractors) !== JSON.stringify(extraDistractors)) {
+            if (Array.isArray(value.extraDistractors)) {
                 setExtraDistractors(value.extraDistractors);
             }
         }
     }, [value]);
 
-    const handlePassageChange = (newText) => {
-        setPassageText(newText);
-        onChange({ passageText: newText, extraDistractors });
+    const emitUpdate = (newText, newSelected, newDistractors) => {
+        const bracketed = reconstructPassageString(newText, newSelected);
+        onChange({ passageText: bracketed, extraDistractors: newDistractors });
+    };
+
+    const handleTextChange = (e) => {
+        const newText = e.target.value;
+        setPlainText(newText);
+        // Filter out selected words that no longer exist in the new text
+        const validBlanks = selectedWords.filter(w => newText.includes(w));
+        setSelectedWords(validBlanks);
+        emitUpdate(newText, validBlanks, extraDistractors);
+    };
+
+    const handleToggleWord = (wordVal) => {
+        let updated;
+        if (selectedWords.includes(wordVal)) {
+            updated = selectedWords.filter(w => w !== wordVal);
+        } else {
+            updated = [...selectedWords, wordVal];
+        }
+        setSelectedWords(updated);
+        emitUpdate(plainText, updated, extraDistractors);
     };
 
     const handleAddDistractor = () => {
         const trimmed = distractorInput.trim();
         if (!trimmed) return;
-        if (extraDistractors.includes(trimmed)) {
+        if (extraDistractors.includes(trimmed) || selectedWords.includes(trimmed)) {
             setDistractorInput('');
             return;
         }
         const updated = [...extraDistractors, trimmed];
         setExtraDistractors(updated);
         setDistractorInput('');
-        onChange({ passageText, extraDistractors: updated });
+        emitUpdate(plainText, selectedWords, updated);
     };
 
     const handleRemoveDistractor = (index) => {
         const updated = extraDistractors.filter((_, i) => i !== index);
         setExtraDistractors(updated);
-        onChange({ passageText, extraDistractors: updated });
+        emitUpdate(plainText, selectedWords, updated);
     };
 
-    const handleWrapSelectionInBrackets = () => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        if (start === end) return;
-
-        const selected = passageText.substring(start, end).trim();
-        if (!selected) return;
-
-        const newText = passageText.substring(0, start) + `[${selected}]` + passageText.substring(end);
-        handlePassageChange(newText);
+    const handleLoadSampleStory = () => {
+        const sample = 'The astronomer looked through the telescope and discovered a new planet orbiting the distant star.';
+        const sampleBlanks = ['telescope', 'planet', 'star'];
+        const sampleDistractors = ['galaxy', 'satellite', 'comet'];
+        setPlainText(sample);
+        setSelectedWords(sampleBlanks);
+        setExtraDistractors(sampleDistractors);
+        emitUpdate(sample, sampleBlanks, sampleDistractors);
     };
 
-    const segments = parseWordBankPassage(passageText);
-    const bankWords = segments.filter(s => s.type === 'blank' && s.value.length > 0).map(s => s.value);
-    const allBankPreview = [...bankWords, ...extraDistractors];
+    const tokens = tokenizePassage(plainText);
+    const bracketedPassage = reconstructPassageString(plainText, selectedWords);
+    const segments = parseWordBankPassage(bracketedPassage);
+    const allBankWords = [...selectedWords, ...extraDistractors];
 
     return (
-        <div className="space-y-4 bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
+        <div className="space-y-5 bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2 text-teal-700 font-semibold text-sm">
-                    <BookOpen className="w-4 h-4" />
-                    <span>{t?.wordBankPassageEditor || 'Word Bank Passage Editor'}</span>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
+                    <Sparkles className="w-4 h-4" />
+                    <span>{t?.wordBankPassageEditor || 'Word Bank Passage Builder'}</span>
                 </div>
-                <div className="text-xs text-slate-500 flex items-center gap-1">
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    <span>{t?.wordBankHelp || 'Wrap target words in brackets [word] or highlight text'}</span>
-                </div>
+                <button
+                    type="button"
+                    onClick={handleLoadSampleStory}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 font-medium"
+                >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Load Sample Story</span>
+                </button>
             </div>
 
-            {/* Passage Textarea & Action Bar */}
-            <div>
-                <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                        {t?.passageText || 'Passage / Story'}
-                    </label>
-                    <button
-                        type="button"
-                        onClick={handleWrapSelectionInBrackets}
-                        className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 font-medium text-xs rounded-md transition-colors flex items-center gap-1"
-                    >
-                        <Sparkles className="w-3 h-3" />
-                        <span>{t?.turnSelectionIntoBlank || 'Make Selected Word a Blank'}</span>
-                    </button>
+            {/* Word Bank Pool Preview Card */}
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-purple-600" />
+                        <span>Shared Word Bank Pool ({allBankWords.length} words)</span>
+                    </span>
+                    <span className="text-[11px] text-purple-700 font-medium">
+                        {selectedWords.length} from story + {extraDistractors.length} extra distractors
+                    </span>
                 </div>
+
+                {allBankWords.length === 0 ? (
+                    <div className="text-xs text-purple-400 italic py-1">
+                        Click words in your story below or add extra distractors to populate the Word Bank.
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                        {selectedWords.map((w, idx) => (
+                            <span
+                                key={`blank_${idx}`}
+                                className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1"
+                            >
+                                <span>{w}</span>
+                                <span className="text-[10px] bg-purple-700 px-1 rounded text-purple-200">Story Blank</span>
+                            </span>
+                        ))}
+                        {extraDistractors.map((d, idx) => (
+                            <span
+                                key={`dist_${idx}`}
+                                className="px-3 py-1.5 bg-amber-500 text-slate-950 rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5"
+                            >
+                                <span>{d}</span>
+                                <span className="text-[10px] bg-amber-600 text-amber-950 px-1 rounded">Distractor</span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveDistractor(idx)}
+                                    className="hover:text-red-700 p-0.5"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Step 1: Plain Textarea Input */}
+            <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    1. Write or Paste Your Story (Normal Plain Text)
+                </label>
                 <textarea
-                    ref={textareaRef}
-                    rows={4}
-                    value={passageText}
-                    onChange={(e) => handlePassageChange(e.target.value)}
-                    placeholder="e.g. The [solar] system consists of the [Sun] and eight [planets] orbiting around it."
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-sm leading-relaxed focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
+                    value={plainText}
+                    onChange={handleTextChange}
+                    rows={3}
+                    placeholder="Type or paste your story here in plain English..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all resize-y leading-relaxed"
                 />
             </div>
 
-            {/* Extra Distractor Words (Optional Challenge) */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+            {/* Step 2: Interactive Click-to-Bank Tokenizer */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-700">
-                        {t?.extraChallengeWords || 'Extra Challenge Words in Bank (Optional Distractors)'}
-                    </label>
-                    <span className="text-[11px] text-slate-400">
-                        {t?.extraWordsNote || 'Added to the bank pool to test elimination'}
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <span>👉 2. Click any words in your passage to put them into the Word Bank:</span>
+                    </span>
+                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                        {selectedWords.length} {selectedWords.length === 1 ? 'word' : 'words'} banked
                     </span>
                 </div>
+
+                {tokens.length === 0 ? (
+                    <div className="text-xs text-slate-400 italic py-2">
+                        Type a story above to click words into the bank.
+                    </div>
+                ) : (
+                    <div className="p-4 bg-white border border-slate-200 rounded-xl leading-loose flex flex-wrap items-center gap-y-2 shadow-inner">
+                        {tokens.map((tok) => {
+                            if (!tok.isWord) {
+                                return (
+                                    <span key={tok.id} className="text-slate-600 select-none whitespace-pre">
+                                        {tok.value}
+                                    </span>
+                                );
+                            }
+
+                            const isSelected = selectedWords.includes(tok.value);
+                            return (
+                                <button
+                                    key={tok.id}
+                                    type="button"
+                                    onClick={() => handleToggleWord(tok.value)}
+                                    className={`mx-0.5 px-2.5 py-1 rounded-lg text-sm font-semibold transition-all transform active:scale-95 border ${
+                                        isSelected
+                                            ? 'bg-purple-600 text-white border-purple-700 shadow-md ring-2 ring-purple-200'
+                                            : 'bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-800 border-slate-200'
+                                    }`}
+                                >
+                                    <span>{tok.value}</span>
+                                    {isSelected && <Check className="w-3 h-3 inline-block ml-1" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Step 3: Extra Challenge Words (Tag Input) */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    3. Extra Challenge Words (Optional Pool Distractors)
+                </label>
                 <div className="flex items-center gap-2">
                     <input
                         type="text"
@@ -166,81 +341,59 @@ const WordBankPassageEditor = ({ value, onChange }) => {
                                 handleAddDistractor();
                             }
                         }}
-                        placeholder="Type a distractor word and press Enter..."
-                        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs text-slate-800 focus:border-teal-500 focus:outline-none"
+                        placeholder="Type extra word (e.g. comet) and press Enter..."
+                        className="flex-1 px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-sm focus:border-indigo-500 focus:outline-none transition-all"
                     />
                     <button
                         type="button"
                         onClick={handleAddDistractor}
-                        className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-medium text-xs rounded-md transition-colors flex items-center gap-1"
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
                     >
-                        <Plus className="w-3 h-3" />
-                        <span>{t?.addWord || 'Add'}</span>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Distractor</span>
                     </button>
                 </div>
-
-                {extraDistractors.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                        {extraDistractors.map((word, idx) => (
-                            <span
-                                key={idx}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-medium"
-                            >
-                                <span>{word}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveDistractor(idx)}
-                                    className="hover:text-red-600 focus:outline-none"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                )}
             </div>
 
-            {/* Live Word Bank Preview */}
-            <div className="p-4 bg-slate-900 rounded-lg text-white space-y-3">
+            {/* Live Student Game Preview */}
+            <div className="p-4 bg-slate-950 rounded-xl text-white space-y-2 border border-slate-800">
                 <div className="flex items-center justify-between">
-                    <div className="text-[11px] font-bold uppercase tracking-widest text-teal-400">
-                        {t?.liveWordBankPreview || 'Student Word Bank Preview'}
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">
+                        {t?.studentViewPreview || 'Live Student View Preview'}
                     </div>
-                    <div className="text-xs text-slate-400 font-mono">
-                        {allBankPreview.length} {allBankPreview.length === 1 ? 'word' : 'words'} total
+                    <div className="text-xs text-slate-400">
+                        Word Bank has {allBankWords.length} chips for {selectedWords.length} blanks
                     </div>
                 </div>
 
-                {allBankPreview.length === 0 ? (
-                    <div className="text-slate-500 italic text-xs py-1">
-                        {t?.noBankWordsPrompt || 'Add words in brackets [like this] to populate the word bank.'}
+                {segments.length === 0 ? (
+                    <div className="text-slate-500 italic text-sm py-2">
+                        Story preview will appear here.
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {allBankPreview.map((w, idx) => {
-                            const isExtra = idx >= bankWords.length;
-                            return (
-                                <span
-                                    key={idx}
-                                    className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm border ${
-                                        isExtra
-                                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                            : 'bg-teal-500/20 text-teal-200 border-teal-500/40'
-                                    }`}
-                                >
-                                    {w} {isExtra && <span className="text-[9px] opacity-75 font-normal">(extra)</span>}
-                                </span>
-                            );
+                    <div className="text-slate-200 text-base leading-relaxed py-1">
+                        {segments.map((seg, idx) => {
+                            if (seg.type === 'blank') {
+                                return (
+                                    <span
+                                        key={idx}
+                                        className="inline-flex items-center px-3 py-1 mx-1 bg-purple-500 text-white font-bold rounded-md shadow border border-purple-400 text-sm"
+                                    >
+                                        [ {seg.value} ]
+                                    </span>
+                                );
+                            }
+                            return <span key={idx}>{seg.value}</span>;
                         })}
                     </div>
                 )}
             </div>
 
-            {/* Warnings */}
-            {bankWords.length === 0 && passageText.trim().length > 0 && (
-                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2.5 rounded-md text-xs">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{t?.noWordBankBlanksWarning || 'No bank words defined! Highlight words or wrap them in [brackets].'}</span>
+            {/* Validation Feedback */}
+            {selectedWords.length === 0 && plainText.trim().length > 0 && (
+                <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-lg text-xs font-medium">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                    <span>Please click at least one word in your passage above to add it to the Word Bank!</span>
                 </div>
             )}
         </div>
