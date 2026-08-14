@@ -73,6 +73,8 @@
       correctEvent: 'Correct event',
       timelineSequence: 'Timeline Sequence',
       reviewingTimeline: 'Reviewing Timeline',
+      blankEmpty: 'blank, empty',
+      blankFilled: 'blank, filled with {text}',
       youScored: 'You scored {score}'
     },
     ar: {
@@ -123,6 +125,8 @@
       correctEvent: 'الحدث الصحيح',
       timelineSequence: 'تسلسل الخط الزمني',
       reviewingTimeline: 'مراجعة الخط الزمني',
+      blankEmpty: 'فراغ، فارغ',
+      blankFilled: 'فراغ، ممتلئ بـ {text}',
       youScored: 'حصلت على {score}'
     },
     fr: {
@@ -173,6 +177,8 @@
       correctEvent: 'Événement correct',
       timelineSequence: 'Ordre chronologique',
       reviewingTimeline: 'Révision de la chronologie',
+      blankEmpty: 'espace vide',
+      blankFilled: 'espace rempli avec {text}',
       youScored: 'Vous avez obtenu {score}'
     }
   };

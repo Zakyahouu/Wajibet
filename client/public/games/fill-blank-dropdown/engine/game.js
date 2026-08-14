@@ -109,7 +109,7 @@
                     slot.textContent = '________';
                     slot.tabIndex = 0;
                     slot.setAttribute('role', 'button');
-                    slot.setAttribute('aria-label', 'blank, empty');
+                    slot.setAttribute('aria-label', (ctx && ctx.t) ? ctx.t('blankEmpty') : 'blank, empty');
 
                     function handleSlotInteraction() {
                         if (q._revealed) return;
@@ -122,7 +122,7 @@
                             delete placements[seg.id];
                             slot.textContent = '________';
                             slot.classList.remove('filled');
-                            slot.setAttribute('aria-label', 'blank, empty');
+                            slot.setAttribute('aria-label', (ctx && ctx.t) ? ctx.t('blankEmpty') : 'blank, empty');
                         }
 
                         // If a bank chip is selected, place it
@@ -135,7 +135,7 @@
                             var entry = bankEntries.find(function(e) { return e.id === selectedBankId; });
                             slot.textContent = entry.text;
                             slot.classList.add('filled');
-                            slot.setAttribute('aria-label', 'blank, filled with ' + entry.text);
+                            slot.setAttribute('aria-label', (ctx && ctx.t) ? ctx.t('blankFilled', { text: entry.text }) : ('blank, filled with ' + entry.text));
                             
                             selectedBankId = null;
                         }
