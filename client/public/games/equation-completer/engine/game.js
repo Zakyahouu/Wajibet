@@ -1,5 +1,41 @@
 /* global WG */
 (function () {
+    function parseEquationString(str) {
+        if (!str || typeof str !== 'string') return [];
+        var segments = [];
+        var regex = /\[(.*?)\]/g;
+        var lastIndex = 0;
+        var match;
+        var segId = 0;
+
+        while ((match = regex.exec(str)) !== null) {
+            if (match.index > lastIndex) {
+                segments.push({
+                    id: 't_' + (segId++),
+                    type: 'text',
+                    value: str.substring(lastIndex, match.index)
+                });
+            }
+            segments.push({
+                id: 'b_' + (segId++),
+                type: 'blank',
+                options: [match[1].trim()],
+                correctIndex: 0
+            });
+            lastIndex = regex.lastIndex;
+        }
+
+        if (lastIndex < str.length) {
+            segments.push({
+                id: 't_' + (segId++),
+                type: 'text',
+                value: str.substring(lastIndex)
+            });
+        }
+
+        return segments;
+    }
+
     WG.run({
         type: 'equation-completer',
         title: 'Equation Completer',
@@ -10,14 +46,28 @@
             var pointsPerBlank = parseInt(settings.pointsPerBlank, 10) || 10;
 
             content.forEach(function (item, index) {
-                if (!item.passage || !item.passage.segments) return;
-                var segments = item.passage.segments;
+                var segments = [];
+                var hint = null;
+
+                // Support new structured equationBuilder object or string
+                if (item.equation) {
+                    var eqStr = typeof item.equation === 'string' ? item.equation : (item.equation.equation || '');
+                    hint = (typeof item.equation === 'object' && item.equation.hint) || item.hint || null;
+                    segments = parseEquationString(eqStr);
+                } else if (item.passage && item.passage.segments) {
+                    // Backwards compatibility with legacy passage segments
+                    segments = item.passage.segments;
+                    hint = item.hint || null;
+                }
+
                 var blankCount = segments.filter(function (s) { return s.type === 'blank'; }).length;
                 if (blankCount === 0) return;
+
                 questions.push({
                     itemId:         item.itemId || ('item_' + index),
                     index:          index,
                     segments:       segments,
+                    hint:           hint,
                     pointsPerBlank: pointsPerBlank,
                     maxScore:       blankCount * pointsPerBlank
                 });
@@ -26,6 +76,16 @@
         },
 
         render: function (q, ctx) {
+            var wrapper = document.createElement('div');
+            wrapper.className = 'math-board-wrapper';
+
+            if (q.hint) {
+                var hintEl = document.createElement('div');
+                hintEl.className = 'eq-hint-banner';
+                hintEl.innerHTML = '<span class="eq-hint-icon">💡</span> <span class="eq-hint-text">' + q.hint + '</span>';
+                wrapper.appendChild(hintEl);
+            }
+
             var container = document.createElement('div');
             container.className = 'equation-row';
             var inputs = [];
@@ -61,8 +121,10 @@
                 }
             });
 
+            wrapper.appendChild(container);
+
             var qa = document.getElementById('questionArea');
-            if (qa) { qa.innerHTML = ''; qa.appendChild(container); }
+            if (qa) { qa.innerHTML = ''; qa.appendChild(wrapper); }
 
             if (inputs[0]) { setTimeout(function () { inputs[0].focus(); }, 50); }
 

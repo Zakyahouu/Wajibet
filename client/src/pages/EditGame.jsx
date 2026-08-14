@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import MapPointPicker from '../components/shared/MapPointPicker';
 import FillBlankDropdownEditor from '../components/shared/FillBlankDropdownEditor';
+import EquationBuilderEditor from '../components/shared/EquationBuilderEditor';
+import WordBankPassageEditor from '../components/shared/WordBankPassageEditor';
+import GrammarExerciseEditor from '../components/shared/GrammarExerciseEditor';
 
 const EditGame = () => {
     const { creationId } = useParams();
@@ -727,6 +730,21 @@ const EditGame = () => {
                                                         ) : field.type === 'fillBlankDropdown' ? (
                                                             <FillBlankDropdownEditor
                                                                 value={item[key] || { passageTemplate: '', blanks: [] }}
+                                                                onChange={(val) => handleContentChange(index, key, val)}
+                                                            />
+                                                        ) : field.type === 'equationBuilder' ? (
+                                                            <EquationBuilderEditor
+                                                                value={item[key] || ''}
+                                                                onChange={(val) => handleContentChange(index, key, val)}
+                                                            />
+                                                        ) : field.type === 'wordBankPassage' ? (
+                                                            <WordBankPassageEditor
+                                                                value={item[key] || ''}
+                                                                onChange={(val) => handleContentChange(index, key, val)}
+                                                            />
+                                                        ) : field.type === 'grammarExercise' ? (
+                                                            <GrammarExerciseEditor
+                                                                value={item[key] || {}}
                                                                 onChange={(val) => handleContentChange(index, key, val)}
                                                             />
                                                         ) : field.type === 'image' ? (

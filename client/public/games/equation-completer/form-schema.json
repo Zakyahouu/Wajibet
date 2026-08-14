@@ -8,13 +8,8 @@
       "max": 100,
       "required": true
     },
-    "shuffleOptions": {
-      "label": "Shuffle dropdown options",
-      "type": "boolean",
-      "default": true
-    },
     "timeLimitSeconds": {
-      "label": "Time limit per passage (0 = no limit)",
+      "label": "Time limit per equation (0 = no limit)",
       "type": "number",
       "default": 0,
       "min": 0,
@@ -23,12 +18,12 @@
     }
   },
   "content": {
-    "label": "Passages",
+    "label": "Equations",
     "minItems": 1,
     "itemSchema": {
-      "passage": {
-        "type": "fillBlankDropdown",
-        "label": "Sentence / Passage with Blanks"
+      "equation": {
+        "type": "equationBuilder",
+        "label": "Math Equation with Target Blanks [number]"
       }
     }
   }

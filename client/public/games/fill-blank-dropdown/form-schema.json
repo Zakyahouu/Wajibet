@@ -9,7 +9,7 @@
       "required": true
     },
     "shuffleOptions": {
-      "label": "Shuffle dropdown options",
+      "label": "Shuffle word bank order",
       "type": "boolean",
       "default": true
     },
@@ -27,8 +27,8 @@
     "minItems": 1,
     "itemSchema": {
       "passage": {
-        "type": "fillBlankDropdown",
-        "label": "Sentence / Passage with Blanks"
+        "type": "wordBankPassage",
+        "label": "Passage with Target Words [word] and Extra Distractors"
       }
     }
   }

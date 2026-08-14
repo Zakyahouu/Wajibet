@@ -1,7 +1,7 @@
 {
   "settings": {
     "pointsPerBlank": {
-      "label": "Points per correct blank",
+      "label": "Points per correct answer",
       "type": "number",
       "default": 10,
       "min": 1,
@@ -9,12 +9,12 @@
       "required": true
     },
     "shuffleOptions": {
-      "label": "Shuffle dropdown options",
+      "label": "Shuffle option order",
       "type": "boolean",
       "default": true
     },
     "timeLimitSeconds": {
-      "label": "Time limit per passage (0 = no limit)",
+      "label": "Time limit per sentence (0 = no limit)",
       "type": "number",
       "default": 0,
       "min": 0,
@@ -23,17 +23,12 @@
     }
   },
   "content": {
-    "label": "Passages",
+    "label": "Grammar Exercises",
     "minItems": 1,
     "itemSchema": {
-      "ruleLabel": {
-        "type": "text",
-        "label": "Grammar rule being tested (e.g. \"Present Perfect Tense\")",
-        "required": false
-      },
-      "passage": {
-        "type": "fillBlankDropdown",
-        "label": "Sentence / Passage with Blanks"
+      "exercise": {
+        "type": "grammarExercise",
+        "label": "Grammar Rule Drill with Contrasting Choices"
       }
     }
   }

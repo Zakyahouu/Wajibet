@@ -1,8 +1,44 @@
 /* global WG */
 (function () {
+    function parseWordBankPassage(str) {
+        if (!str || typeof str !== 'string') return [];
+        var segments = [];
+        var regex = /\[(.*?)\]/g;
+        var lastIndex = 0;
+        var match;
+        var segId = 0;
+
+        while ((match = regex.exec(str)) !== null) {
+            if (match.index > lastIndex) {
+                segments.push({
+                    id: 't_' + (segId++),
+                    type: 'text',
+                    value: str.substring(lastIndex, match.index)
+                });
+            }
+            segments.push({
+                id: 'b_' + (segId++),
+                type: 'blank',
+                options: [match[1].trim()],
+                correctIndex: 0
+            });
+            lastIndex = regex.lastIndex;
+        }
+
+        if (lastIndex < str.length) {
+            segments.push({
+                id: 't_' + (segId++),
+                type: 'text',
+                value: str.substring(lastIndex)
+            });
+        }
+
+        return segments;
+    }
+
     WG.run({
         type: 'fill-blank-dropdown',
-        title: 'Fill-in-the-Blanks',
+        title: 'Word Bank',
 
         buildQuestions: function (settings, content) {
             var questions = [];
@@ -10,21 +46,36 @@
             var shuffleOptions = settings.shuffleOptions !== false;
 
             content.forEach(function (item, index) {
-                if (!item.passage || !item.passage.segments) return;
+                var segments = [];
+                var extraDistractors = [];
 
-                var segments = item.passage.segments;
+                // Support new structured wordBankPassage format
+                if (item.passage && typeof item.passage === 'object' && item.passage.passageText) {
+                    segments = parseWordBankPassage(item.passage.passageText);
+                    extraDistractors = Array.isArray(item.passage.extraDistractors) ? item.passage.extraDistractors : [];
+                } else if (typeof item.passage === 'string') {
+                    segments = parseWordBankPassage(item.passage);
+                    extraDistractors = Array.isArray(item.extraDistractors) ? item.extraDistractors : [];
+                } else if (item.passageText) {
+                    segments = parseWordBankPassage(item.passageText);
+                    extraDistractors = Array.isArray(item.extraDistractors) ? item.extraDistractors : [];
+                } else if (item.passage && item.passage.segments) {
+                    // Backwards compatibility with legacy passage segments
+                    segments = item.passage.segments;
+                    extraDistractors = Array.isArray(item.extraDistractors) ? item.extraDistractors : [];
+                }
+
                 var blankCount = segments.filter(function (s) { return s.type === 'blank'; }).length;
-
-                // Filter out if no blanks to avoid 0 score questions, unless intended
                 if (blankCount === 0) return;
 
                 questions.push({
-                    itemId: item.itemId || ('item_' + index),
-                    index: index,
-                    segments: segments,
-                    pointsPerBlank: pointsPerBlank,
-                    shuffleOptions: shuffleOptions,
-                    maxScore: blankCount * pointsPerBlank
+                    itemId:           item.itemId || ('item_' + index),
+                    index:            index,
+                    segments:         segments,
+                    extraDistractors: extraDistractors,
+                    pointsPerBlank:   pointsPerBlank,
+                    shuffleOptions:   shuffleOptions,
+                    maxScore:         blankCount * pointsPerBlank
                 });
             });
             return questions;
@@ -32,7 +83,7 @@
 
         render: function (q, ctx) {
             var container = document.createElement('div');
-            container.className = 'passage-container';
+            container.className = 'passage-container reading-document';
 
             var bankContainer = document.createElement('div');
             bankContainer.className = 'word-bank';
@@ -42,7 +93,7 @@
             var bankEntries = [];
             var blankSlots = [];
 
-            // 1. Build the bank entries
+            // 1. Build the bank entries from blanks
             q.segments.forEach(function (seg, segIndex) {
                 if (seg.type === 'blank') {
                     bankEntries.push({
@@ -53,6 +104,20 @@
                 }
             });
 
+            // 2. Append extra distractors to the word bank pool
+            if (Array.isArray(q.extraDistractors)) {
+                q.extraDistractors.forEach(function (extraWord, extraIdx) {
+                    var trimmed = String(extraWord || '').trim();
+                    if (trimmed) {
+                        bankEntries.push({
+                            id: 'extra_' + extraIdx,
+                            text: trimmed,
+                            sourceBlankId: null
+                        });
+                    }
+                });
+            }
+
             if (q.shuffleOptions) {
                 for (var i = bankEntries.length - 1; i > 0; i--) {
                     var j = Math.floor(Math.random() * (i + 1));
@@ -62,7 +127,7 @@
                 }
             }
 
-            // 2. Render bank chips
+            // 3. Render bank chips
             var selectedBankId = null;
             var bankChips = {};
 
@@ -76,7 +141,7 @@
                 chip.addEventListener('click', function () {
                     if (q._revealed) return;
                     if (chip.classList.contains('used')) return;
-                    
+
                     if (selectedBankId === entry.id) {
                         chip.classList.remove('selected');
                         selectedBankId = null;
@@ -94,7 +159,7 @@
                 bankContainer.appendChild(chip);
             });
 
-            // 3. Render passage and blank slots
+            // 4. Render passage and blank slots
             q.segments.forEach(function (seg, segIndex) {
                 if (seg.type === 'text') {
                     var spanText = document.createElement('span');
@@ -131,19 +196,19 @@
                             var newChip = bankChips[selectedBankId];
                             newChip.classList.add('used');
                             newChip.classList.remove('selected');
-                            
-                            var entry = bankEntries.find(function(e) { return e.id === selectedBankId; });
+
+                            var entry = bankEntries.find(function (e) { return e.id === selectedBankId; });
                             slot.textContent = entry.text;
                             slot.classList.add('filled');
                             slot.setAttribute('aria-label', (ctx && ctx.t) ? ctx.t('blankFilled', { text: entry.text }) : ('blank, filled with ' + entry.text));
-                            
+
                             selectedBankId = null;
                         }
                         checkComplete();
                     }
 
                     slot.addEventListener('click', handleSlotInteraction);
-                    slot.addEventListener('keydown', function(e) {
+                    slot.addEventListener('keydown', function (e) {
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             handleSlotInteraction();
@@ -185,10 +250,10 @@
                     var bankId = q._placements[seg.id];
                     var studentAnswer = '';
                     if (bankId) {
-                        var entry = q._bankEntries.find(function(e) { return e.id === bankId; });
+                        var entry = q._bankEntries.find(function (e) { return e.id === bankId; });
                         if (entry) studentAnswer = entry.text;
                     }
-                    
+
                     var correctAnswer = seg.options[seg.correctIndex];
                     var correct = false;
 
@@ -208,8 +273,8 @@
                 }
             });
 
-            var userAnswerStr = blanksResult.map(function(b) { return b.studentAnswer || '(none)'; }).join(', ');
-            var correctAnswerStr = blanksResult.map(function(b) { return b.correctAnswer || ''; }).join(', ');
+            var userAnswerStr = blanksResult.map(function (b) { return b.studentAnswer || '(none)'; }).join(', ');
+            var correctAnswerStr = blanksResult.map(function (b) { return b.correctAnswer || ''; }).join(', ');
 
             return {
                 isCorrect: isCorrect,
@@ -222,32 +287,30 @@
 
         reveal: function (q, result) {
             var meta = {};
-            try { meta = JSON.parse(result.meta); } catch(e) {}
+            try { meta = JSON.parse(result.meta); } catch (e) { }
             var blanksResult = meta.blanksResult || [];
 
             q._revealed = true;
 
             (q._blankSlots || []).forEach(function (slot) {
                 var blankId = slot.dataset.blankId;
-                var bResult = blanksResult.find(function(b) { return b.id === blankId; });
+                var bResult = blanksResult.find(function (b) { return b.id === blankId; });
 
                 if (bResult) {
                     if (bResult.isCorrect) {
                         slot.classList.add('bg-green-100');
                     } else {
                         slot.classList.add('bg-red-50');
-                        
+
                         var correction = document.createElement('span');
                         correction.className = 'correction-span';
                         correction.textContent = bResult.correctAnswer;
                         slot.parentNode.insertBefore(correction, slot.nextSibling);
                     }
                 }
-                // Prevent further clicks
                 slot.style.pointerEvents = 'none';
             });
-            
-            // Disable all bank chips
+
             if (q._bankChips) {
                 Object.keys(q._bankChips).forEach(function (id) {
                     q._bankChips[id].classList.add('used');

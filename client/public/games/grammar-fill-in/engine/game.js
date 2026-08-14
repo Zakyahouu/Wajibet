@@ -1,5 +1,52 @@
 /* global WG */
 (function () {
+    function parseGrammarSentence(sentence, options, correctIndex) {
+        if (!sentence || typeof sentence !== 'string') return [];
+        var segments = [];
+        var blankPlaceholderRegex = /\[(.*?)\]|____+|___/g;
+        var lastIndex = 0;
+        var match = blankPlaceholderRegex.exec(sentence);
+
+        if (match !== null) {
+            if (match.index > 0) {
+                segments.push({
+                    id: 't_0',
+                    type: 'text',
+                    value: sentence.substring(0, match.index)
+                });
+            }
+            segments.push({
+                id: 'b_0',
+                type: 'blank',
+                options: Array.isArray(options) ? options : ['', ''],
+                correctIndex: Number.isInteger(correctIndex) ? correctIndex : 0
+            });
+            lastIndex = blankPlaceholderRegex.lastIndex;
+            if (lastIndex < sentence.length) {
+                segments.push({
+                    id: 't_1',
+                    type: 'text',
+                    value: sentence.substring(lastIndex)
+                });
+            }
+        } else {
+            // No placeholder found, append blank at end
+            segments.push({
+                id: 't_0',
+                type: 'text',
+                value: sentence + ' '
+            });
+            segments.push({
+                id: 'b_0',
+                type: 'blank',
+                options: Array.isArray(options) ? options : ['', ''],
+                correctIndex: Number.isInteger(correctIndex) ? correctIndex : 0
+            });
+        }
+
+        return segments;
+    }
+
     WG.run({
         type: 'grammar-fill-in',
         title: 'Grammar Fill-In',
@@ -10,22 +57,44 @@
             var shuffleOptions = settings.shuffleOptions !== false;
 
             content.forEach(function (item, index) {
-                if (!item.passage || !item.passage.segments) return;
+                var segments = [];
+                var category = null;
+                var ruleLabel = null;
+                var ruleTip = null;
+                var explanation = null;
 
-                var segments = item.passage.segments;
+                // Support structured grammarExercise object or top-level fields
+                var ex = (item.exercise && typeof item.exercise === 'object') ? item.exercise : item;
+
+                if (ex && ex.sentence) {
+                    category = ex.category || null;
+                    ruleLabel = ex.ruleLabel || null;
+                    ruleTip = ex.ruleTip || null;
+                    explanation = ex.explanation || null;
+                    segments = parseGrammarSentence(ex.sentence, ex.options, ex.correctIndex);
+                } else if (item.passage && item.passage.segments) {
+                    // Backwards compatibility with legacy passage segments
+                    segments = item.passage.segments;
+                    category = item.category || null;
+                    ruleLabel = item.ruleLabel || item.grammarRule || null;
+                    ruleTip = item.ruleTip || null;
+                    explanation = item.explanation || null;
+                }
+
                 var blankCount = segments.filter(function (s) { return s.type === 'blank'; }).length;
-
-                // Filter out if no blanks to avoid 0 score questions, unless intended
                 if (blankCount === 0) return;
 
                 questions.push({
-                    itemId: item.itemId || ('item_' + index),
-                    index: index,
-                    segments: segments,
-                    ruleLabel: item.ruleLabel || item.grammarRule || null,
+                    itemId:         item.itemId || ('item_' + index),
+                    index:          index,
+                    segments:       segments,
+                    category:       category,
+                    ruleLabel:      ruleLabel,
+                    ruleTip:        ruleTip,
+                    explanation:    explanation,
                     pointsPerBlank: pointsPerBlank,
                     shuffleOptions: shuffleOptions,
-                    maxScore: blankCount * pointsPerBlank
+                    maxScore:       blankCount * pointsPerBlank
                 });
             });
             return questions;
@@ -35,41 +104,60 @@
             var container = document.createElement('div');
             container.className = 'passage-container grammar-document';
 
-            if (q.ruleLabel) {
-                var ruleBadge = document.createElement('div');
-                ruleBadge.className = 'grammar-rule-badge';
-                ruleBadge.innerHTML = '<span class="rule-label">Rule:</span> <span class="rule-value">' + q.ruleLabel + '</span>';
-                container.appendChild(ruleBadge);
+            // Grammar Rule Header Banner
+            if (q.ruleLabel || q.category) {
+                var ruleBanner = document.createElement('div');
+                ruleBanner.className = 'grammar-rule-banner';
+
+                var badgeHtml = '';
+                if (q.category) {
+                    badgeHtml += '<span class="grammar-cat-tag">' + q.category + '</span>';
+                }
+                if (q.ruleLabel) {
+                    badgeHtml += '<span class="grammar-rule-title">' + q.ruleLabel + '</span>';
+                }
+
+                ruleBanner.innerHTML = '<div class="grammar-rule-top">' + badgeHtml + '</div>';
+
+                if (q.ruleTip) {
+                    var tipBox = document.createElement('div');
+                    tipBox.className = 'grammar-rule-tip';
+                    tipBox.innerHTML = '<span class="tip-icon">💡</span> <span class="tip-text">' + q.ruleTip + '</span>';
+                    ruleBanner.appendChild(tipBox);
+                }
+
+                container.appendChild(ruleBanner);
             }
+
+            var sentenceDiv = document.createElement('div');
+            sentenceDiv.className = 'grammar-sentence-area';
 
             var selects = [];
 
             q.segments.forEach(function (seg, segIndex) {
                 if (seg.type === 'text') {
-                    // Split on newlines to render <br> elements, or use white-space: pre-wrap in CSS
                     var span = document.createElement('span');
                     span.style.whiteSpace = 'pre-wrap';
                     span.textContent = seg.value;
-                    container.appendChild(span);
+                    sentenceDiv.appendChild(span);
                 } else if (seg.type === 'blank') {
                     var select = document.createElement('select');
-                    select.className = 'blank-select';
+                    select.className = 'blank-select grammar-select';
                     select.dataset.segIndex = segIndex;
                     select.dataset.blankId = seg.id;
 
                     var defaultOpt = document.createElement('option');
                     defaultOpt.value = '';
-                    defaultOpt.textContent = (ctx && ctx.t) ? ctx.t('chooseBlankOption') : '— choose —';
+                    defaultOpt.textContent = (ctx && ctx.t) ? ctx.t('chooseOption') : '— choose —';
                     defaultOpt.disabled = true;
                     defaultOpt.selected = true;
                     select.appendChild(defaultOpt);
 
-                    var optionsToRender = seg.options.map(function(opt, idx) {
+                    var optionsToRender = (seg.options || []).map(function (opt, idx) {
                         return { text: opt, isCorrect: idx === seg.correctIndex };
                     });
 
                     if (q.shuffleOptions) {
-                        // Fisher-Yates shuffle
                         for (var i = optionsToRender.length - 1; i > 0; i--) {
                             var j = Math.floor(Math.random() * (i + 1));
                             var temp = optionsToRender[i];
@@ -90,9 +178,17 @@
                     });
 
                     selects.push(select);
-                    container.appendChild(select);
+                    sentenceDiv.appendChild(select);
                 }
             });
+
+            container.appendChild(sentenceDiv);
+
+            // Container for reveal feedback
+            var explanationContainer = document.createElement('div');
+            explanationContainer.className = 'grammar-explanation-container hidden';
+            explanationContainer.id = 'grammarExplanation';
+            container.appendChild(explanationContainer);
 
             var qa = document.getElementById('questionArea');
             if (qa) {
@@ -105,8 +201,8 @@
                 ctx.setCanConfirm(allAnswered);
             }
 
-            // Save selects for evaluation
             q._selects = selects;
+            q._explanationContainer = explanationContainer;
         },
 
         evaluate: function (q, timedOut) {
@@ -119,10 +215,10 @@
             selects.forEach(function (select) {
                 var segIndex = parseInt(select.dataset.segIndex, 10);
                 var seg = q.segments[segIndex];
-                
+
                 var studentAnswer = select.value;
                 var correctAnswer = seg ? seg.options[seg.correctIndex] : null;
-                
+
                 var correct = false;
                 if (!timedOut && studentAnswer !== '' && studentAnswer === correctAnswer) {
                     correct = true;
@@ -139,36 +235,42 @@
                 });
             });
 
-            var userAnswerStr = blanksResult.map(function(b) { return b.studentAnswer || '(none)'; }).join(', ');
-            var correctAnswerStr = blanksResult.map(function(b) { return b.correctAnswer || ''; }).join(', ');
+            var userAnswerStr = blanksResult.map(function (b) { return b.studentAnswer || '(none)'; }).join(', ');
+            var correctAnswerStr = blanksResult.map(function (b) { return b.correctAnswer || ''; }).join(', ');
 
             return {
                 isCorrect: isCorrect,
                 score: score,
                 userAnswer: userAnswerStr,
                 correctAnswer: correctAnswerStr,
-                meta: JSON.stringify({ blanksResult: blanksResult, segments: q.segments })
+                meta: JSON.stringify({
+                    blanksResult: blanksResult,
+                    segments: q.segments,
+                    ruleLabel: q.ruleLabel,
+                    category: q.category,
+                    explanation: q.explanation
+                })
             };
         },
 
         reveal: function (q, result) {
             var selects = q._selects || [];
-            
+
             var meta = {};
-            try { meta = JSON.parse(result.meta); } catch(e) {}
+            try { meta = JSON.parse(result.meta); } catch (e) { }
             var blanksResult = meta.blanksResult || [];
 
             selects.forEach(function (select) {
                 select.disabled = true;
                 var blankId = select.dataset.blankId;
-                var bResult = blanksResult.find(function(b) { return b.id === blankId; });
+                var bResult = blanksResult.find(function (b) { return b.id === blankId; });
 
                 if (bResult) {
                     if (bResult.isCorrect) {
                         select.classList.add('bg-green-100');
                     } else {
                         select.classList.add('bg-red-50');
-                        
+
                         var correction = document.createElement('span');
                         correction.className = 'correction-span';
                         correction.textContent = bResult.correctAnswer;
@@ -176,6 +278,11 @@
                     }
                 }
             });
+
+            if (q.explanation && q._explanationContainer) {
+                q._explanationContainer.innerHTML = '<div class="grammar-feedback-card"><strong>Rule Explanation:</strong> ' + q.explanation + '</div>';
+                q._explanationContainer.classList.remove('hidden');
+            }
         }
     });
 })();
