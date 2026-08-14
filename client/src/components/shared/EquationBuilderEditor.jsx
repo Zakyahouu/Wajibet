@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { HelpCircle, Sparkles, AlertCircle, Keyboard, CheckCircle2, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, HelpCircle, AlertCircle, CheckCircle2, RotateCcw, Delete } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import 'mathlive';
 
 /**
- * Parses equation string into text and blank segments.
- * Supports bracketed tokens like "25 + [15] = 40" as well as standard equations.
+ * Parses equation text with brackets e.g. "25 + [15] = [40]"
+ * into text and blank segments.
  */
 export const parseEquationString = (str) => {
     if (!str || typeof str !== 'string') return [];
@@ -39,36 +38,28 @@ export const parseEquationString = (str) => {
 };
 
 /**
- * Tokenizes plain equation string into individual clickable parts (numbers, variables, operators)
- * for the click-to-blank UI.
+ * Extracts numbers/operands from a raw equation string so teacher can toggle multiple blanks.
  */
-const tokenizeEquation = (eqStr) => {
+const extractOperands = (eqStr) => {
     if (!eqStr) return [];
-    // If equation already has brackets, extract them cleanly
     const rawClean = eqStr.replace(/\[(.*?)\]/g, '$1');
     const tokens = [];
-    // Match numbers with decimals, variables, operators, brackets, equals
-    const tokenRegex = /(\d+(?:\.\d+)?|[a-zA-Z]|[-+×*÷/=()^±√])/g;
+    // Match numbers (including decimals) or standalone algebra variables
+    const regex = /(\d+(?:\.\d+)?|[a-zA-Z])/g;
     let match;
 
-    while ((match = tokenRegex.exec(rawClean)) !== null) {
-        const val = match[1];
-        const isOperand = /^\d+(?:\.\d+)?$/.test(val) || /^[a-zA-Z]$/.test(val);
+    while ((match = regex.exec(rawClean)) !== null) {
         tokens.push({
-            id: 'tok_' + match.index,
-            value: val,
-            isOperand,
             index: match.index,
-            length: val.length
+            value: match[1],
+            length: match[1].length
         });
     }
-
     return tokens;
 };
 
 const EquationBuilderEditor = ({ value, onChange }) => {
     const { t } = useLanguage();
-    const mathFieldRef = useRef(null);
 
     // Initial state handling
     const initialEquation = typeof value === 'string'
@@ -81,9 +72,7 @@ const EquationBuilderEditor = ({ value, onChange }) => {
 
     const [equation, setEquation] = useState(initialEquation);
     const [hint, setHint] = useState(initialHint);
-    const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-    // Sync from props
     useEffect(() => {
         if (typeof value === 'string' && value !== equation) {
             setEquation(value);
@@ -93,66 +82,62 @@ const EquationBuilderEditor = ({ value, onChange }) => {
         }
     }, [value]);
 
-    // Setup math-field listener
-    useEffect(() => {
-        const mf = mathFieldRef.current;
-        if (!mf) return;
+    // Get clean equation without brackets
+    const cleanEquation = equation.replace(/\[(.*?)\]/g, '$1');
+    const segments = parseEquationString(equation);
+    const blankValues = segments.filter(s => s.type === 'blank').map(s => s.value);
+    const operands = extractOperands(cleanEquation);
 
-        // Configure mathfield
-        mf.mathVirtualKeyboardPolicy = 'manual';
-        
-        const cleanForMathField = equation.replace(/\[(.*?)\]/g, '$1');
-        if (mf.value !== cleanForMathField) {
-            mf.setValue(cleanForMathField, { suppressChangeNotifications: true });
-        }
+    // Calculator button press handler
+    const handleKeypadPress = (key) => {
+        let newClean = cleanEquation;
 
-        const handleInput = () => {
-            const rawVal = mf.value || '';
-            // If equation has brackets, try to keep the blank if the value is still present
-            const currentSegments = parseEquationString(equation);
-            const currentBlank = currentSegments.find(s => s.type === 'blank')?.value;
-
-            let updatedEquation = rawVal;
-            if (currentBlank && rawVal.includes(currentBlank)) {
-                updatedEquation = rawVal.replace(currentBlank, `[${currentBlank}]`);
-            }
-            setEquation(updatedEquation);
-            onChange({ equation: updatedEquation, hint });
-        };
-
-        mf.addEventListener('input', handleInput);
-        return () => mf.removeEventListener('input', handleInput);
-    }, [equation, hint]);
-
-    const handleToggleKeyboard = () => {
-        if (window.mathVirtualKeyboard) {
-            if (keyboardVisible) {
-                window.mathVirtualKeyboard.hide();
-                setKeyboardVisible(false);
-            } else {
-                window.mathVirtualKeyboard.show();
-                setKeyboardVisible(true);
-                mathFieldRef.current?.focus();
-            }
-        }
-    };
-
-    const handleSelectBlankToken = (token) => {
-        const rawClean = equation.replace(/\[(.*?)\]/g, '$1');
-        const currentSegments = parseEquationString(equation);
-        const currentBlank = currentSegments.find(s => s.type === 'blank')?.value;
-
-        // If clicking the current blank, toggle off
-        if (currentBlank === token.value) {
-            setEquation(rawClean);
-            onChange({ equation: rawClean, hint });
+        if (key === 'AC') {
+            newClean = '';
+            setEquation('');
+            onChange({ equation: '', hint });
             return;
         }
 
-        // Replace the specific occurrence
-        const newEq = rawClean.replace(token.value, `[${token.value}]`);
-        setEquation(newEq);
-        onChange({ equation: newEq, hint });
+        if (key === '⌫') {
+            // Remove last character (and space if preceding)
+            newClean = newClean.trimEnd().slice(0, -1).trimEnd();
+        } else if (['+', '−', '×', '÷', '='].includes(key)) {
+            newClean = newClean.trimEnd() + ' ' + key + ' ';
+        } else {
+            newClean = newClean + key;
+        }
+
+        // Reconstruct equation preserving any selected blanks that are still present
+        rebuildEquationWithBlanks(newClean, blankValues);
+    };
+
+    const rebuildEquationWithBlanks = (rawClean, activeBlanks) => {
+        let rebuilt = rawClean;
+        // Sort blanks by length descending so longer numbers are replaced first
+        const sortedBlanks = [...activeBlanks].sort((a, b) => b.length - a.length);
+
+        sortedBlanks.forEach((bVal) => {
+            if (bVal && rebuilt.includes(bVal) && !rebuilt.includes(`[${bVal}]`)) {
+                rebuilt = rebuilt.replace(bVal, `[${bVal}]`);
+            }
+        });
+
+        setEquation(rebuilt);
+        onChange({ equation: rebuilt, hint });
+    };
+
+    // Toggle a number as blank (multi-select supported!)
+    const handleToggleBlank = (operandVal) => {
+        let newBlanks = [...blankValues];
+        if (newBlanks.includes(operandVal)) {
+            // Remove from blanks
+            newBlanks = newBlanks.filter(b => b !== operandVal);
+        } else {
+            // Add to blanks
+            newBlanks.push(operandVal);
+        }
+        rebuildEquationWithBlanks(cleanEquation, newBlanks);
     };
 
     const handleHintChange = (newHint) => {
@@ -162,42 +147,31 @@ const EquationBuilderEditor = ({ value, onChange }) => {
 
     const insertTemplate = (tmpl) => {
         setEquation(tmpl);
-        if (mathFieldRef.current) {
-            mathFieldRef.current.setValue(tmpl.replace(/\[(.*?)\]/g, '$1'));
-        }
         onChange({ equation: tmpl, hint });
     };
 
-    const segments = parseEquationString(equation);
-    const blankCount = segments.filter(s => s.type === 'blank').length;
-    const currentBlankValue = segments.find(s => s.type === 'blank')?.value || '';
-    const tokens = tokenizeEquation(equation);
+    const calculatorButtons = [
+        ['7', '8', '9', '÷', '⌫'],
+        ['4', '5', '6', '×', 'AC'],
+        ['1', '2', '3', '−', '('],
+        ['0', '.', '=', '+', ')']
+    ];
 
     return (
         <div className="space-y-4 bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
-            {/* Header with Virtual Keyboard Toggle */}
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
                     <Sparkles className="w-4 h-4" />
-                    <span>{t?.mathEquationBuilder || 'MathLive Equation Builder'}</span>
+                    <span>{t?.mathEquationBuilder || 'Visual Equation Builder'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={handleToggleKeyboard}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                            keyboardVisible
-                                ? 'bg-indigo-600 text-white shadow-sm'
-                                : 'bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700'
-                        }`}
-                    >
-                        <Keyboard className="w-3.5 h-3.5" />
-                        <span>{keyboardVisible ? 'Hide Math Keyboard' : 'Open Math Keyboard'}</span>
-                    </button>
+                <div className="text-xs text-slate-500 flex items-center gap-1">
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span>Tap calculator keys & click any numbers to make them blanks (multiple allowed)</span>
                 </div>
             </div>
 
-            {/* Quick Math Templates */}
+            {/* Quick Templates */}
             <div className="flex items-center gap-2 flex-wrap text-xs">
                 <span className="text-slate-400 font-medium">{t?.quickTemplates || 'Templates:'}</span>
                 <button
@@ -216,10 +190,10 @@ const EquationBuilderEditor = ({ value, onChange }) => {
                 </button>
                 <button
                     type="button"
-                    onClick={() => insertTemplate('12 × [8] = 96')}
+                    onClick={() => insertTemplate('[12] × [8] = 96')}
                     className="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 rounded-md font-mono transition-colors"
                 >
-                    12 × [8] = 96
+                    [12] × [8] = 96
                 </button>
                 <button
                     type="button"
@@ -230,73 +204,110 @@ const EquationBuilderEditor = ({ value, onChange }) => {
                 </button>
             </div>
 
-            {/* MathLive Interactive Input Field */}
-            <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                    {t?.enterEquation || 'Enter Equation (Type or use Math Keyboard)'}
-                </label>
-                <div className="p-3 bg-slate-50 border-2 border-slate-200 focus-within:border-indigo-500 focus-within:bg-white rounded-xl transition-all shadow-inner">
-                    <math-field
-                        ref={mathFieldRef}
-                        style={{
-                            display: 'block',
-                            width: '100%',
-                            fontSize: '1.5rem',
-                            fontFamily: 'Fira Code, Consolas, monospace',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: '#0f172a'
-                        }}
-                    />
-                </div>
-            </div>
+            {/* Visual Calculator Grid & Display */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                {/* Left Column: Calculator Keypad */}
+                <div className="lg:col-span-6 bg-slate-900 p-4 rounded-xl shadow-inner border border-slate-800 space-y-2.5">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                        Calculator Keypad
+                    </div>
 
-            {/* Click-to-Blank Interactive Token Selector */}
-            <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                        <span>👉 Click the value you want students to solve for:</span>
-                    </span>
-                    {currentBlankValue && (
-                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Blank: {currentBlankValue}</span>
-                        </span>
-                    )}
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap pt-1">
-                    {tokens.length === 0 ? (
-                        <span className="text-xs text-slate-400 italic">Type an equation above to select missing blanks.</span>
-                    ) : (
-                        tokens.map((tok) => {
-                            const isBlank = currentBlankValue === tok.value;
+                    <div className="grid grid-cols-5 gap-2">
+                        {calculatorButtons.flat().map((btnVal) => {
+                            const isAction = ['⌫', 'AC'].includes(btnVal);
+                            const isOperator = ['+', '−', '×', '÷', '='].includes(btnVal);
                             return (
                                 <button
-                                    key={tok.id}
+                                    key={btnVal}
                                     type="button"
-                                    onClick={() => handleSelectBlankToken(tok)}
-                                    className={`px-3.5 py-1.5 rounded-lg font-mono text-sm font-bold transition-all transform active:scale-95 ${
-                                        isBlank
-                                            ? 'bg-amber-400 text-slate-950 border-2 border-amber-500 shadow-md ring-2 ring-amber-200'
-                                            : tok.isOperand
-                                                ? 'bg-white hover:bg-indigo-100 text-indigo-900 border border-slate-200 shadow-sm'
-                                                : 'bg-slate-200 text-slate-600 cursor-default pointer-events-none'
+                                    onClick={() => handleKeypadPress(btnVal)}
+                                    className={`h-11 rounded-lg font-mono font-bold text-base flex items-center justify-center transition-all transform active:scale-95 shadow-sm ${
+                                        isAction
+                                            ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs'
+                                            : isOperator
+                                                ? 'bg-indigo-600 hover:bg-indigo-500 text-white text-lg'
+                                                : 'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700'
                                     }`}
                                 >
-                                    {tok.value} {isBlank && <span className="text-[10px] uppercase font-bold ml-1">🎯 Missing</span>}
+                                    {btnVal}
                                 </button>
                             );
-                        })
-                    )}
+                        })}
+                    </div>
+                </div>
+
+                {/* Right Column: Equation Screen & Interactive Multi-Blank Chooser */}
+                <div className="lg:col-span-6 space-y-3">
+                    {/* Current Equation Display */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Current Equation
+                        </label>
+                        <div className="font-mono text-2xl font-bold text-slate-900 min-h-[2.5rem] flex items-center">
+                            {cleanEquation || <span className="text-slate-400 font-normal italic text-sm">Tap calculator buttons on the left...</span>}
+                        </div>
+                    </div>
+
+                    {/* Interactive Multi-Select Blanks */}
+                    <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-indigo-950">
+                                🎯 Choose Missing Blank(s) — Click any numbers:
+                            </span>
+                            <span className="text-xs font-semibold text-indigo-600">
+                                {blankValues.length} {blankValues.length === 1 ? 'blank' : 'blanks'} selected
+                            </span>
+                        </div>
+
+                        {operands.length === 0 ? (
+                            <div className="text-xs text-slate-400 italic py-1">
+                                Enter numbers in the calculator to select blanks.
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 flex-wrap pt-1">
+                                {operands.map((op, idx) => {
+                                    const isBlank = blankValues.includes(op.value);
+                                    return (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => handleToggleBlank(op.value)}
+                                            className={`px-3.5 py-1.5 rounded-lg font-mono text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm border ${
+                                                isBlank
+                                                    ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-md ring-2 ring-amber-200'
+                                                    : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'
+                                            }`}
+                                        >
+                                            <span>{op.value}</span>
+                                            {isBlank ? (
+                                                <span className="text-[10px] uppercase font-extrabold bg-amber-500 text-slate-950 px-1 rounded">
+                                                    Blank ✓
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] text-slate-400 font-normal">
+                                                    + Make Blank
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Live Student Game Preview */}
             <div className="p-4 bg-slate-950 rounded-xl text-white space-y-2 border border-slate-800">
-                <div className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">
-                    {t?.studentViewPreview || 'Live Student View Preview'}
+                <div className="flex items-center justify-between">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">
+                        {t?.studentViewPreview || 'Live Student View Preview'}
+                    </div>
+                    <div className="text-xs text-slate-400 font-mono">
+                        {blankValues.length > 0 ? `${blankValues.length} target blank(s)` : 'No blanks selected yet'}
+                    </div>
                 </div>
+
                 {segments.length === 0 ? (
                     <div className="text-slate-500 italic text-sm py-2">
                         {t?.typeEquationPrompt || 'Equation will appear here.'}
@@ -326,10 +337,10 @@ const EquationBuilderEditor = ({ value, onChange }) => {
             </div>
 
             {/* Validation Feedback */}
-            {blankCount === 0 && equation.trim().length > 0 && (
+            {blankValues.length === 0 && cleanEquation.trim().length > 0 && (
                 <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-lg text-xs font-medium">
                     <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
-                    <span>Please click on one of the number buttons above to mark it as the missing puzzle blank!</span>
+                    <span>Please click at least one number above to mark it as the missing puzzle blank!</span>
                 </div>
             )}
 
