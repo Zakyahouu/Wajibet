@@ -244,7 +244,7 @@ const EditGame = () => {
         <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
             {/* Header */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto px-6 py-4">
+                <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <button
@@ -266,7 +266,7 @@ const EditGame = () => {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-4xl mx-auto px-6 py-8">
+            <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {error && (
                     <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-lg">
                         <p className="text-red-700">{error}</p>
@@ -677,8 +677,10 @@ const EditGame = () => {
                                         <div className="flex flex-col gap-6">
                                             {/* Item Fields */}
                                             <div className="grid gap-4 md:grid-cols-2 p-4 bg-gray-50 rounded-lg">
-                                                {Object.entries(template.formSchema.content.itemSchema).map(([key, field]) => (
-                                                    <div key={key}>
+                                                {Object.entries(template.formSchema.content.itemSchema).map(([key, field]) => {
+                                                    const isFullWidth = ['equationBuilder', 'wordBankPassage', 'grammarExercise', 'fillBlankDropdown', 'mapPoint', 'textarea', 'imageArray'].includes(field.type) || Object.keys(template.formSchema.content.itemSchema).length === 1;
+                                                    return (
+                                                    <div key={key} className={isFullWidth ? "col-span-full md:col-span-2" : ""}>
                                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                                             {field.label}
                                                         </label>
@@ -1089,7 +1091,8 @@ const EditGame = () => {
                                                             />
                                                         )}
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div> {/* Close flex container */}
                                     </div>
