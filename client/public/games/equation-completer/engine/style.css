@@ -267,3 +267,90 @@ body, html {
   font-size: 1rem;
 }
 
+.eq-input.active-input {
+  border-color: #38bdf8 !important;
+  background: #475569 !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.3) !important;
+}
+
+/* Student On-Screen Math Keypad */
+.student-keypad {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 1rem;
+  background: rgba(30, 41, 59, 0.7);
+  padding: 0.875rem;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.student-keypad-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.student-keypad-btn {
+  flex: 1;
+  min-height: 48px;
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  font-family: 'Fira Code', Consolas, monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.student-keypad-btn:hover:not(:disabled) {
+  background: #475569;
+  border-color: #64748b;
+  transform: translateY(-1px);
+}
+
+.student-keypad-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  background: #1e293b;
+}
+
+.student-keypad-btn.action-btn {
+  background: #1e293b;
+  color: #fbbf24;
+  border-color: #475569;
+  font-size: 1.05rem;
+}
+
+.student-keypad-btn.action-btn:hover:not(:disabled) {
+  background: #334155;
+  color: #f59e0b;
+}
+
+@media (max-width: 640px) {
+  .math-board-wrapper {
+    padding: 1.75rem 1rem;
+    font-size: 1.75rem;
+  }
+  .eq-input {
+    width: 2.75rem;
+    font-size: 1.75rem;
+  }
+  .student-keypad {
+    max-width: 100%;
+  }
+  .student-keypad-btn {
+    min-height: 44px;
+    font-size: 1.1rem;
+  }
+}
+

@@ -89,6 +89,15 @@
             var container = document.createElement('div');
             container.className = 'equation-row';
             var inputs = [];
+            var activeInput = null;
+
+            function setActiveInput(inp) {
+                activeInput = inp;
+                inputs.forEach(function (i) { i.classList.remove('active-input'); });
+                if (activeInput) {
+                    activeInput.classList.add('active-input');
+                }
+            }
 
             q.segments.forEach(function (seg, segIndex) {
                 if (seg.type === 'text') {
@@ -107,12 +116,17 @@
                     input.autocomplete = 'off';
                     input.spellcheck = false;
 
+                    input.addEventListener('focus', function () { setActiveInput(this); });
+                    input.addEventListener('click', function () { setActiveInput(this); });
                     input.addEventListener('input', function () { checkComplete(); });
                     input.addEventListener('keydown', function (e) {
                         if (e.key === 'Enter') {
                             e.preventDefault();
                             var next = inputs[inputs.indexOf(input) + 1];
-                            if (next) { next.focus(); }
+                            if (next) {
+                                next.focus();
+                                setActiveInput(next);
+                            }
                         }
                     });
 
@@ -123,10 +137,69 @@
 
             wrapper.appendChild(container);
 
+            // On-screen student math keypad (especially great for phones, tablets & touchscreen devices)
+            var keypad = document.createElement('div');
+            keypad.className = 'student-keypad';
+
+            var keyRows = [
+                ['1', '2', '3', '4', '5'],
+                ['6', '7', '8', '9', '0'],
+                ['.', '-', '/', '⌫', 'AC']
+            ];
+
+            var keypadButtons = [];
+
+            keyRows.forEach(function (row) {
+                var rowDiv = document.createElement('div');
+                rowDiv.className = 'student-keypad-row';
+
+                row.forEach(function (keyVal) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'student-keypad-btn';
+                    btn.textContent = keyVal;
+
+                    if (keyVal === '⌫' || keyVal === 'AC') {
+                        btn.classList.add('action-btn');
+                    }
+
+                    btn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        if (!activeInput && inputs[0]) {
+                            setActiveInput(inputs[0]);
+                        }
+                        if (!activeInput) return;
+
+                        if (keyVal === '⌫') {
+                            activeInput.value = activeInput.value.slice(0, -1);
+                        } else if (keyVal === 'AC') {
+                            activeInput.value = '';
+                        } else {
+                            activeInput.value += keyVal;
+                        }
+
+                        checkComplete();
+                        activeInput.focus();
+                    });
+
+                    keypadButtons.push(btn);
+                    rowDiv.appendChild(btn);
+                });
+
+                keypad.appendChild(rowDiv);
+            });
+
+            wrapper.appendChild(keypad);
+
             var qa = document.getElementById('questionArea');
             if (qa) { qa.innerHTML = ''; qa.appendChild(wrapper); }
 
-            if (inputs[0]) { setTimeout(function () { inputs[0].focus(); }, 50); }
+            if (inputs[0]) {
+                setTimeout(function () {
+                    inputs[0].focus();
+                    setActiveInput(inputs[0]);
+                }, 50);
+            }
 
             function checkComplete() {
                 var allFilled = inputs.every(function (inp) { return inp.value.trim() !== ''; });
@@ -134,6 +207,7 @@
             }
 
             q._inputs = inputs;
+            q._keypadButtons = keypadButtons;
         },
 
         evaluate: function (q, timedOut) {
@@ -180,6 +254,7 @@
 
             inputs.forEach(function (input) {
                 input.disabled = true;
+                input.classList.remove('active-input');
                 var blankId = input.dataset.blankId;
                 var bResult = blanksResult.find(function (b) { return b.id === blankId; });
                 if (!bResult) return;
@@ -193,6 +268,14 @@
                     input.parentNode.insertBefore(correction, input.nextSibling);
                 }
             });
+
+            if (Array.isArray(q._keypadButtons)) {
+                q._keypadButtons.forEach(function (btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.pointerEvents = 'none';
+                });
+            }
         }
     });
 })();
