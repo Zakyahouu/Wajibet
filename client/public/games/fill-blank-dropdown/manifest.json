@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "name": "Fill-In-The-Blank",
-  "description": "Read a sentence or passage and fill in the missing blanks.",
+  "name": "Word Bank",
+  "description": "Fill in the passage using a shared word bank \u2014 each word can only be used once.",
   "attemptPolicy": "all",
   "xp": {
     "assignment": { "enabled": true, "amount": 100, "firstAttemptOnly": true },
