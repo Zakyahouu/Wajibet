@@ -1,36 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Trash2, CheckCircle, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BookOpen, Plus, Trash2, CheckCircle2, HelpCircle, Layers, Check } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
-const DEFAULT_RULES = [
-    'Since vs. For',
-    "Their vs. There vs. They're",
-    'In / On / At (Prepositions)',
-    'Past Simple vs. Present Perfect',
-    'A vs. An (Articles)',
-    'Much vs. Many',
-    'Subject-Verb Agreement',
-    'Custom Rule'
-];
+// Helper to get all teacher-created rules stored during this session/browser
+const getSavedTeacherRules = () => {
+    try {
+        const stored = localStorage.getItem('wajibet_teacher_custom_grammar_rules');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) return parsed;
+        }
+    } catch (e) {
+        // ignore
+    }
+    return [];
+};
+
+const saveTeacherRuleToStorage = (ruleName, ruleTip) => {
+    if (!ruleName || !ruleName.trim()) return;
+    try {
+        const current = getSavedTeacherRules();
+        const filtered = current.filter(r => r.ruleLabel.toLowerCase() !== ruleName.trim().toLowerCase());
+        const updated = [{ ruleLabel: ruleName.trim(), ruleTip: (ruleTip || '').trim() }, ...filtered].slice(0, 30);
+        localStorage.setItem('wajibet_teacher_custom_grammar_rules', JSON.stringify(updated));
+    } catch (e) {
+        // ignore
+    }
+};
 
 const GrammarExerciseEditor = ({ value, onChange }) => {
     const { t } = useLanguage();
+    const sentenceInputRef = useRef(null);
 
-    const initialRule = value?.ruleLabel || 'Since vs. For';
-    const initialIsCustom = !DEFAULT_RULES.slice(0, -1).includes(initialRule);
-
-    const [ruleSelect, setRuleSelect] = useState(initialIsCustom ? 'Custom Rule' : initialRule);
-    const [customRule, setCustomRule] = useState(initialIsCustom ? initialRule : '');
-    const [sentence, setSentence] = useState(value?.sentence || 'I have lived in this city ____ 2018.');
-    const [options, setOptions] = useState(Array.isArray(value?.options) && value.options.length >= 2 ? value.options : ['since', 'for']);
+    const [ruleLabel, setRuleLabel] = useState(value?.ruleLabel || '');
+    const [ruleTip, setRuleTip] = useState(value?.ruleTip || '');
+    const [sentence, setSentence] = useState(value?.sentence || '');
+    const [options, setOptions] = useState(Array.isArray(value?.options) && value.options.length >= 2 ? value.options : ['', '']);
     const [correctIndex, setCorrectIndex] = useState(Number.isInteger(value?.correctIndex) ? value.correctIndex : 0);
+    const [explanation, setExplanation] = useState(value?.explanation || '');
+
+    // List of teacher's created rules in this session
+    const [savedRules, setSavedRules] = useState(getSavedTeacherRules);
 
     useEffect(() => {
         if (value && typeof value === 'object') {
-            if (value.ruleLabel !== undefined) {
-                const isCust = !DEFAULT_RULES.slice(0, -1).includes(value.ruleLabel);
-                setRuleSelect(isCust ? 'Custom Rule' : value.ruleLabel);
-                if (isCust) setCustomRule(value.ruleLabel);
+            if (value.ruleLabel !== undefined && value.ruleLabel !== ruleLabel) {
+                setRuleLabel(value.ruleLabel);
+            }
+            if (value.ruleTip !== undefined && value.ruleTip !== ruleTip) {
+                setRuleTip(value.ruleTip);
             }
             if (value.sentence !== undefined && value.sentence !== sentence) {
                 setSentence(value.sentence);
@@ -41,44 +59,87 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
             if (Number.isInteger(value.correctIndex)) {
                 setCorrectIndex(value.correctIndex);
             }
+            if (value.explanation !== undefined && value.explanation !== explanation) {
+                setExplanation(value.explanation);
+            }
         }
     }, [value]);
 
-    const getActiveRuleLabel = (sel = ruleSelect, cust = customRule) => {
-        return sel === 'Custom Rule' ? (cust.trim() || 'Custom Rule') : sel;
-    };
-
     const emitChange = (updates = {}) => {
-        const activeLabel = updates.ruleLabel !== undefined
-            ? updates.ruleLabel
-            : getActiveRuleLabel(updates.ruleSelect || ruleSelect, updates.customRule !== undefined ? updates.customRule : customRule);
+        const finalRuleLabel = updates.ruleLabel !== undefined ? updates.ruleLabel : ruleLabel;
+        const finalRuleTip = updates.ruleTip !== undefined ? updates.ruleTip : ruleTip;
+
+        // Auto-save teacher's created rule into recent storage
+        if (finalRuleLabel && finalRuleLabel.trim()) {
+            saveTeacherRuleToStorage(finalRuleLabel, finalRuleTip);
+            setSavedRules(getSavedTeacherRules());
+        }
 
         const payload = {
             category: 'Grammar Rule',
-            ruleLabel: activeLabel,
-            ruleTip: '',
+            ruleLabel: finalRuleLabel,
+            ruleTip: finalRuleTip,
             sentence: updates.sentence !== undefined ? updates.sentence : sentence,
             options: updates.options || options,
             correctIndex: updates.correctIndex !== undefined ? updates.correctIndex : correctIndex,
-            explanation: ''
+            explanation: updates.explanation !== undefined ? updates.explanation : explanation
         };
         onChange(payload);
     };
 
-    const handleRuleSelectChange = (newSel) => {
-        setRuleSelect(newSel);
-        const label = getActiveRuleLabel(newSel, customRule);
-        emitChange({ ruleSelect: newSel, ruleLabel: label });
+    const handleSelectSavedRule = (selectedLabel) => {
+        if (!selectedLabel) return;
+        const found = savedRules.find(r => r.ruleLabel === selectedLabel);
+        if (found) {
+            setRuleLabel(found.ruleLabel);
+            setRuleTip(found.ruleTip || '');
+            emitChange({ ruleLabel: found.ruleLabel, ruleTip: found.ruleTip || '' });
+        } else {
+            setRuleLabel(selectedLabel);
+            emitChange({ ruleLabel: selectedLabel });
+        }
     };
 
-    const handleCustomRuleChange = (newCust) => {
-        setCustomRule(newCust);
-        emitChange({ customRule: newCust, ruleLabel: newCust });
-    };
+    const handleInsertBlank = () => {
+        const input = sentenceInputRef.current;
+        if (!input) {
+            const next = sentence ? sentence + ' ____' : '____';
+            setSentence(next);
+            emitChange({ sentence: next });
+            return;
+        }
 
-    const handleSentenceChange = (newSent) => {
-        setSentence(newSent);
-        emitChange({ sentence: newSent });
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const selectedText = sentence.substring(start, end).trim();
+
+        let updatedSentence = '';
+        if (start !== end) {
+            // Replace selected word with ____
+            updatedSentence = sentence.substring(0, start) + '____' + sentence.substring(end);
+            // If Choice 1 is empty and text was selected, optionally pre-fill it into Choice 1
+            if (selectedText && (!options[0] || options[0].trim() === '')) {
+                const nextOptions = [...options];
+                nextOptions[0] = selectedText;
+                setOptions(nextOptions);
+                emitChange({ sentence: updatedSentence, options: nextOptions });
+            } else {
+                emitChange({ sentence: updatedSentence });
+            }
+        } else {
+            // Insert ____ at cursor position
+            updatedSentence = sentence.substring(0, start) + ' ____ ' + sentence.substring(start);
+            emitChange({ sentence: updatedSentence });
+        }
+
+        setSentence(updatedSentence);
+
+        // Keep focus on input
+        setTimeout(() => {
+            input.focus();
+            const newPos = start + 5;
+            input.setSelectionRange(newPos, newPos);
+        }, 30);
     };
 
     const handleOptionChange = (idx, val) => {
@@ -89,7 +150,7 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
     };
 
     const handleAddOption = () => {
-        if (options.length >= 4) return;
+        if (options.length >= 5) return;
         const next = [...options, ''];
         setOptions(next);
         emitChange({ options: next });
@@ -106,62 +167,101 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
         emitChange({ options: next, correctIndex: nextCorrect });
     };
 
-    const activeRule = getActiveRuleLabel();
     const sentencePreview = sentence.replace(/____/g, `[ ${options[correctIndex] || '?'} ]`);
 
     return (
         <div className="space-y-4 bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
                     <BookOpen className="w-4 h-4" />
                     <span>{t?.grammarExerciseEditor || 'Grammar Exercise'}</span>
                 </div>
                 <div className="text-xs text-slate-500 flex items-center gap-1">
                     <HelpCircle className="w-3.5 h-3.5" />
-                    <span>Choose rule, write sentence with <strong>____</strong>, and set choices.</span>
+                    <span>Type your rule name, write the sentence, and insert the blank slot.</span>
                 </div>
             </div>
 
-            {/* Step 1: Grammar Rule Dropdown */}
-            <div className="space-y-2">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                    1. Grammar Rule
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <select
-                        value={ruleSelect}
-                        onChange={(e) => handleRuleSelectChange(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
-                    >
-                        {DEFAULT_RULES.map((r) => (
-                            <option key={r} value={r}>{r}</option>
-                        ))}
-                    </select>
-
-                    {ruleSelect === 'Custom Rule' && (
-                        <input
-                            type="text"
-                            value={customRule}
-                            onChange={(e) => handleCustomRuleChange(e.target.value)}
-                            placeholder="Type custom rule name..."
-                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
-                        />
+            {/* Step 1: Teacher's Grammar Rule & Tip */}
+            <div className="space-y-2.5 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                        1. Grammar Rule / Topic
+                    </label>
+                    {savedRules.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                            <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                            <select
+                                onChange={(e) => handleSelectSavedRule(e.target.value)}
+                                defaultValue=""
+                                className="px-2.5 py-1 bg-white border border-slate-200 rounded-md text-xs font-medium text-slate-700 focus:border-indigo-500 focus:outline-none"
+                            >
+                                <option value="" disabled>-- Pick from your created rules ({savedRules.length}) --</option>
+                                {savedRules.map((r, i) => (
+                                    <option key={i} value={r.ruleLabel}>{r.ruleLabel}</option>
+                                ))}
+                            </select>
+                        </div>
                     )}
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <input
+                            type="text"
+                            value={ruleLabel}
+                            onChange={(e) => {
+                                setRuleLabel(e.target.value);
+                                emitChange({ ruleLabel: e.target.value });
+                            }}
+                            placeholder="Type rule name (e.g. Accord du participe passé, Por vs Para, حروف الجر, Since vs For)..."
+                            className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-sm font-medium focus:border-indigo-500 focus:outline-none transition-all shadow-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <input
+                            type="text"
+                            value={ruleTip}
+                            onChange={(e) => {
+                                setRuleTip(e.target.value);
+                                emitChange({ ruleTip: e.target.value });
+                            }}
+                            placeholder="Optional rule tip or explanation for students..."
+                            className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-sm focus:border-indigo-500 focus:outline-none transition-all shadow-sm"
+                        />
+                    </div>
+                </div>
             </div>
 
-            {/* Step 2: Sentence Input */}
-            <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                    2. Sentence (Use <code className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono font-bold">____</code> for the blank)
-                </label>
+            {/* Step 2: Sentence Input with "+ Insert Blank" Button */}
+            <div className="space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                        2. Sentence
+                    </label>
+                    <button
+                        type="button"
+                        onClick={handleInsertBlank}
+                        className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                        title="Click to insert ____ at the cursor position or replace selected text"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Insert Blank ( ____ )</span>
+                    </button>
+                </div>
+
                 <input
+                    ref={sentenceInputRef}
                     type="text"
                     value={sentence}
-                    onChange={(e) => handleSentenceChange(e.target.value)}
-                    placeholder="e.g. She has been waiting here ____ 2 o'clock."
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
+                    onChange={(e) => {
+                        setSentence(e.target.value);
+                        emitChange({ sentence: e.target.value });
+                    }}
+                    placeholder="Type sentence here and click '+ Insert Blank' where you want the missing word..."
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
                 />
             </div>
 
@@ -169,9 +269,9 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                        3. Contrast Choices (Select the correct answer)
+                        3. Contrast Choices (Select the radio button for the correct answer)
                     </label>
-                    {options.length < 4 && (
+                    {options.length < 5 && (
                         <button
                             type="button"
                             onClick={handleAddOption}
@@ -183,7 +283,7 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                     {options.map((opt, idx) => {
                         const isCorrect = correctIndex === idx;
                         return (
@@ -191,7 +291,7 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
                                 key={idx}
                                 className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
                                     isCorrect
-                                        ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-100'
+                                        ? 'bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-100 shadow-sm'
                                         : 'bg-slate-50 border-slate-200 hover:bg-white'
                                 }`}
                             >
@@ -231,19 +331,27 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Student Preview
+                        Live Student Preview
                     </span>
-                    <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">
-                        {activeRule}
-                    </span>
+                    {ruleLabel && (
+                        <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full">
+                            {ruleLabel}
+                        </span>
+                    )}
                 </div>
+
+                {ruleTip && (
+                    <div className="text-xs text-indigo-900 bg-indigo-50/60 p-2 rounded-lg border border-indigo-100 font-medium">
+                        Tip: {ruleTip}
+                    </div>
+                )}
 
                 <div className="text-base font-semibold text-slate-800 py-1">
-                    {sentence ? sentencePreview : <span className="text-slate-400 italic font-normal">Enter sentence above...</span>}
+                    {sentence ? sentencePreview : <span className="text-slate-400 italic font-normal">Sentence preview will appear here...</span>}
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
-                    <span className="text-xs text-slate-500 font-medium">Choices:</span>
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                    <span className="text-xs text-slate-500 font-medium">Student choices:</span>
                     {options.filter(o => o.trim() !== '').map((opt, i) => (
                         <span
                             key={i}
