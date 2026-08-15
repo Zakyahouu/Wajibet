@@ -62,12 +62,18 @@ const GrammarRulesTopManager = ({ rules = [], onRulesChange }) => {
             </div>
 
             {/* Quick 1-Row Add Rule Bar */}
-            <form onSubmit={handleAddRule} className="grid grid-cols-1 md:grid-cols-12 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
                 <div className="md:col-span-5">
                     <input
                         type="text"
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddRule();
+                            }
+                        }}
                         placeholder="Rule title (e.g. Past Simple vs Present Perfect, Accord du participe passé)..."
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
                     />
@@ -78,6 +84,12 @@ const GrammarRulesTopManager = ({ rules = [], onRulesChange }) => {
                         type="text"
                         value={newTip}
                         onChange={(e) => setNewTip(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddRule();
+                            }
+                        }}
                         placeholder="Optional student tip (e.g. Use Past Simple for completed past actions)..."
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
                     />
@@ -85,7 +97,8 @@ const GrammarRulesTopManager = ({ rules = [], onRulesChange }) => {
 
                 <div className="md:col-span-2">
                     <button
-                        type="submit"
+                        type="button"
+                        onClick={handleAddRule}
                         disabled={!newTitle.trim()}
                         className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm ${
                             newTitle.trim()
@@ -97,7 +110,7 @@ const GrammarRulesTopManager = ({ rules = [], onRulesChange }) => {
                         <span>Add Rule</span>
                     </button>
                 </div>
-            </form>
+            </div>
 
             {/* Compact Defined Rules Tags List (Scrollable, takes minimal space even with 20 rules!) */}
             {rules.filter(r => r.ruleLabel && r.ruleLabel.trim()).length > 0 && (
