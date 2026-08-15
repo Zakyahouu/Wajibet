@@ -500,20 +500,25 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
 
                 <div className="flex items-center gap-3 pt-1 flex-wrap text-xs text-slate-600">
                     {blanks.map((b, bIdx) => (
-                        <div key={bIdx} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-slate-200">
+                        <div key={bIdx} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">
                             <span className="font-bold text-slate-500">Blank #{bIdx + 1}:</span>
-                            {b.options.filter(o => o.trim() !== '').map((opt, i) => (
-                                <span
-                                    key={i}
-                                    className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                        i === b.correctIndex
-                                            ? 'bg-emerald-600 text-white'
-                                            : 'bg-slate-100 text-slate-700'
-                                    }`}
-                                >
-                                    {opt} {i === b.correctIndex && '✓'}
-                                </span>
-                            ))}
+                            {b.options.map((opt, origIdx) => {
+                                const isCorrect = origIdx === b.correctIndex;
+                                const trimmed = (opt || '').trim();
+                                if (!trimmed && !isCorrect) return null;
+                                return (
+                                    <span
+                                        key={origIdx}
+                                        className={`px-2.5 py-0.5 rounded text-xs font-bold border transition-colors ${
+                                            isCorrect
+                                                ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                                        }`}
+                                    >
+                                        {trimmed || '(empty)'} {isCorrect && '✓'}
+                                    </span>
+                                );
+                            })}
                         </div>
                     ))}
                 </div>

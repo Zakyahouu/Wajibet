@@ -175,7 +175,9 @@
                     select.appendChild(defaultOpt);
 
                     var optionsToRender = (seg.options || []).map(function (opt, idx) {
-                        return { text: opt, isCorrect: idx === seg.correctIndex };
+                        return { text: (opt || '').trim(), isCorrect: idx === seg.correctIndex };
+                    }).filter(function (opt) {
+                        return opt.text !== '';
                     });
 
                     if (q.shuffleOptions) {
