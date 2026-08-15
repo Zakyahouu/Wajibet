@@ -8,7 +8,10 @@ const getSavedTeacherRules = () => {
         const stored = localStorage.getItem('wajibet_teacher_custom_grammar_rules');
         if (stored) {
             const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) return parsed;
+            if (Array.isArray(parsed)) {
+                // Filter out empty, single-character, or invalid entries
+                return parsed.filter(r => r && typeof r.ruleLabel === 'string' && r.ruleLabel.trim().length >= 2);
+            }
         }
     } catch (e) {
         // ignore
@@ -16,12 +19,21 @@ const getSavedTeacherRules = () => {
     return [];
 };
 
+// Saves a completed rule to storage (called only on onBlur or explicit selection, NOT on every keystroke)
 const saveTeacherRuleToStorage = (ruleName, ruleTip) => {
-    if (!ruleName || !ruleName.trim()) return;
+    const trimmed = (ruleName || '').trim();
+    if (!trimmed || trimmed.length < 2) return;
+
     try {
         const current = getSavedTeacherRules();
-        const filtered = current.filter(r => r.ruleLabel.toLowerCase() !== ruleName.trim().toLowerCase());
-        const updated = [{ ruleLabel: ruleName.trim(), ruleTip: (ruleTip || '').trim() }, ...filtered].slice(0, 30);
+        // Remove exact duplicates or shorter prefixes of the same name (e.g. 'a', 'ab' when saving 'abc')
+        const filtered = current.filter(r => {
+            const existing = r.ruleLabel.toLowerCase();
+            const target = trimmed.toLowerCase();
+            return existing !== target && !target.startsWith(existing);
+        });
+
+        const updated = [{ ruleLabel: trimmed, ruleTip: (ruleTip || '').trim() }, ...filtered].slice(0, 30);
         localStorage.setItem('wajibet_teacher_custom_grammar_rules', JSON.stringify(updated));
     } catch (e) {
         // ignore
@@ -41,6 +53,15 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
 
     // List of teacher's created rules in this session
     const [savedRules, setSavedRules] = useState(getSavedTeacherRules);
+
+    // Clean up any historical fragment rules on initial mount
+    useEffect(() => {
+        const cleaned = getSavedTeacherRules();
+        try {
+            localStorage.setItem('wajibet_teacher_custom_grammar_rules', JSON.stringify(cleaned));
+        } catch (e) {}
+        setSavedRules(cleaned);
+    }, []);
 
     useEffect(() => {
         if (value && typeof value === 'object') {
@@ -69,12 +90,6 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
         const finalRuleLabel = updates.ruleLabel !== undefined ? updates.ruleLabel : ruleLabel;
         const finalRuleTip = updates.ruleTip !== undefined ? updates.ruleTip : ruleTip;
 
-        // Auto-save teacher's created rule into recent storage
-        if (finalRuleLabel && finalRuleLabel.trim()) {
-            saveTeacherRuleToStorage(finalRuleLabel, finalRuleTip);
-            setSavedRules(getSavedTeacherRules());
-        }
-
         const payload = {
             category: 'Grammar Rule',
             ruleLabel: finalRuleLabel,
@@ -85,6 +100,14 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
             explanation: updates.explanation !== undefined ? updates.explanation : explanation
         };
         onChange(payload);
+    };
+
+    // Save rule to dropdown list only when teacher finishes typing and clicks away
+    const handleRuleBlur = () => {
+        if (ruleLabel && ruleLabel.trim().length >= 2) {
+            saveTeacherRuleToStorage(ruleLabel, ruleTip);
+            setSavedRules(getSavedTeacherRules());
+        }
     };
 
     const handleSelectSavedRule = (selectedLabel) => {
@@ -215,6 +238,7 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
                                 setRuleLabel(e.target.value);
                                 emitChange({ ruleLabel: e.target.value });
                             }}
+                            onBlur={handleRuleBlur}
                             placeholder="Type rule name (e.g. Accord du participe passé, Por vs Para, حروف الجر, Since vs For)..."
                             className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-sm font-medium focus:border-indigo-500 focus:outline-none transition-all shadow-sm"
                         />
@@ -228,6 +252,7 @@ const GrammarExerciseEditor = ({ value, onChange }) => {
                                 setRuleTip(e.target.value);
                                 emitChange({ ruleTip: e.target.value });
                             }}
+                            onBlur={handleRuleBlur}
                             placeholder="Optional rule tip or explanation for students..."
                             className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-sm focus:border-indigo-500 focus:outline-none transition-all shadow-sm"
                         />
