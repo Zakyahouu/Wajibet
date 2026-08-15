@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-  <title>Word Match</title>
+  <title>Grammar Fill-In</title>
   <link rel="stylesheet" href="style.css" />
   <script src="/sdk/wajibet-sdk.js"></script>
 </head>
@@ -23,20 +23,18 @@
 
     <main class="stage">
       <section class="card center-card" id="startScreen">
-        <p class="eyebrow">Vocabulary</p>
-        <h1 class="game-title" id="gameTitle">Word Match</h1>
+        <p class="eyebrow">Grammar Practice</p>
+        <h1 class="game-title" id="gameTitle">Grammar Fill-In</h1>
         <p class="lede" id="lede"></p>
         <button type="button" class="btn" id="startBtn">Start</button>
       </section>
 
-      <!-- The 'full-bleed' class allows the layout to hit the edges on mobile -->
       <section class="card hidden full-bleed" id="playScreen">
         <div class="game-layout">
-
-          <!-- Left Side: Definitions (The Locks) -->
-          <div class="definitions-area">
-            <p class="prompt" id="prompt">Match the words to their meanings</p>
-            <div id="slotsContainer" class="slots-container"></div>
+          <div class="center-content-area" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+            <div id="questionArea" class="passage-container grammar-document">
+              <!-- Passage goes here -->
+            </div>
 
             <div class="feedback hidden" id="feedback">
               <p class="feedback-headline" id="feedbackHeadline"></p>
@@ -44,19 +42,10 @@
             </div>
 
             <div class="actions center-actions">
-              <button type="button" class="btn" id="confirmBtn" disabled>Confirm Matches</button>
-              <button type="button" class="btn hidden" id="nextBtn">Next Round</button>
+              <button type="button" class="btn btn-primary" id="confirmBtn" disabled>Confirm Answer</button>
+              <button type="button" class="btn btn-secondary hidden" id="nextBtn">Next</button>
             </div>
           </div>
-
-          <!-- Right Side (Desktop) / Bottom Sticky Dock (Mobile): Word Bank (The Keys) -->
-          <div class="word-bank-area">
-            <div class="word-bank-header">
-              <p class="sq-label">Word Bank (Tap or Drag)</p>
-            </div>
-            <div id="wordBank" class="word-bank"></div>
-          </div>
-
         </div>
       </section>
 

@@ -166,3 +166,237 @@ body, html {
 .end-stats { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 2rem; }
 
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Math Equation Styling */
+.math-board {
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 3rem 2rem;
+  border-radius: 12px;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 2.5rem;
+  text-align: center;
+  box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.equation-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.eq-text {
+  font-weight: 700;
+  padding: 0 0.5rem;
+}
+
+.eq-input {
+  width: 3.5rem;
+  text-align: center;
+  font-size: 2.5rem;
+  font-family: inherit;
+  font-weight: 700;
+  background: #334155;
+  color: #f8fafc;
+  border: none;
+  border-bottom: 4px solid #cbd5e1;
+  border-radius: 4px 4px 0 0;
+  padding: 0;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.eq-input:focus {
+  background: #475569;
+  border-color: #38bdf8;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+}
+
+.eq-input::placeholder {
+  color: #64748b;
+}
+
+.eq-correct {
+  color: #4ade80 !important;
+  border-color: #4ade80 !important;
+}
+
+.eq-wrong {
+  color: #f87171 !important;
+  border-color: #f87171 !important;
+  text-decoration: line-through;
+}
+
+.math-board-wrapper {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  font-family: 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 2.25rem;
+  text-align: center;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  border: 1px solid #334155;
+}
+
+.eq-hint-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #7dd3fc;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  max-width: 90%;
+}
+
+.eq-hint-icon {
+  font-size: 1rem;
+}
+
+.eq-input.active-input {
+  border-color: #38bdf8 !important;
+  background: #475569 !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.3) !important;
+}
+
+/* Student On-Screen Math Keypad & Toggle */
+.student-keypad-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 0.5rem;
+}
+
+.keypad-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(51, 65, 85, 0.6);
+  border: 1px solid rgba(100, 116, 139, 0.5);
+  color: #cbd5e1;
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.keypad-toggle-btn:hover {
+  background: rgba(71, 85, 105, 0.8);
+  color: #f8fafc;
+  border-color: #38bdf8;
+}
+
+.keypad-toggle-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.student-keypad {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.3);
+  animation: fadeInKeypad 0.2s ease;
+}
+
+@keyframes fadeInKeypad {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.student-keypad.hidden {
+  display: none !important;
+}
+
+.student-keypad-row {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.student-keypad-btn {
+  flex: 1;
+  min-height: 42px;
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  font-family: 'Fira Code', Consolas, monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.student-keypad-btn:hover:not(:disabled) {
+  background: #475569;
+  border-color: #64748b;
+  transform: translateY(-1px);
+}
+
+.student-keypad-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  background: #1e293b;
+}
+
+.student-keypad-btn.action-btn {
+  background: #1e293b;
+  color: #fbbf24;
+  border-color: #475569;
+  font-size: 0.95rem;
+}
+
+.student-keypad-btn.action-btn:hover:not(:disabled) {
+  background: #334155;
+  color: #f59e0b;
+}
+
+@media (max-width: 640px) {
+  .math-board-wrapper {
+    padding: 1.5rem 0.75rem;
+    font-size: 1.6rem;
+  }
+  .eq-input {
+    width: 2.75rem;
+    font-size: 1.6rem;
+  }
+  .student-keypad-wrapper {
+    max-width: 100%;
+  }
+  .student-keypad-btn {
+    min-height: 40px;
+    font-size: 1.05rem;
+  }
+}
+
