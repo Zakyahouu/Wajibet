@@ -166,7 +166,14 @@ const EditGame = () => {
     const isContentValid = () => {
         if (autoMode) return true;
 
-        if (template?.directory === 'multiple-choice-quiz') {
+        const templateDir = template?.directory || gameCreation?.template?.directory || templateId;
+
+        if (!Array.isArray(contentItems) || contentItems.length === 0) {
+            setError(t.emptyContentError || 'Please add at least one question or exercise before saving.');
+            return false;
+        }
+
+        if (templateDir === 'multiple-choice-quiz') {
             for (let i = 0; i < contentItems.length; i++) {
                 const item = contentItems[i];
                 let correctCount = 0;
@@ -180,6 +187,189 @@ const EditGame = () => {
                 }
                 if (!item.question || item.question.trim() === '') {
                     setError(`${t.questionWord || 'Question'} ${i + 1} ${t.missingQuestionText || 'is missing the question text.'}`);
+                    return false;
+                }
+            }
+        }
+
+        // 1. Grammar Fill-In validation
+        if (templateDir === 'grammar-fill-in') {
+            for (let i = 0; i < contentItems.length; i++) {
+                const item = contentItems[i];
+                const ex = (item.exercise && typeof item.exercise === 'object') ? item.exercise : item;
+                const sentence = typeof ex.sentence === 'string' ? ex.sentence.trim() : (typeof item.sentence === 'string' ? item.sentence.trim() : '');
+
+                if (!sentence || sentence.length === 0) {
+                    setError(`Exercise ${i + 1}: Sentence text cannot be empty.`);
+                    return false;
+                }
+
+                // Verify at least one blank slot exists
+                const blankMatches = sentence.match(/_{3,}|\[.*?\]/g) || [];
+                const hasBlanks = blankMatches.length > 0 || (Array.isArray(ex.blanks) && ex.blanks.length > 0);
+                if (!hasBlanks) {
+                    setError(`Exercise ${i + 1}: Sentence must have at least one blank slot (use [+ Insert Blank]).`);
+                    return false;
+                }
+
+                // Validate choices for each blank
+                const blanks = Array.isArray(ex.blanks) && ex.blanks.length > 0
+                    ? ex.blanks
+                    : [{ options: ex.options || ['', ''], correctIndex: ex.correctIndex || 0 }];
+
+                for (let b = 0; b < blanks.length; b++) {
+                    const blank = blanks[b];
+                    const options = Array.isArray(blank.options) ? blank.options : [];
+                    if (options.length < 2) {
+                        setError(`Exercise ${i + 1}, Blank ${b + 1}: Must provide at least 2 contrast choices.`);
+                        return false;
+                    }
+                    for (let o = 0; o < options.length; o++) {
+                        if (!options[o] || String(options[o]).trim() === '') {
+                            setError(`Exercise ${i + 1}, Blank ${b + 1}: Choice ${o + 1} cannot be empty.`);
+                            return false;
+                        }
+                    }
+                    if (typeof blank.correctIndex !== 'number' || blank.correctIndex < 0 || blank.correctIndex >= options.length) {
+                        setError(`Exercise ${i + 1}, Blank ${b + 1}: Please select a valid correct choice.`);
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // 2. Word Bank (Fill-Blank Dropdown) validation
+        if (templateDir === 'fill-blank-dropdown') {
+            for (let i = 0; i < contentItems.length; i++) {
+                const item = contentItems[i];
+                const text = typeof item.passage === 'string'
+                    ? item.passage.trim()
+                    : (item.passage?.passageText?.trim() || item.passageText?.trim() || '');
+
+                if (!text || text.length === 0) {
+                    setError(`Passage ${i + 1}: Story or passage text cannot be empty.`);
+                    return false;
+                }
+
+                const bracketMatches = text.match(/\[(.*?)\]/g) || [];
+                const validBankedWords = bracketMatches.filter(m => m.replace(/\[|\]/g, '').trim().length > 0);
+
+                if (validBankedWords.length === 0) {
+                    setError(`Passage ${i + 1}: No words have been banked yet. Click words in your passage to create blanks.`);
+                    return false;
+                }
+            }
+        }
+
+        // 3. Equation Completer validation
+        if (templateDir === 'equation-completer') {
+            for (let i = 0; i < contentItems.length; i++) {
+                const item = contentItems[i];
+                const eqObj = item.equation;
+                const terms = Array.isArray(eqObj?.terms) ? eqObj.terms : null;
+                const eqStr = typeof eqObj === 'string' ? eqObj.trim() : (eqObj?.equation?.trim() || '');
+
+                if (terms && terms.length > 0) {
+                    if (terms.length < 2) {
+                        setError(`Equation ${i + 1}: Equation must contain at least 2 terms or numbers.`);
+                        return false;
+                    }
+                    const hiddenTerms = terms.filter(t => t.isHidden);
+                    if (hiddenTerms.length === 0) {
+                        setError(`Equation ${i + 1}: Must mark at least one term as hidden (check "Hide as puzzle blank").`);
+                        return false;
+                    }
+                    for (let h = 0; h < hiddenTerms.length; h++) {
+                        if (!hiddenTerms[h].value || String(hiddenTerms[h].value).trim() === '') {
+                            setError(`Equation ${i + 1}: Hidden puzzle blank cannot have an empty value.`);
+                            return false;
+                        }
+                    }
+                } else {
+                    if (!eqStr || eqStr.length === 0) {
+                        setError(`Equation ${i + 1}: Equation cannot be empty.`);
+                        return false;
+                    }
+                    const bracketMatches = eqStr.match(/\[(.*?)\]/g) || [];
+                    if (bracketMatches.length === 0) {
+                        setError(`Equation ${i + 1}: Must contain at least one hidden puzzle term in [brackets].`);
+                        return false;
+                    }
+                    for (let b = 0; b < bracketMatches.length; b++) {
+                        const val = bracketMatches[b].replace(/\[|\]/g, '').trim();
+                        if (val.length === 0) {
+                            setError(`Equation ${i + 1}: Hidden puzzle blank cannot be empty brackets [].`);
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Cloze Reading validation
+        if (templateDir === 'cloze-reading') {
+            for (let i = 0; i < contentItems.length; i++) {
+                const item = contentItems[i];
+                const segments = Array.isArray(item.passage?.segments) ? item.passage.segments : [];
+
+                if (segments.length === 0) {
+                    setError(`Passage ${i + 1}: Passage cannot be empty.`);
+                    return false;
+                }
+
+                const textBlocks = segments.filter(s => s.type === 'text' && s.value && s.value.trim().length > 0);
+                const blankBlocks = segments.filter(s => s.type === 'blank');
+
+                if (textBlocks.length === 0) {
+                    setError(`Passage ${i + 1}: Must contain at least one text block with story content.`);
+                    return false;
+                }
+                if (blankBlocks.length === 0) {
+                    setError(`Passage ${i + 1}: Must contain at least one dropdown blank (click "+ Add Dropdown Blank").`);
+                    return false;
+                }
+
+                for (let b = 0; b < blankBlocks.length; b++) {
+                    const blank = blankBlocks[b];
+                    const options = Array.isArray(blank.options) ? blank.options : [];
+                    if (options.length < 2) {
+                        setError(`Passage ${i + 1}, Dropdown Blank ${b + 1}: Must have at least 2 choices.`);
+                        return false;
+                    }
+                    for (let o = 0; o < options.length; o++) {
+                        if (!options[o] || String(options[o]).trim() === '') {
+                            setError(`Passage ${i + 1}, Dropdown Blank ${b + 1}: Option ${o + 1} cannot be empty.`);
+                            return false;
+                        }
+                    }
+                    if (typeof blank.correctIndex !== 'number' || blank.correctIndex < 0 || blank.correctIndex >= options.length) {
+                        setError(`Passage ${i + 1}, Dropdown Blank ${b + 1}: Please select a valid correct answer.`);
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // 5. Map Pin Geography validation
+        if (templateDir === 'map-pin-geography') {
+            for (let i = 0; i < contentItems.length; i++) {
+                const item = contentItems[i];
+                const prompt = typeof item.prompt === 'string' ? item.prompt.trim() : '';
+                if (!prompt) {
+                    setError(`Question ${i + 1}: Prompt question text cannot be empty.`);
+                    return false;
+                }
+
+                const mapObj = item.map || item.targetLocation;
+                if (!mapObj || !mapObj.imageUrl || String(mapObj.imageUrl).trim() === '') {
+                    setError(`Question ${i + 1}: Please upload a map image.`);
+                    return false;
+                }
+
+                const x = Number(mapObj.xPercent);
+                const y = Number(mapObj.yPercent);
+                if (isNaN(x) || isNaN(y) || mapObj.xPercent === undefined || mapObj.yPercent === undefined || mapObj.xPercent === null || mapObj.yPercent === null) {
+                    setError(`Question ${i + 1}: Please click on the map to set the target location coordinates.`);
                     return false;
                 }
             }

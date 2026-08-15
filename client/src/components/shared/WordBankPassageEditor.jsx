@@ -277,6 +277,14 @@ const WordBankPassageEditor = ({ value, onChange }) => {
                 />
             </div>
 
+            {/* Live Warning if text typed but 0 words banked */}
+            {plainText.trim().length > 0 && selectedWords.length === 0 && (
+                <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs font-semibold">
+                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span>No words banked yet — tap words below to create blanks.</span>
+                </div>
+            )}
+
             {/* Step 2: Interactive Click-to-Bank Tokenizer */}
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between">

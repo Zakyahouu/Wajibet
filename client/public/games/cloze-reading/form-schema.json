@@ -23,7 +23,7 @@
     "itemSchema": {
       "passage": {
         "type": "fillBlankDropdown",
-        "label": "Passage with [Target|Choice1|Choice2]"
+        "label": "Passage Builder (+ Add Text & + Add Dropdown Blank)"
       }
     }
   }
