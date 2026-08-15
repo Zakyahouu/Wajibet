@@ -1,36 +1,57 @@
 /* global WG */
 (function () {
-    function parseGrammarSentence(sentence, options, correctIndex) {
+    function parseGrammarSentence(sentence, options, correctIndex, blanks) {
         if (!sentence || typeof sentence !== 'string') return [];
         var segments = [];
         var blankPlaceholderRegex = /\[(.*?)\]|____+|___/g;
         var lastIndex = 0;
-        var match = blankPlaceholderRegex.exec(sentence);
+        var match;
+        var blankIdx = 0;
 
-        if (match !== null) {
-            if (match.index > 0) {
+        while ((match = blankPlaceholderRegex.exec(sentence)) !== null) {
+            if (match.index > lastIndex) {
                 segments.push({
-                    id: 't_0',
+                    id: 't_' + segments.length,
                     type: 'text',
-                    value: sentence.substring(0, match.index)
+                    value: sentence.substring(lastIndex, match.index)
                 });
             }
+
+            var bData = (Array.isArray(blanks) && blanks[blankIdx]) ? blanks[blankIdx] : null;
+            var bOptions = (bData && Array.isArray(bData.options) && bData.options.length > 0)
+                ? bData.options
+                : (Array.isArray(options) ? options : ['', '']);
+            var bCorrect = (bData && Number.isInteger(bData.correctIndex))
+                ? bData.correctIndex
+                : (Number.isInteger(correctIndex) ? correctIndex : 0);
+
+            // If bracketed word like [since], and no options specified, use that as the correct option
+            if (match[1] && (!bOptions || bOptions.length === 0 || bOptions.every(function (o) { return !o; }))) {
+                bOptions = [match[1].trim()];
+                bCorrect = 0;
+            }
+
             segments.push({
-                id: 'b_0',
+                id: 'b_' + blankIdx,
                 type: 'blank',
-                options: Array.isArray(options) ? options : ['', ''],
-                correctIndex: Number.isInteger(correctIndex) ? correctIndex : 0
+                options: bOptions,
+                correctIndex: bCorrect
             });
+
+            blankIdx++;
             lastIndex = blankPlaceholderRegex.lastIndex;
-            if (lastIndex < sentence.length) {
-                segments.push({
-                    id: 't_1',
-                    type: 'text',
-                    value: sentence.substring(lastIndex)
-                });
-            }
-        } else {
-            // No placeholder found, append blank at end
+        }
+
+        if (lastIndex < sentence.length) {
+            segments.push({
+                id: 't_' + segments.length,
+                type: 'text',
+                value: sentence.substring(lastIndex)
+            });
+        }
+
+        // If no placeholders found in string, append one at the end
+        if (blankIdx === 0) {
             segments.push({
                 id: 't_0',
                 type: 'text',
@@ -71,7 +92,7 @@
                     ruleLabel = ex.ruleLabel || null;
                     ruleTip = ex.ruleTip || null;
                     explanation = ex.explanation || null;
-                    segments = parseGrammarSentence(ex.sentence, ex.options, ex.correctIndex);
+                    segments = parseGrammarSentence(ex.sentence, ex.options, ex.correctIndex, ex.blanks);
                 } else if (item.passage && item.passage.segments) {
                     // Backwards compatibility with legacy passage segments
                     segments = item.passage.segments;
