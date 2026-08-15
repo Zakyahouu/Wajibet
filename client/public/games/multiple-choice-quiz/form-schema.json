@@ -13,12 +13,6 @@
       "default": 30,
       "min": 0,
       "max": 300
-    },
-    "shuffleQuestions": {
-      "type": "boolean",
-      "label": "Shuffle Questions",
-      "required": false,
-      "default": false
     }
   },
   "content": {
@@ -44,7 +38,7 @@
       "optionC": {
         "type": "text",
         "label": "Option C",
-        "required": true
+        "required": false
       },
       "optionD": {
         "type": "text",
@@ -55,17 +49,12 @@
         "type": "enum",
         "label": "Correct Option",
         "required": true,
-        "default": "A",
-        "options": [
-          "A",
-          "B",
-          "C",
-          "D"
-        ]
+        "options": ["A", "B", "C", "D"],
+        "default": "A"
       },
       "explanation": {
         "type": "textarea",
-        "label": "Explanation (Optional)",
+        "label": "Explanation (shown in review)",
         "required": false,
         "rows": 2
       }

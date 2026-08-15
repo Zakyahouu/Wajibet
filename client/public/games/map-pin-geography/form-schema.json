@@ -17,11 +17,6 @@
       "required": true,
       "placeholder": "Set to 0 for no time limit"
     },
-    "shuffle": {
-      "label": "Shuffle Question Order",
-      "type": "boolean",
-      "default": true
-    },
     "showCorrectLocationOnMiss": {
       "label": "Reveal Correct Location After a Wrong Click",
       "type": "boolean",
@@ -44,20 +39,19 @@
         "required": true,
         "placeholder": "e.g. Click on the capital of Japan"
       },
-      "locationLabel": {
-        "label": "Correct Location Name (shown on review)",
-        "type": "text",
-        "required": true,
-        "placeholder": "e.g. Tokyo"
-      },
-      "targetLocation": {
-        "label": "Map & Correct Location",
+      "map": {
+        "label": "Map Image and Target Location",
         "type": "mapPoint",
-        "accept": ["image/png", "image/jpeg"],
-        "radiusMin": 1,
-        "radiusMax": 40,
-        "radiusDefault": 6,
-        "required": true
+        "accept": ["image/jpeg", "image/png", "image/webp"],
+        "radiusMin": 10,
+        "radiusMax": 100,
+        "radiusDefault": 30
+      },
+      "hint": {
+        "label": "Optional hint",
+        "type": "text",
+        "required": false,
+        "placeholder": "e.g. Look along Tokyo Bay"
       }
     }
   }

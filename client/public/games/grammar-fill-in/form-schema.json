@@ -8,11 +8,6 @@
       "max": 100,
       "required": true
     },
-    "shuffleOptions": {
-      "label": "Shuffle option order",
-      "type": "boolean",
-      "default": true
-    },
     "timeLimitSeconds": {
       "label": "Time limit per sentence (0 = no limit)",
       "type": "number",

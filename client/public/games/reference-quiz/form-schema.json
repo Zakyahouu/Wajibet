@@ -6,11 +6,6 @@
       "required": true,
       "default": "Reference Quiz"
     },
-    "shuffle": {
-      "label": "Shuffle Questions",
-      "type": "boolean",
-      "default": true
-    },
     "pointsPerQuestion": {
       "label": "Points per Question",
       "type": "number",
@@ -38,8 +33,13 @@
         "label": "Correct Option",
         "type": "enum",
         "options": ["A", "B", "C", "D"],
-        "default": "A",
-        "required": true
+        "required": true,
+        "default": "A"
+      },
+      "explanation": {
+        "label": "Explanation shown on review",
+        "type": "text",
+        "required": false
       }
     }
   }

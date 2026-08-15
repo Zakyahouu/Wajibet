@@ -6,7 +6,6 @@
     "categoryD": { "label": "Category D name (leave blank if unused)", "type": "text", "required": false, "placeholder": "Optional fourth category" },
     "pointsPerQuestion": { "label": "Points per Question", "type": "number", "default": 10, "min": 1, "max": 100, "required": true },
     "timeLimitSeconds": { "label": "Time Limit per Question (0 = no limit)", "type": "number", "default": 20, "min": 0, "max": 300, "required": true },
-    "shuffle": { "label": "Shuffle Question Order", "type": "boolean", "default": true },
     "themeColor": { "label": "Accent Color", "type": "color", "default": "#6B4E9B" }
   },
   "content": {

@@ -8,11 +8,6 @@
       "max": 100,
       "required": true
     },
-    "shuffleOptions": {
-      "label": "Shuffle dropdown options",
-      "type": "boolean",
-      "default": true
-    },
     "timeLimitSeconds": {
       "label": "Time limit per passage (0 = no limit)",
       "type": "number",
@@ -28,7 +23,7 @@
     "itemSchema": {
       "passage": {
         "type": "fillBlankDropdown",
-        "label": "Sentence / Passage with Blanks"
+        "label": "Passage with [Target|Choice1|Choice2]"
       }
     }
   }
