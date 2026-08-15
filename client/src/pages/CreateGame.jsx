@@ -20,6 +20,7 @@ import FillBlankDropdownEditor from '../components/shared/FillBlankDropdownEdito
 import EquationBuilderEditor from '../components/shared/EquationBuilderEditor';
 import WordBankPassageEditor from '../components/shared/WordBankPassageEditor';
 import GrammarExerciseEditor from '../components/shared/GrammarExerciseEditor';
+import GrammarRulesTopManager from '../components/shared/GrammarRulesTopManager';
 
 const CreateGame = () => {
     const { templateId } = useParams();
@@ -36,6 +37,7 @@ const CreateGame = () => {
     const [settingsData, setSettingsData] = useState({});
     const [contentItems, setContentItems] = useState([{}]);
     const [autoMode, setAutoMode] = useState(false);
+    const [grammarRules, setGrammarRules] = useState([{ id: 'rule_1', ruleLabel: '', ruleTip: '' }]);
 
     // Wizard State
     const [currentStep, setCurrentStep] = useState(1);
@@ -662,6 +664,14 @@ const CreateGame = () => {
                             </div>
 
                             <div className="p-6 space-y-6">
+                                {/* Top Grammar Rules Definition Section if this game has grammar exercises */}
+                                {Object.values(template.formSchema?.content?.itemSchema || {}).some(f => f.type === 'grammarExercise') && (
+                                    <GrammarRulesTopManager
+                                        rules={grammarRules}
+                                        onRulesChange={setGrammarRules}
+                                    />
+                                )}
+
                                 {contentItems.map((item, index) => (
                                     <div key={index} className="relative group">
                                         {/* Item Header */}
@@ -737,6 +747,7 @@ const CreateGame = () => {
                                                             <GrammarExerciseEditor
                                                                 value={item[key] || {}}
                                                                 onChange={(val) => handleContentChange(index, key, val)}
+                                                                availableRules={grammarRules}
                                                             />
                                                         ) : field.type === 'image' ? (
                                                             <div className="space-y-2">

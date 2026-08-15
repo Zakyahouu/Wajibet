@@ -20,6 +20,7 @@ import FillBlankDropdownEditor from '../components/shared/FillBlankDropdownEdito
 import EquationBuilderEditor from '../components/shared/EquationBuilderEditor';
 import WordBankPassageEditor from '../components/shared/WordBankPassageEditor';
 import GrammarExerciseEditor from '../components/shared/GrammarExerciseEditor';
+import GrammarRulesTopManager from '../components/shared/GrammarRulesTopManager';
 
 const EditGame = () => {
     const { creationId } = useParams();
@@ -37,7 +38,7 @@ const EditGame = () => {
     const [settingsData, setSettingsData] = useState({});
     const [contentItems, setContentItems] = useState([{}]);
     const [autoMode, setAutoMode] = useState(false);
-
+    const [grammarRules, setGrammarRules] = useState([{ id: 'rule_1', ruleLabel: '', ruleTip: '' }]);
 
     useEffect(() => {
         const fetchGameData = async () => {
@@ -47,6 +48,22 @@ const EditGame = () => {
                     headers: { Authorization: `Bearer ${user.token}` }
                 });
                 setGameCreation(creationData);
+
+                // Extract any existing grammar rules from saved items
+                const existingRules = [];
+                (creationData.content || []).forEach((c, idx) => {
+                    const ex = c.exercise || c;
+                    if (ex && ex.ruleLabel && !existingRules.some(r => r.ruleLabel === ex.ruleLabel)) {
+                        existingRules.push({
+                            id: `rule_${idx}`,
+                            ruleLabel: ex.ruleLabel,
+                            ruleTip: ex.ruleTip || ''
+                        });
+                    }
+                });
+                if (existingRules.length > 0) {
+                    setGrammarRules(existingRules);
+                }
 
                 // Fetch the template data
                 const { data: templateData } = await axios.get(`/api/templates/${creationData.template._id}`, {
@@ -652,6 +669,14 @@ const EditGame = () => {
                             </div>
 
                             <div className="p-6 space-y-6">
+                                {/* Top Grammar Rules Definition Section if this game has grammar exercises */}
+                                {Object.values(template.formSchema?.content?.itemSchema || {}).some(f => f.type === 'grammarExercise') && (
+                                    <GrammarRulesTopManager
+                                        rules={grammarRules}
+                                        onRulesChange={setGrammarRules}
+                                    />
+                                )}
+
                                 {contentItems.map((item, index) => (
                                     <div key={index} className="relative group">
                                         {/* Item Header */}
@@ -748,6 +773,7 @@ const EditGame = () => {
                                                             <GrammarExerciseEditor
                                                                 value={item[key] || {}}
                                                                 onChange={(val) => handleContentChange(index, key, val)}
+                                                                availableRules={grammarRules}
                                                             />
                                                         ) : field.type === 'image' ? (
                                                             <div className="space-y-2">
