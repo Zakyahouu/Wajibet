@@ -33,16 +33,13 @@ async function validateActivityTypesForSchool(schoolId, activityTypes = []) {
   const catalog = await SchoolCatalog.findOne({ schoolId });
   if (!catalog) return false; // must have a catalog to validate against
 
-  // Build set of allowed activity types from catalog sections
   const allowed = new Set();
-  // Derive human-readable activity buckets from catalog presence
-  if (Array.isArray(catalog.supportLessons) && catalog.supportLessons.length) allowed.add('Support Lessons');
-  if (Array.isArray(catalog.reviewCourses) && catalog.reviewCourses.length) allowed.add('Review Courses');
-  if (Array.isArray(catalog.vocationalTrainings) && catalog.vocationalTrainings.length) allowed.add('Vocational Training');
-  if (Array.isArray(catalog.languages) && catalog.languages.length) allowed.add('Languages');
-  if (Array.isArray(catalog.otherActivities) && catalog.otherActivities.length) allowed.add('Other Activities');
+  if (Array.isArray(catalog.supportLessons) && catalog.supportLessons.length) allowed.add('supportLessons');
+  if (Array.isArray(catalog.reviewCourses) && catalog.reviewCourses.length) allowed.add('reviewCourses');
+  if (Array.isArray(catalog.vocationalTrainings) && catalog.vocationalTrainings.length) allowed.add('vocationalTrainings');
+  if (Array.isArray(catalog.languages) && catalog.languages.length) allowed.add('languages');
+  if (Array.isArray(catalog.otherActivities) && catalog.otherActivities.length) allowed.add('otherActivities');
 
-  // All provided activityTypes must be within allowed set
   return activityTypes.every(t => allowed.has(t));
 }
 
@@ -130,7 +127,7 @@ exports.deleteRoom = async (req, res) => {
     if (!assertManagerAccess(req, room.schoolId)) return res.status(403).json({ message: 'Not authorized' });
 
     // Prevent deletion if classes assigned
-    const dependent = await ClassModel.findOne({ room: room._id });
+    const dependent = await ClassModel.findOne({ roomId: room._id });
     if (dependent) {
       return res.status(409).json({ message: 'Room cannot be deleted while assigned to one or more classes.' });
     }

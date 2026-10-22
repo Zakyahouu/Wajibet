@@ -104,7 +104,7 @@ const startServer = async () => {
     }
 
     console.log('✅ [4/5] About to start server on port', PORT);
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 [5/5] Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     });
 

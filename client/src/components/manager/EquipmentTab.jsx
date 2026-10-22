@@ -274,7 +274,8 @@ const EquipmentTab = () => {
                               "
                             >
                               <Eye className="w-3 h-3" />
-                              {t.viewUnitsAction}{(item.units || []).length > 3 ? ` (${t.plusMore.replace('{count}', (item.units || []).length - 3)})` : ''}
+                              {(t?.viewUnitsAction || 'View units')}
+                              {(item.units || []).length > 3 ? ` (${(t?.plusMore || '+{count} more').replace('{count}', Math.max(0, (item.units || []).length - 3))})` : ''}
                             </button>
                           </div>
                         </td>
@@ -461,7 +462,7 @@ const EquipmentUnitsPopup = ({ item, onClose, onUpdated }) => {
                     <button
                       onClick={() => beginEdit(unit)}
                       className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      title={t.editRoom.replace(t.rooms, t.unitCount)}
+                      title={((t?.editRoom || 'Edit Equipment').replace(t?.rooms || 'Rooms', t?.unitCount || 'unit'))}
                     >
                       <Edit className="w-4 h-4" />
                     </button>
@@ -496,7 +497,7 @@ const EquipmentUnitsPopup = ({ item, onClose, onUpdated }) => {
                       <textarea
                         className="w-full p-2 border border-gray-300 rounded-lg text-sm"
                         rows={3}
-                        placeholder={t.addNotePayout.replace(t.payment, t.unitCount)}
+                        placeholder={((t?.addNotePayout || 'Add note').replace(t?.payment || 'Payment', t?.unitCount || 'unit'))}
                         value={notesDrafts[unit.serial] ?? unit.notes ?? ''}
                         onChange={(e) => setNotesDrafts(prev => ({ ...prev, [unit.serial]: e.target.value }))}
                       />
