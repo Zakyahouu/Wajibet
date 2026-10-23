@@ -1,12 +1,10 @@
 module.exports = {
   apps: [
     {
-      name: "madrassaplay-api",
-      script: "server.js",   // or app.js (your main server file)
+      name: "wajibet-backend",
+      script: "server.js",
       env: {
-        NODE_ENV: "production",
-        MONGO_URI: "mongodb://madrassa:2004@localhost:27017/madrassaplay?authSource=madrassaplay",
-        JWT_SECRET: "df4ff0c90921816d1a252a13ab837382"
+        NODE_ENV: "production"
       }
     }
   ]
